@@ -1,0 +1,8 @@
+# Upstate IP Voice - robots.txt
+# https://www.upstateipvoice.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location (update base URL if your domain differs)
+Sitemap: https://www.upstateipvoice.com/sitemap.xml

@@ -1,0 +1,14 @@
+{
+  "name": "upstate-ip-voice-website",
+  "private": true,
+  "scripts": {
+    "minify:css": "npx clean-css-cli css/style.css -o css/style.min.css --source-map",
+    "minify:js": "npx terser js/main.js -o js/main.min.js -c -m --source-map \"filename='js/main.min.js.map'\"",
+    "build": "npm run minify:css && npm run minify:js",
+    "build:production": "npm run build && node scripts/build-production.js"
+  },
+  "devDependencies": {
+    "clean-css-cli": "^11.0.0",
+    "terser": "^5.36.0"
+  }
+}

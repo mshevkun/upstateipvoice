@@ -1,0 +1,12 @@
+<svg width="32" height="32" viewBox="0 0 139 139" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="favicon-clip">
+      <rect width="139" height="139" x="0" y="0"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#favicon-clip)">
+    <!-- Left portion of logo: black block (0254, 0139) and white IP mark -->
+    <path d="M254 139H0V0H254V139Z" fill="black"/>
+    <path d="M0 139L115.617 0H173.502L0 139ZM2.53906 138.93L254 8.35059V21.4385L7.24121 139H0L202.497 0H241.06L2.53906 138.93Z" fill="white"/>
+  </g>
+</svg>
