@@ -763,6 +763,18 @@ main .container {
     transform: translateY(0);
   }
 
+  /* Help section: no scroll-reveal so image block appears immediately (avoids slow 0.6s animation) */
+  .help-section .section__image-wrap {
+    transform: none;
+    transition: none;
+  }
+  .help-section .section__text,
+  .help-section .help-copy {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
   .section-image-text:not(.section-aside-reverse) .section__image-wrap {
     grid-column: 1;
     grid-row: 1 / -1;

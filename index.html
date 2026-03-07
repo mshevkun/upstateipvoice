@@ -22,7 +22,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Upstate IP Voice | Cloud-Based VoIP for Upstate NY">
   <meta name="twitter:description" content="Reliable cloud-based VoIP for Upstate NY. Crystal-clear voice calls, advanced features, flexibility without expensive hardware.">
-  <!-- Preload hero only on desktop (above fold); on mobile hero is below fold and lazy-loaded -->
+  <!-- Preload hero on desktop for faster LCP; hero img uses loading=eager + fetchpriority=high -->
   <link rel="preload" as="image" href="images/upstate-ip-voice-hero.webp" fetchpriority="high" media="(min-width: 1024px)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,7 +107,7 @@
   <main>
     <!-- Hero -->
     <section id="home" class="hero hero-dark">
-      <img src="images/upstate-ip-voice-hero.webp" alt="Upstate IP Voice - Cloud-based VoIP for Upstate NY businesses" class="hero-bg-img" width="1280" height="720" sizes="(max-width: 900px) 100vw, 1280px" loading="lazy" decoding="async">
+      <img src="images/upstate-ip-voice-hero.webp" alt="Upstate IP Voice - Cloud-based VoIP for Upstate NY businesses" class="hero-bg-img" width="1280" height="720" sizes="(max-width: 900px) 100vw, 1280px" loading="eager" fetchpriority="high" decoding="async">
       <div class="container">
         <div class="hero-content">
           <h1 class="hero-title">Business Phone System That Works Anywhere</h1>
