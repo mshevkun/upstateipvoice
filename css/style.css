@@ -2041,6 +2041,7 @@ main {
 
 .hero-cta {
   margin-top: 8px;
+  margin-bottom: 20px;
 }
 
 .hero-btn {
@@ -2136,6 +2137,7 @@ main {
   .hero .hero-content {
     margin-inline: auto;
     text-align: center;
+    margin: 20px 0;
   }
 
   .hero-dark .hero-title,
@@ -2167,17 +2169,12 @@ main {
     height: 48px;
   }
 
-  /* Hero title: 34–40px (UX rule) */
+  /* Hero title: 34–40px (UX rule); full text, no line-clamp */
   .hero-dark .hero-title {
     font-size: var(--mobile-h1);
     line-height: 1.2;
     max-width: 100%;
     margin-bottom: var(--space-32);
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 
   /* Hero subtitle: show full text, no cropping */
