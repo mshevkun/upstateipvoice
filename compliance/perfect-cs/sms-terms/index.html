@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMS Terms &amp; Conditions — Perfect Computer Solutions</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1d1f;
+      --ink-soft: #515154;
+      --muted: #86868b;
+      --bg: #fbfbfd;
+      --surface: #ffffff;
+      --line: #e8e8ed;
+      --accent: #1f8a70;
+      --accent-soft: #e7f5ef;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.7; color: var(--ink); background: var(--bg);
+      margin: 0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+    .page { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem 5rem;
+      display: grid; grid-template-columns: 1fr; gap: 1.75rem 2.75rem;
+      grid-template-areas: "head" "toc" "body" "foot"; }
+    .page.no-toc { max-width: 46rem; grid-template-areas: "head" "body" "foot"; }
+    @media (min-width: 680px) {
+      .page:not(.no-toc) {
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-areas: "head head" "toc body" "foot foot";
+        align-items: start;
+      }
+    }
+
+    /* Header */
+    .doc-head { grid-area: head; max-width: 44rem; }
+    .doc-eyebrow { font-size: .8125rem; font-weight: 600; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--accent); margin: 0 0 .75rem; }
+    h1 { font-size: clamp(2.1rem, 4vw, 3rem); line-height: 1.08; letter-spacing: -.03em;
+      font-weight: 700; margin: 0 0 .65rem; }
+    .doc-sub { font-size: 1.125rem; color: var(--muted); margin: 0; font-weight: 400; }
+
+    /* TOC */
+    .toc { grid-area: toc; position: sticky; top: 2rem; }
+    .toc-eyebrow { font-size: .6875rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted); margin: 0 0 1rem .25rem; }
+    .toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+    .toc a { display: flex; align-items: center; gap: .7rem; padding: .55rem .7rem;
+      border-radius: 10px; text-decoration: none; color: var(--ink-soft);
+      font-size: .9375rem; font-weight: 500; transition: background .18s ease, color .18s ease; }
+    .toc a:hover { background: #f2f2f5; color: var(--ink); }
+    .toc-ico { width: 20px; height: 20px; flex-shrink: 0; color: var(--muted); display: flex;
+      transition: color .18s ease; }
+    .toc-ico svg { width: 20px; height: 20px; }
+    .toc a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .toc a.active .toc-ico { color: var(--accent); }
+
+    /* Article */
+    .doc-body { grid-area: body; max-width: 44rem; }
+    .doc-section { scroll-margin-top: 2.5rem; padding: 1.75rem 0; border-top: 1px solid var(--line); }
+    .doc-section:first-child { border-top: 0; padding-top: 0; }
+    h2 { font-size: 1.5rem; line-height: 1.25; letter-spacing: -.02em; font-weight: 650;
+      margin: 0 0 1rem; display: flex; align-items: center; gap: .65rem; }
+    .sec-ico { width: 26px; height: 26px; flex-shrink: 0; color: #0d9488; display: flex; }
+    .sec-ico svg { width: 26px; height: 26px; }
+    p { font-size: 1.0625rem; color: var(--ink-soft); margin: 0 0 1rem; }
+    p:last-child { margin-bottom: 0; }
+    ul.doc-list { padding: 0; margin: 0 0 1rem; list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    ul.doc-list li { position: relative; padding-left: 1.6rem; font-size: 1.0625rem; color: var(--ink-soft); }
+    ul.doc-list li::before { content: ""; position: absolute; left: .2rem; top: .65rem;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    strong { color: var(--ink); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .contact-card { background: var(--surface); border: 1px solid var(--line);
+      border-radius: 14px; padding: 1.25rem 1.4rem; font-size: 1.0625rem; color: var(--ink-soft); }
+    .contact-card .biz { color: var(--ink); font-weight: 600; }
+
+    footer { grid-area: foot; max-width: 44rem; margin-top: 1.5rem; padding-top: 1.5rem;
+      border-top: 1px solid var(--line); font-size: .875rem; color: var(--muted); }
+    footer p { margin: .2rem 0; font-size: .875rem; color: var(--muted); }
+
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-head">
+      <p class="doc-eyebrow">Perfect Computer Solutions</p>
+      <h1>SMS Terms &amp; Conditions</h1>
+      <p class="doc-sub">How we handle SMS messaging and your information.</p>
+    </header>
+      <nav class="toc" aria-label="On this page">
+        <p class="toc-eyebrow">On this page</p>
+        <ul>
+        <li>
+          <a href="#program" data-target="program">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <span class="toc-label">Program description</span>
+          </a>
+        </li>
+        <li>
+          <a href="#frequency" data-target="frequency">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            <span class="toc-label">Message frequency</span>
+          </a>
+        </li>
+        <li>
+          <a href="#costs" data-target="costs">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+            <span class="toc-label">Costs</span>
+          </a>
+        </li>
+        <li>
+          <a href="#opt-out" data-target="opt-out">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
+            <span class="toc-label">Opt out</span>
+          </a>
+        </li>
+        <li>
+          <a href="#help" data-target="help">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span class="toc-label">Help</span>
+          </a>
+        </li>
+        <li>
+          <a href="#privacy" data-target="privacy">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+            <span class="toc-label">Privacy</span>
+          </a>
+        </li>
+        <li>
+          <a href="#carrier" data-target="carrier">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+            <span class="toc-label">Carrier disclaimer</span>
+          </a>
+        </li>
+        <li>
+          <a href="#changes" data-target="changes">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v6h6"/><path d="M21 12A9 9 0 0 0 6 5.3L3 8"/><path d="M21 22v-6h-6"/><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"/></svg></span>
+            <span class="toc-label">Changes</span>
+          </a>
+        </li>
+        </ul>
+      </nav>
+    <main class="doc-body">
+        <section id="program" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Program description</h2>
+          <p>By providing your mobile number and opting in, you agree to receive SMS text messages from Perfect Computer Solutions. Message types may include:</p>
+          <ul class="doc-list">
+      <li>two-factor authentication and one-time passcodes</li>
+    </ul>
+          <p>Messages may include links to our website or related resources.</p>
+        </section>
+        <section id="frequency" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>Message frequency</h2>
+          <p>Message frequency varies depending on your relationship with us and your activity (for example, appointment reminders or service updates). You may receive multiple messages per project or service visit.</p>
+        </section>
+        <section id="costs" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>Costs</h2>
+          <p><strong>Message and data rates may apply.</strong> Check with your mobile carrier for details.</p>
+        </section>
+        <section id="opt-out" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>Opt out</h2>
+          <p>You can cancel SMS messages at any time by replying <strong>STOP</strong>. You will receive a one-time confirmation message. No further messages will be sent unless you opt in again.</p>
+        </section>
+        <section id="help" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>Help</h2>
+          <p>For help, reply <strong>HELP</strong> to any message or contact us:</p>
+          <div class="contact-card">
+          Email: <a href="mailto:carlos@perfectcomputersolutions.com">carlos@perfectcomputersolutions.com</a><br>
+          Phone: (845) 857-5302
+        </div>
+        </section>
+        <section id="privacy" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>Privacy</h2>
+          <p>See our <a href="https://upstateipvoice.com/compliance/perfect-cs/privacy-policy/">SMS Privacy Policy</a> for how we handle your information. We do not sell or share mobile opt-in data with third parties for their marketing purposes.</p>
+        </section>
+        <section id="carrier" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>Carrier disclaimer</h2>
+          <p>Carriers are not liable for delayed or undelivered messages. Supported carriers include major U.S. wireless providers; availability may vary.</p>
+        </section>
+        <section id="changes" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v6h6"/><path d="M21 12A9 9 0 0 0 6 5.3L3 8"/><path d="M21 22v-6h-6"/><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"/></svg></span>Changes</h2>
+          <p>We may update these terms from time to time. Material changes will be reflected on this page with an updated date.</p>
+        </section>
+    </main>
+    <footer>
+      <p>Last updated: 2026-06-16 · Document version 1</p>
+      <p>SMS compliance pages hosted by Upstate IP Voice on behalf of Perfect Computer Solutions.</p>
+    </footer>
+  </div>
+  <script>
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+      if (!links.length) return;
+      var byId = {};
+      links.forEach(function (l) { byId[l.getAttribute('data-target')] = l; });
+      function setActive(id) {
+        links.forEach(function (l) { l.classList.remove('active'); });
+        if (byId[id]) byId[id].classList.add('active');
+      }
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Smooth-scroll on click WITHOUT changing the URL hash (prevents host-app reloads).
+      links.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var id = link.getAttribute('data-target');
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          setActive(id);
+        });
+      });
+      var sections = Array.prototype.slice.call(document.querySelectorAll('.doc-section'));
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) setActive(e.target.id); });
+        }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+        sections.forEach(function (s) { obs.observe(s); });
+      }
+      if (sections[0]) setActive(sections[0].id);
+    })();
+  </script>
+</body>
+</html>
