@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Page not found — Upstate IP Voice</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1d1f;
+      --muted: #6e6e73;
+      --bg: #fbfbfd;
+      --surface: #ffffff;
+      --line: #e8e8ed;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+    .top {
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: center;
+    }
+    .brand img {
+      height: 36px;
+      width: auto;
+      display: block;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.25rem 3rem;
+    }
+    .card {
+      width: min(100%, 28rem);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 2.25rem 2rem 2rem;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+      animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .icon-wrap {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 1.25rem;
+      border-radius: 14px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .icon-wrap svg { width: 28px; height: 28px; }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.65rem;
+    }
+    p {
+      margin: 0 0 1.25rem;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.98rem;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      align-items: stretch;
+    }
+    a.btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.72rem 1.1rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.15s;
+    }
+    a.btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    a.btn-primary:hover { background: #1d4ed8; }
+    a.btn-ghost {
+      color: var(--accent);
+      background: transparent;
+    }
+    a.btn-ghost:hover { background: var(--accent-soft); }
+    footer {
+      padding: 1.25rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="https://upstateipvoice.com/">
+      <img src="/images/LOGO.png" width="160" height="36" alt="Upstate IP Voice">
+    </a>
+  </header>
+  <main>
+    <div class="card" id="card-default">
+      <div class="icon-wrap" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 8v4M12 16h.01"/>
+        </svg>
+      </div>
+      <h1>Page not found</h1>
+      <p>We couldn't find the page you're looking for. It may have moved or the link may be outdated.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://upstateipvoice.com/">Go to homepage</a>
+        <a class="btn btn-ghost" href="https://upstateipvoice.com/support.html">Contact support</a>
+      </div>
+    </div>
+    <div class="card hidden" id="card-compliance">
+      <div class="icon-wrap" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+      </div>
+      <h1>Compliance document unavailable</h1>
+      <p id="compliance-msg">This SMS compliance page isn't available yet. If you're registering a campaign, check the link from your review email or contact your account team.</p>
+      <div class="actions">
+        <a class="btn btn-primary" id="compliance-try" href="#">Try privacy policy</a>
+        <a class="btn btn-ghost" href="https://upstateipvoice.com/support.html">Contact support</a>
+      </div>
+    </div>
+  </main>
+  <footer>© Upstate IP Voice</footer>
+  <script>
+(function () {
+  var path = location.pathname.replace(/\/+$/, '') || '/';
+  var complianceRoot = /^\/compliance\/([^/]+)(?:\/(privacy-policy|sms-terms))?$/.exec(path);
+  if (complianceRoot) {
+    var slug = complianceRoot[1];
+    var doc = complianceRoot[2];
+    var base = '/compliance/' + slug + '/';
+    if (!doc) {
+      location.replace(base + 'privacy-policy/');
+      return;
+    }
+    location.replace(base + doc + '/');
+    return;
+  }
+  if (/^\/compliance\/[^/]+\//.test(path + '/')) {
+    document.getElementById('card-default').classList.add('hidden');
+    document.getElementById('card-compliance').classList.remove('hidden');
+    var slugMatch = path.match(/^\/compliance\/([^/]+)/);
+    if (slugMatch) {
+      var tryHref = '/compliance/' + slugMatch[1] + '/privacy-policy/';
+      document.getElementById('compliance-try').href = tryHref;
+    }
+    return;
+  }
+})();
+  </script>
+</body>
+</html>
