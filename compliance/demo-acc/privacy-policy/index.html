@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMS Privacy Policy — Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1d1f;
+      --ink-soft: #515154;
+      --muted: #86868b;
+      --bg: #fbfbfd;
+      --surface: #ffffff;
+      --line: #e8e8ed;
+      --accent: #1f8a70;
+      --accent-soft: #e7f5ef;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.7; color: var(--ink); background: var(--bg);
+      margin: 0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+    .page { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem 5rem;
+      display: grid; grid-template-columns: 1fr; gap: 1.75rem 2.75rem;
+      grid-template-areas: "head" "toc" "body" "foot"; }
+    .page.no-toc { max-width: 46rem; grid-template-areas: "head" "body" "foot"; }
+    @media (min-width: 680px) {
+      .page:not(.no-toc) {
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-areas: "head head" "toc body" "foot foot";
+        align-items: start;
+      }
+    }
+
+    /* Header */
+    .doc-head { grid-area: head; max-width: 44rem; }
+    .doc-eyebrow { font-size: .8125rem; font-weight: 600; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--accent); margin: 0 0 .75rem; }
+    h1 { font-size: clamp(2.1rem, 4vw, 3rem); line-height: 1.08; letter-spacing: -.03em;
+      font-weight: 700; margin: 0 0 .65rem; }
+    .doc-sub { font-size: 1.125rem; color: var(--muted); margin: 0; font-weight: 400; }
+
+    /* TOC */
+    .toc { grid-area: toc; position: sticky; top: 2rem; }
+    .toc-eyebrow { font-size: .6875rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted); margin: 0 0 1rem .25rem; }
+    .toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+    .toc a { display: flex; align-items: center; gap: .7rem; padding: .55rem .7rem;
+      border-radius: 10px; text-decoration: none; color: var(--ink-soft);
+      font-size: .9375rem; font-weight: 500; transition: background .18s ease, color .18s ease; }
+    .toc a:hover { background: #f2f2f5; color: var(--ink); }
+    .toc-ico { width: 20px; height: 20px; flex-shrink: 0; color: var(--muted); display: flex;
+      transition: color .18s ease; }
+    .toc-ico svg { width: 20px; height: 20px; }
+    .toc a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .toc a.active .toc-ico { color: var(--accent); }
+
+    /* Article */
+    .doc-body { grid-area: body; max-width: 44rem; }
+    .doc-section { scroll-margin-top: 2.5rem; padding: 1.75rem 0; border-top: 1px solid var(--line); }
+    .doc-section:first-child { border-top: 0; padding-top: 0; }
+    h2 { font-size: 1.5rem; line-height: 1.25; letter-spacing: -.02em; font-weight: 650;
+      margin: 0 0 1rem; display: flex; align-items: center; gap: .65rem; }
+    .sec-ico { width: 26px; height: 26px; flex-shrink: 0; color: #0d9488; display: flex; }
+    .sec-ico svg { width: 26px; height: 26px; }
+    p { font-size: 1.0625rem; color: var(--ink-soft); margin: 0 0 1rem; }
+    p:last-child { margin-bottom: 0; }
+    ul.doc-list { padding: 0; margin: 0 0 1rem; list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    ul.doc-list li { position: relative; padding-left: 1.6rem; font-size: 1.0625rem; color: var(--ink-soft); }
+    ul.doc-list li::before { content: ""; position: absolute; left: .2rem; top: .65rem;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    strong { color: var(--ink); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .contact-card { background: var(--surface); border: 1px solid var(--line);
+      border-radius: 14px; padding: 1.25rem 1.4rem; font-size: 1.0625rem; color: var(--ink-soft); }
+    .contact-card .biz { color: var(--ink); font-weight: 600; }
+
+    footer { grid-area: foot; max-width: 44rem; margin-top: 1.5rem; padding-top: 1.5rem;
+      border-top: 1px solid var(--line); font-size: .875rem; color: var(--muted); }
+    footer p { margin: .2rem 0; font-size: .875rem; color: var(--muted); }
+
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-head">
+      <p class="doc-eyebrow">Demo</p>
+      <h1>SMS Privacy Policy</h1>
+      <p class="doc-sub">How we handle SMS messaging and your information.</p>
+    </header>
+      <nav class="toc" aria-label="On this page">
+        <p class="toc-eyebrow">On this page</p>
+        <ul>
+        <li>
+          <a href="#introduction" data-target="introduction">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+            <span class="toc-label">Introduction</span>
+          </a>
+        </li>
+        <li>
+          <a href="#info-collect" data-target="info-collect">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg></span>
+            <span class="toc-label">Information we collect</span>
+          </a>
+        </li>
+        <li>
+          <a href="#usage" data-target="usage">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <span class="toc-label">How we use SMS information</span>
+          </a>
+        </li>
+        <li>
+          <a href="#sharing" data-target="sharing">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <span class="toc-label">Sharing of information</span>
+          </a>
+        </li>
+        <li>
+          <a href="#opt-in" data-target="opt-in">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span class="toc-label">How you opt in</span>
+          </a>
+        </li>
+        <li>
+          <a href="#opt-out" data-target="opt-out">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
+            <span class="toc-label">How to opt out</span>
+          </a>
+        </li>
+        <li>
+          <a href="#help" data-target="help">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span class="toc-label">Help</span>
+          </a>
+        </li>
+        <li>
+          <a href="#contact" data-target="contact">
+            <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+            <span class="toc-label">Contact us</span>
+          </a>
+        </li>
+        </ul>
+      </nav>
+    <main class="doc-body">
+        <section id="introduction" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>Introduction</h2>
+          <p>This Privacy Policy describes how Demo ("we," "us," or "our") collects, uses, and protects information when you receive text messages from us or interact with our SMS programs.</p>
+        </section>
+        <section id="info-collect" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg></span>Information we collect</h2>
+          <p>When you opt in to receive SMS messages, we may collect and store your mobile phone number, your name (if provided), message content you send to us, and records of messages we send to you. We use this information solely to provide the messaging services described below.</p>
+        </section>
+        <section id="usage" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>How we use SMS information</h2>
+          <p>We use your mobile number and related information to send you text messages about:</p>
+          <ul class="doc-list">
+      <li>two-factor authentication and one-time passcodes</li>
+    </ul>
+          
+          
+        </section>
+        <section id="sharing" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Sharing of information</h2>
+          <p><strong>We do not sell or share your mobile phone number or SMS opt-in information with third parties for their own marketing purposes.</strong> We may share information with service providers who help us deliver text messages (such as our telecommunications provider) solely to operate our messaging program on our behalf, under contractual obligations to protect your data.</p>
+        </section>
+        <section id="opt-in" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>How you opt in</h2>
+          <p>Customers may opt in verbally or in writing during a phone call, in-person visit, quote, or scheduling conversation. Consent is documented by our staff.</p>
+          
+        </section>
+        <section id="opt-out" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>How to opt out</h2>
+          <p>You may opt out at any time by replying <strong>STOP</strong> to any message we send. After you opt out, we will send a one-time confirmation and will not send further marketing or non-essential messages unless you opt in again or we are required to send a transactional message permitted by law.</p>
+        </section>
+        <section id="help" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>Help</h2>
+          <p>Reply <strong>HELP</strong> to any message for assistance, or contact us using the information below.</p>
+        </section>
+        <section id="contact" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>Contact us</h2>
+          <div class="contact-card">
+      <span class="biz">Demo</span><br>
+      10 CLARKSON AVE BOX 3088<br>Potsdam, NY 13699-1401<br>
+      
+      Email: <a href="mailto:zorin6335@gmail.com">zorin6335@gmail.com</a><br>
+      Phone: (845) 718-9443
+    </div>
+        </section>
+    </main>
+    <footer>
+      <p>Last updated: 2026-06-16 · Document version 1</p>
+      <p>SMS compliance pages hosted by Upstate IP Voice on behalf of Demo.</p>
+    </footer>
+  </div>
+  <script>
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+      if (!links.length) return;
+      var byId = {};
+      links.forEach(function (l) { byId[l.getAttribute('data-target')] = l; });
+      function setActive(id) {
+        links.forEach(function (l) { l.classList.remove('active'); });
+        if (byId[id]) byId[id].classList.add('active');
+      }
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Smooth-scroll on click WITHOUT changing the URL hash (prevents host-app reloads).
+      links.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var id = link.getAttribute('data-target');
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          setActive(id);
+        });
+      });
+      var sections = Array.prototype.slice.call(document.querySelectorAll('.doc-section'));
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) setActive(e.target.id); });
+        }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+        sections.forEach(function (s) { obs.observe(s); });
+      }
+      if (sections[0]) setActive(sections[0].id);
+    })();
+  </script>
+</body>
+</html>
