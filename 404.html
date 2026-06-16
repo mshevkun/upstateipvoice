@@ -7,14 +7,24 @@
   <title>Page not found — Upstate IP Voice</title>
   <script>
 (function () {
-  var path = location.pathname.replace(/\/+$/, '') || '/';
+  var raw = location.pathname;
+  var path = raw.replace(/\/+$/, '') || '/';
+  var hadTrailingSlash = raw.length > 1 && raw.charAt(raw.length - 1) === '/';
   var complianceRoot = /^\/compliance\/([^/]+)(?:\/(privacy-policy|sms-terms))?$/.exec(path);
   if (complianceRoot) {
     var slug = complianceRoot[1];
     var doc = complianceRoot[2];
-    var base = '/compliance/' + slug + '/';
-    location.replace(base + (doc ? doc + '/' : 'privacy-policy/'));
-    return;
+    var target = doc
+      ? '/compliance/' + slug + '/' + doc + '/'
+      : '/compliance/' + slug + '/privacy-policy/';
+    // Only redirect when it actually changes the URL. If we are already at the
+    // canonical path (trailing slash present) and still got a 404, the document
+    // genuinely does not exist — show the message instead of looping forever.
+    var alreadyCanonical = doc && hadTrailingSlash;
+    if (!alreadyCanonical && target !== raw) {
+      location.replace(target);
+      return;
+    }
   }
   var mode = /^\/compliance\//.test(path) ? 'compliance' : 'default';
   document.documentElement.setAttribute('data-error', mode);
