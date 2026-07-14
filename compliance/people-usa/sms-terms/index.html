@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index, follow">
+  <title>SMS Terms &amp; Conditions — PEOPLE USA Inc</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1d1f;
+      --ink-soft: #515154;
+      --muted: #86868b;
+      --bg: #f2f2f7;
+      --surface: #ffffff;
+      --line: #e8e8ed;
+      --accent: #1f8a70;
+      --accent-soft: #e7f5ef;
+      --header-bg: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.7; color: var(--ink); background: var(--bg);
+      margin: 0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+    .site-header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--line);
+      padding: .85rem 1.5rem;
+    }
+    .site-header-inner {
+      max-width: 1120px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .site-brand { display: flex; align-items: center; gap: .65rem; text-decoration: none; color: var(--ink); }
+    .site-brand img { height: 32px; width: auto; display: block; }
+    .site-host-label {
+      font-size: .75rem; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .page-wrap { max-width: 1120px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .hero {
+      margin-bottom: 2rem;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-badge {
+      display: inline-block; font-size: .6875rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--accent); background: var(--accent-soft);
+      padding: .35rem .65rem; border-radius: 6px; margin-bottom: 1rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1.1;
+      letter-spacing: -.03em; font-weight: 700; margin: 0 0 .5rem;
+    }
+    .hero-for {
+      font-size: 1.25rem; font-weight: 600; color: var(--ink); margin: 0 0 .75rem;
+    }
+    .hero-intro { font-size: 1.0625rem; color: var(--ink-soft); margin: 0 0 1.25rem; max-width: 42rem; }
+    .hero-meta {
+      display: flex; flex-wrap: wrap; gap: .5rem 1.25rem;
+      font-size: .8125rem; color: var(--muted);
+    }
+    .hero-meta span { display: inline-flex; align-items: center; gap: .35rem; }
+    .hero-meta .meta-badge {
+      background: #f2f2f7; color: var(--ink-soft); padding: .2rem .55rem;
+      border-radius: 6px; font-weight: 500;
+    }
+    .page-pair-nav {
+      display: flex; align-items: center; gap: .65rem;
+      margin-bottom: 1.5rem; font-size: .9375rem;
+    }
+    .page-pair-link { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .page-pair-link:hover { text-decoration: underline; }
+    .page-pair-link.is-active { color: var(--ink); font-weight: 650; pointer-events: none; }
+    .page-pair-sep { color: var(--line); user-select: none; }
+    .page {
+      display: grid; grid-template-columns: 1fr; gap: 1.5rem 2rem;
+      grid-template-areas: "toc" "body";
+    }
+    .page.no-toc { grid-template-areas: "body"; }
+    @media (min-width: 760px) {
+      .page:not(.no-toc) {
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-areas: "toc body";
+        align-items: start;
+      }
+    }
+    .toc { grid-area: toc; position: sticky; top: 1.5rem; }
+    .toc-eyebrow {
+      font-size: .6875rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted); margin: 0 0 .85rem .25rem;
+    }
+    .toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .1rem; }
+    .toc a {
+      display: flex; align-items: center; gap: .65rem; padding: .5rem .65rem;
+      border-radius: 10px; text-decoration: none; color: var(--ink-soft);
+      font-size: .9rem; font-weight: 500; transition: background .15s ease, color .15s ease;
+    }
+    .toc a:hover { background: rgba(0,0,0,.04); color: var(--ink); }
+    .toc-ico { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted); display: flex; }
+    .toc-ico svg { width: 18px; height: 18px; }
+    .toc a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .toc a.active .toc-ico { color: var(--accent); }
+    .doc-card {
+      grid-area: body;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      padding: 2rem 2rem 2.25rem;
+    }
+    .doc-section { scroll-margin-top: 2rem; padding: 1.5rem 0; border-top: 1px solid var(--line); }
+    .doc-section:first-child { border-top: 0; padding-top: 0; }
+    h2 {
+      font-size: 1.35rem; line-height: 1.25; letter-spacing: -.02em; font-weight: 650;
+      margin: 0 0 .85rem; display: flex; align-items: center; gap: .6rem;
+    }
+    .sec-ico { width: 24px; height: 24px; flex-shrink: 0; color: #0d9488; display: flex; }
+    .sec-ico svg { width: 24px; height: 24px; }
+    p { font-size: 1.02rem; color: var(--ink-soft); margin: 0 0 .9rem; }
+    p:last-child { margin-bottom: 0; }
+    ul.doc-list {
+      padding: 0; margin: 0 0 .9rem; list-style: none;
+      display: flex; flex-direction: column; gap: .5rem;
+    }
+    ul.doc-list li {
+      position: relative; padding-left: 1.5rem;
+      font-size: 1.02rem; color: var(--ink-soft);
+    }
+    ul.doc-list li::before {
+      content: ""; position: absolute; left: .15rem; top: .6rem;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    }
+    strong { color: var(--ink); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .compliance-callout {
+      display: flex; gap: .85rem; align-items: flex-start;
+      background: var(--accent-soft); border: 1px solid rgba(31, 138, 112, 0.2);
+      border-radius: 12px; padding: 1rem 1.15rem; margin: 0 0 .9rem;
+    }
+    .callout-ico { width: 28px; height: 28px; flex-shrink: 0; color: var(--accent); display: flex; margin-top: .1rem; }
+    .callout-ico svg { width: 28px; height: 28px; }
+    .compliance-callout p { margin: 0; color: var(--ink); font-weight: 500; font-size: 1rem; }
+    .contact-card {
+      background: #fafafa; border: 1px solid var(--line);
+      border-radius: 12px; padding: 1.25rem 1.35rem;
+    }
+    .contact-title { font-size: 1.05rem; font-weight: 650; margin: 0 0 1rem; color: var(--ink); }
+    .contact-row { display: grid; grid-template-columns: 5.5rem 1fr; gap: .5rem 1rem; margin-bottom: .65rem; font-size: .98rem; }
+    .contact-row:last-child { margin-bottom: 0; }
+    .contact-label { color: var(--muted); font-weight: 600; font-size: .8125rem; text-transform: uppercase; letter-spacing: .04em; }
+    .contact-value { color: var(--ink-soft); }
+    .contact-empty { margin: 0; color: var(--muted); font-size: .95rem; }
+    .site-footer {
+      max-width: 1120px; margin: 2rem auto 0; padding: 1.5rem 1.5rem 0;
+      border-top: 1px solid var(--line); font-size: .8125rem; color: var(--muted);
+    }
+    .site-footer p { margin: .25rem 0; font-size: .8125rem; color: var(--muted); }
+    .site-footer .page-pair-nav { margin-bottom: .75rem; }
+    @media (max-width: 759px) {
+      .contact-row { grid-template-columns: 1fr; gap: .15rem; }
+      .doc-card { padding: 1.35rem 1.25rem 1.5rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="site-brand" href="https://upstateipvoice.com/">
+        <img src="https://upstateipvoice.com/images/LOGO.png" width="140" height="32" alt="Upstate IP Voice">
+      </a>
+      <span class="site-host-label">Hosted compliance page</span>
+    </div>
+  </header>
+  <div class="page-wrap">
+    <header class="hero">
+      <span class="hero-badge">SMS Compliance Page</span>
+      <h1>SMS Terms &amp; Conditions</h1>
+      <p class="hero-for">For PEOPLE USA Inc</p>
+      <p class="hero-intro">This page describes the SMS terms for messages you receive from PEOPLE USA Inc.</p>
+      <div class="hero-meta">
+        <span>Last updated: <strong>July 14, 2026</strong></span>
+        <span>Document version 1</span>
+        <span class="meta-badge">Publicly accessible for carrier compliance review</span>
+      </div>
+    </header>
+    <nav class="page-pair-nav" aria-label="Compliance documents">
+      <a class="page-pair-link" href="https://upstateipvoice.com/compliance/people-usa/privacy-policy/">Privacy Policy</a>
+      <span class="page-pair-sep" aria-hidden="true">|</span>
+      <a class="page-pair-link is-active" href="https://upstateipvoice.com/compliance/people-usa/sms-terms/" aria-current="page">SMS Terms</a>
+    </nav>
+    <div class="page">
+      <nav class="toc" aria-label="On this page">
+        <p class="toc-eyebrow">On this page</p>
+        <ul>
+          <li>
+            <a href="#program" data-target="program">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+              <span class="toc-label">Program description</span>
+            </a>
+          </li>
+          <li>
+            <a href="#consent" data-target="consent">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg></span>
+              <span class="toc-label">SMS consent</span>
+            </a>
+          </li>
+          <li>
+            <a href="#frequency" data-target="frequency">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <span class="toc-label">Message frequency</span>
+            </a>
+          </li>
+          <li>
+            <a href="#costs" data-target="costs">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <span class="toc-label">Costs</span>
+            </a>
+          </li>
+          <li>
+            <a href="#opt-out" data-target="opt-out">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
+              <span class="toc-label">Opt out</span>
+            </a>
+          </li>
+          <li>
+            <a href="#help" data-target="help">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+              <span class="toc-label">Help</span>
+            </a>
+          </li>
+          <li>
+            <a href="#privacy" data-target="privacy">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+              <span class="toc-label">Privacy</span>
+            </a>
+          </li>
+          <li>
+            <a href="#carrier" data-target="carrier">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+              <span class="toc-label">Carrier disclaimer</span>
+            </a>
+          </li>
+          <li>
+            <a href="#changes" data-target="changes">
+              <span class="toc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v6h6"/><path d="M21 12A9 9 0 0 0 6 5.3L3 8"/><path d="M21 22v-6h-6"/><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"/></svg></span>
+              <span class="toc-label">Changes</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      <main class="doc-card">
+        <section id="program" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Program description</h2>
+          <p>By providing your mobile number and opting in, you agree to receive SMS text messages from PEOPLE USA Inc. Message types may include:</p>
+          <ul class="doc-list">
+      <li>appointment and scheduling confirmations</li>
+    </ul>
+          
+        </section>
+        <section id="consent" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg></span>SMS consent</h2>
+          <p>SMS consent is not required as a condition of purchasing goods or services.</p><p>No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. We will not share your mobile information with third parties for marketing.</p>
+        </section>
+        <section id="frequency" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>Message frequency</h2>
+          <p>Message frequency varies. You may receive recurring messages based on your activity and our ongoing programs.</p>
+        </section>
+        <section id="costs" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>Costs</h2>
+          <p><strong>Message and data rates may apply.</strong> Check with your mobile carrier for details.</p>
+        </section>
+        <section id="opt-out" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>Opt out</h2>
+          <p>You can cancel SMS messages at any time by replying <strong>STOP</strong>. You will receive a one-time confirmation message. No further messages will be sent unless you opt in again.</p>
+        </section>
+        <section id="help" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>Help</h2>
+          <p>For help, reply <strong>HELP</strong> to any message or contact us:</p><div class="contact-card">
+      <h3 class="contact-title">Contact PEOPLE USA Inc</h3>
+      <div class="contact-row"><span class="contact-label">Address</span><span class="contact-value">102 Fulton Avenue<br>A<br>Poughkeepsie, NY 12603</span></div>
+      <div class="contact-row"><span class="contact-label">Email</span><span class="contact-value"><a href="mailto:cmansilla@people-usa.org">cmansilla@people-usa.org</a></span></div>
+      <div class="contact-row"><span class="contact-label">Phone</span><span class="contact-value">+1 (845) 206-1609</span></div>
+    </div>
+        </section>
+        <section id="privacy" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>Privacy</h2>
+          <div class="compliance-callout" role="note">
+      <span class="callout-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+      </span>
+      <p>We do not sell or share your mobile phone number or SMS opt-in information with third parties for their own marketing purposes.</p>
+    </div><p>See our <a href="https://upstateipvoice.com/compliance/people-usa/privacy-policy/">SMS Privacy Policy</a> for how we handle your information.</p>
+        </section>
+        <section id="carrier" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>Carrier disclaimer</h2>
+          <p>Carriers are not liable for delayed or undelivered messages. Supported carriers include major U.S. wireless providers; availability may vary.</p>
+        </section>
+        <section id="changes" class="doc-section">
+          <h2><span class="sec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v6h6"/><path d="M21 12A9 9 0 0 0 6 5.3L3 8"/><path d="M21 22v-6h-6"/><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"/></svg></span>Changes</h2>
+          <p>We may update these terms from time to time. Material changes will be reflected on this page with an updated date.</p>
+        </section>
+      </main>
+    </div>
+  </div>
+  <footer class="site-footer">
+    <nav class="page-pair-nav" aria-label="Compliance documents">
+      <a class="page-pair-link" href="https://upstateipvoice.com/compliance/people-usa/privacy-policy/">Privacy Policy</a>
+      <span class="page-pair-sep" aria-hidden="true">|</span>
+      <a class="page-pair-link is-active" href="https://upstateipvoice.com/compliance/people-usa/sms-terms/" aria-current="page">SMS Terms</a>
+    </nav>
+    <p>SMS compliance pages hosted by Upstate IP Voice on behalf of PEOPLE USA Inc.</p>
+  </footer>
+  <script>
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+      if (!links.length) return;
+      var byId = {};
+      links.forEach(function (l) { byId[l.getAttribute('data-target')] = l; });
+      function setActive(id) {
+        links.forEach(function (l) { l.classList.remove('active'); });
+        if (byId[id]) byId[id].classList.add('active');
+      }
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      links.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var id = link.getAttribute('data-target');
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          setActive(id);
+        });
+      });
+      var sections = Array.prototype.slice.call(document.querySelectorAll('.doc-section'));
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) setActive(e.target.id); });
+        }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+        sections.forEach(function (s) { obs.observe(s); });
+      }
+      if (sections[0]) setActive(sections[0].id);
+    })();
+  </script>
+</body>
+</html>
