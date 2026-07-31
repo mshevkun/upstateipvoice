@@ -1,6 +1,6 @@
 /**
- * Live platform metrics — clock-synced counters with rolling odometer digits.
- * Values stay identical across reloads (same wall clock → same count).
+ * Live platform metrics — clock-synced counters.
+ * Rolling odometer is used for Calls only; Messages / Automations stay plain.
  */
 (function () {
   'use strict';
@@ -11,21 +11,26 @@
   var EPOCH_MS = Date.parse('2026-07-31T17:05:00.000Z');
 
   var METRICS = {
-    calls: { base: 62000, perMs: 1 / 15000 },
-    messages: { base: 4200, perMs: 1 / 60000 },
-    automations: { base: 120, perMs: 25 / 86400000 }
+    calls: { base: 62000, perMs: 1 / 15000, odometer: true },
+    messages: { base: 4200, perMs: 1 / 60000, odometer: false },
+    automations: { base: 120, perMs: 25 / 86400000, odometer: false }
   };
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var meters = {};
+  var plain = {};
 
   function trueValue(key, now) {
     var cfg = METRICS[key];
     return cfg.base + Math.max(0, now - EPOCH_MS) * cfg.perMs;
   }
 
+  function formatInt(n) {
+    return Math.floor(n).toLocaleString('en-US');
+  }
+
   function formatParts(n) {
-    var s = Math.floor(n).toLocaleString('en-US');
+    var s = formatInt(n);
     var parts = [];
     for (var i = 0; i < s.length; i++) {
       var ch = s.charAt(i);
@@ -48,8 +53,7 @@
       host: host,
       track: track,
       slots: [],
-      lastInt: -1,
-      lastUnits: 0
+      lastInt: -1
     };
   }
 
@@ -108,7 +112,7 @@
     ribbon.style.transform = 'translate3d(0, ' + (-value) + 'em, 0)';
   }
 
-  function render(meter, value, forceSnap) {
+  function renderOdometer(meter, value, forceSnap) {
     var intVal = Math.floor(value);
     var frac = value - intVal;
     var parts = formatParts(intVal);
@@ -120,11 +124,6 @@
       if (parts[p].type === 'digit') digitCount++;
     }
 
-    var unitsDigit = 0;
-    parts.forEach(function (part) {
-      if (part.type === 'digit') unitsDigit = part.d;
-    });
-
     parts.forEach(function (part, i) {
       var slot = meter.slots[i];
       if (part.type === 'sep') return;
@@ -134,11 +133,9 @@
       var target = part.d;
 
       if (isUnits && !reducedMotion && !forceSnap) {
-        // Continuous roll toward next integer (the "live" feel)
         target = part.d + frac;
       }
 
-      // Higher digits: spring into place when they change
       var higherChanged = !isUnits && slot.shown !== part.d && meter.lastInt !== -1;
       setRibbon(slot.ribbon, target, higherChanged && !forceSnap);
       slot.shown = part.d;
@@ -151,19 +148,30 @@
     }
 
     meter.lastInt = intVal;
-    meter.lastUnits = unitsDigit;
-    meter.host.setAttribute('aria-label', intVal.toLocaleString('en-US'));
+    meter.host.setAttribute('aria-label', formatInt(intVal));
+  }
+
+  function renderPlain(el, value) {
+    el.textContent = formatInt(value);
   }
 
   Object.keys(METRICS).forEach(function (key) {
     var el = root.querySelector('[data-metric="' + key + '"] [data-metric-value]');
     if (!el) return;
-    meters[key] = buildMeter(el);
+    if (METRICS[key].odometer) {
+      meters[key] = buildMeter(el);
+    } else {
+      el.classList.remove('odometer');
+      plain[key] = el;
+    }
   });
 
   function paint(now, snap) {
     Object.keys(meters).forEach(function (key) {
-      render(meters[key], trueValue(key, now), !!snap);
+      renderOdometer(meters[key], trueValue(key, now), !!snap);
+    });
+    Object.keys(plain).forEach(function (key) {
+      renderPlain(plain[key], trueValue(key, now));
     });
   }
 
