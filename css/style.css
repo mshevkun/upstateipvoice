@@ -4930,6 +4930,375 @@ h2,
   opacity: 0.8;
 }
 
+/* Live platform metrics — between hero and Designed with Precision */
+.live-metrics {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: clamp(56px, 8vw, 96px) clamp(20px, 5vw, 64px);
+  background:
+    linear-gradient(180deg, #0a0a0a 0%, #141414 42%, #1a1a1a 100%);
+  color: #f5f5f5;
+  line-height: normal;
+  overflow: hidden;
+}
+
+.live-metrics::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -10%, rgba(255, 255, 255, 0.07), transparent 60%),
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+}
+
+.live-metrics__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.live-metrics__header {
+  text-align: center;
+  margin: 0 0 clamp(40px, 6vw, 64px);
+}
+
+.live-metrics__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+  padding: 0.35rem 0.85rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.live-metrics__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6fdf8a;
+  box-shadow: 0 0 0 0 rgba(111, 223, 138, 0.55);
+  animation: liveMetricsPulse 1.8s ease-out infinite;
+}
+
+@keyframes liveMetricsPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(111, 223, 138, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(111, 223, 138, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(111, 223, 138, 0);
+  }
+}
+
+.live-metrics__title {
+  margin: 0 0 0.65rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: clamp(22px, 2.4vw, 32px);
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.live-metrics__note {
+  margin: 0 auto;
+  max-width: 36em;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: clamp(13px, 1.15vw, 15px);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.live-metrics__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(28px, 4vw, 48px);
+  text-align: center;
+}
+
+.live-metrics__item {
+  position: relative;
+  margin: 0;
+  padding: 0 clamp(8px, 1.5vw, 20px);
+}
+
+.live-metrics__item + .live-metrics__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 30%,
+    rgba(255, 255, 255, 0.18) 70%,
+    transparent 100%
+  );
+}
+
+.live-metrics__value {
+  margin: 0 0 0.85rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: clamp(36px, 5vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: #fff;
+}
+
+/* Rolling odometer digits */
+.live-metrics__value.odometer {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 1em;
+}
+
+.odometer__track {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 1em;
+  overflow: hidden;
+}
+
+.odometer__digit {
+  position: relative;
+  display: inline-block;
+  width: 0.62em;
+  height: 1em;
+  overflow: hidden;
+  text-align: center;
+}
+
+.odometer__ribbon {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+  transition: none;
+}
+
+.odometer__ribbon.is-rolling {
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.odometer__num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.odometer__sep {
+  display: inline-block;
+  width: 0.28em;
+  height: 1em;
+  line-height: 1;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.odometer.is-ticking {
+  animation: odometerTick 0.55s ease;
+}
+
+@keyframes odometerTick {
+  0% { filter: brightness(1); }
+  35% { filter: brightness(1.35); }
+  100% { filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .odometer__ribbon {
+    transition: none;
+  }
+  .odometer.is-ticking {
+    animation: none;
+  }
+}
+
+.live-metrics__label {
+  margin: 0 0 0.4rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: clamp(13px, 1.2vw, 15px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.live-metrics__rate {
+  margin: 0 auto;
+  max-width: 16em;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: clamp(12px, 1.05vw, 14px);
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+@media (max-width: 768px) {
+  .live-metrics__grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .live-metrics__item + .live-metrics__item::before {
+    left: 18%;
+    right: 18%;
+    top: 0;
+    bottom: auto;
+    width: auto;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.16) 30%,
+      rgba(255, 255, 255, 0.16) 70%,
+      transparent 100%
+    );
+  }
+
+  .live-metrics__item {
+    padding-top: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-metrics__pulse {
+    animation: none;
+  }
+}
+
+/* Trusted & used by — infinite logo carousel */
+.partners {
+  margin: 0;
+  padding: clamp(48px, 7vw, 80px) 0 clamp(40px, 6vw, 64px);
+  background: #fff;
+  line-height: normal;
+  overflow: hidden;
+}
+
+.partners__inner {
+  max-width: 1100px;
+  margin: 0 auto clamp(28px, 4vw, 44px);
+  padding: 0 clamp(20px, 5vw, 64px);
+  text-align: center;
+}
+
+.partners__eyebrow {
+  margin: 0 0 0.65rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6b6b6b;
+}
+
+.partners__title {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: clamp(20px, 2.2vw, 28px);
+  letter-spacing: -0.02em;
+  color: #1a1a1a;
+}
+
+.partners__viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+}
+
+.partners__track {
+  display: flex;
+  align-items: center;
+  gap: clamp(40px, 6vw, 72px);
+  width: max-content;
+  padding: 12px 0;
+  animation: partnersMarquee 42s linear infinite;
+  will-change: transform;
+}
+
+.partners__viewport:hover .partners__track,
+.partners__viewport:focus-within .partners__track {
+  animation-play-state: paused;
+}
+
+@keyframes partnersMarquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.partners__item {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  padding: 0 4px;
+  text-decoration: none;
+  outline: none;
+}
+
+.partners__item img {
+  display: block;
+  width: auto;
+  max-width: min(200px, 42vw);
+  max-height: 56px;
+  height: auto;
+  object-fit: contain;
+  filter: grayscale(1) opacity(0.45);
+  transition: filter 0.28s ease, transform 0.28s ease, opacity 0.28s ease;
+}
+
+.partners__item:hover img,
+.partners__item:focus-visible img {
+  filter: grayscale(0) opacity(1) drop-shadow(0 1px 0 rgba(255, 255, 255, 0.9));
+  transform: translateY(-2px) scale(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partners__track {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 12px clamp(20px, 5vw, 64px);
+  }
+
+  .partners__item[aria-hidden="true"] {
+    display: none;
+  }
+}
+
 /* Designed with Precision — match Figma: white field, side text, center video */
 .index-precision {
   position: relative;
