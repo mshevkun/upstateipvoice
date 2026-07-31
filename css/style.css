@@ -1163,7 +1163,7 @@ main .container {
     top: 0;
     left: 0;
     right: 0;
-    padding: 24px 0 0;
+    padding: 0;
     background: transparent;
     pointer-events: none;
     z-index: 1000;
@@ -1171,6 +1171,27 @@ main .container {
 
   .site-header::after {
     display: none;
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 96px;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0.24) 42%,
+      rgba(0, 0, 0, 0.08) 72%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   /* Container: align with content (same left as hero/sections) */
@@ -1188,23 +1209,38 @@ main .container {
     background: transparent;
     pointer-events: auto;
     animation: headerLoad 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    transition:
+      height 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      min-height 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      background 0.35s ease;
   }
 
   /* Logo: left-aligned with page content, bigger */
   .site-header .logo {
     pointer-events: auto;
     margin-right: auto;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 48px;
+    min-height: 48px;
   }
   .site-header .logo-img {
     height: 48px;
+    display: block;
+    transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  /* Default desktop: dark logo (original), hide white logo */
+  /* Default desktop: dark logo visible, white logo hidden (opacity crossfade) */
   .site-header .logo-img-desktop {
-    display: none;
+    opacity: 0;
+    position: absolute;
+    left: 0;
+    pointer-events: none;
   }
   .site-header .logo-img-mobile {
-    display: block;
+    opacity: 1;
+    position: relative;
   }
 
   /* Menu: frosted capsule so links stay readable on light sections */
@@ -1217,6 +1253,13 @@ main .container {
     box-shadow: none;
     padding: 12px 24px;
     margin-left: 0;
+    transition:
+      background 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      backdrop-filter 0.35s ease,
+      -webkit-backdrop-filter 0.35s ease,
+      padding 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 0.35s ease,
+      box-shadow 0.35s ease;
   }
 
   .main-nav ul {
@@ -1233,7 +1276,7 @@ main .container {
     font-size: 16px;
     font-weight: 500;
     letter-spacing: 0.02em;
-    transition: color 0.2s ease, opacity 0.2s ease;
+    transition: color 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
     position: relative;
   }
 
@@ -1296,33 +1339,18 @@ main .container {
 
   /*
    * Dark-hero overlay (index/about/solutions/support at top only):
-   * white logo + white links + soft top blur. Reverts when .is-scrolled.
+   * white logo + white links + soft top blur. Crossfades when .is-scrolled.
    */
-  body.has-hero .site-header:not(.is-scrolled) {
-    padding: 0;
+  body.has-hero .site-header::after {
+    display: block;
   }
 
   body.has-hero .site-header:not(.is-scrolled)::after {
-    display: block;
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 96px;
-    z-index: -1;
-    pointer-events: none;
-    background: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.42) 0%,
-      rgba(0, 0, 0, 0.24) 42%,
-      rgba(0, 0, 0, 0.08) 72%,
-      rgba(0, 0, 0, 0) 100%
-    );
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
-    mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    opacity: 1;
+  }
+
+  body.has-hero .site-header.is-scrolled::after {
+    opacity: 0;
   }
 
   body.has-hero .site-header:not(.is-scrolled) .container {
@@ -1331,11 +1359,15 @@ main .container {
   }
 
   body.has-hero .site-header:not(.is-scrolled) .logo-img-desktop {
-    display: block;
+    opacity: 1;
+    position: relative;
+    pointer-events: auto;
   }
 
   body.has-hero .site-header:not(.is-scrolled) .logo-img-mobile {
-    display: none;
+    opacity: 0;
+    position: absolute;
+    pointer-events: none;
   }
 
   body.has-hero .site-header:not(.is-scrolled) .main-nav {
@@ -1827,13 +1859,7 @@ main .container {
 }
 
 @media (min-width: 901px) {
-  /* Default desktop: dark logo. White logo only over dark heroes (see header rules). */
-  .logo-img-desktop {
-    display: none;
-  }
-  .logo-img-mobile {
-    display: block;
-  }
+  /* Default desktop: dark logo visible, white hidden — crossfade handled in header block above */
   .logo-img {
     height: 48px;
   }
@@ -4804,8 +4830,17 @@ h2,
 }
 
 .about-main.about-figma,
-.index-main.index-figma {
+.index-main {
   background: #fff;
+  line-height: normal;
+}
+
+/* Interactive homepage sections — never inherit Figma slice line-height */
+.index-main .live-metrics,
+.index-main .partners,
+.index-main .index-precision,
+.index-main .index-precision-video,
+.index-main .index-stats {
   line-height: normal;
 }
 
@@ -5073,14 +5108,18 @@ h2,
 
 /* Rolling odometer digits */
 .live-metrics__value.odometer {
-  display: inline-flex;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
   justify-content: center;
   align-items: center;
   min-height: 1em;
 }
 
 .odometer__track {
-  display: inline-flex;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
   align-items: flex-start;
   justify-content: center;
   height: 1.15em;
