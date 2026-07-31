@@ -4806,6 +4806,11 @@ h2,
 .about-main.about-figma,
 .index-main.index-figma {
   background: #fff;
+  line-height: normal;
+}
+
+/* Only Figma image/video slices — not live-metrics, partners, or text sections */
+.index-figma__section {
   line-height: 0;
 }
 
@@ -5078,17 +5083,20 @@ h2,
   display: inline-flex;
   align-items: flex-start;
   justify-content: center;
-  height: 1em;
+  height: 1.15em;
   overflow: hidden;
+  line-height: 1.15;
 }
 
 .odometer__digit {
   position: relative;
   display: inline-block;
   width: 0.62em;
-  height: 1em;
+  height: 1.15em;
   overflow: hidden;
   text-align: center;
+  line-height: 1.15;
+  vertical-align: top;
 }
 
 .odometer__ribbon {
@@ -5096,6 +5104,7 @@ h2,
   flex-direction: column;
   will-change: transform;
   transition: none;
+  line-height: 1.15;
 }
 
 .odometer__ribbon.is-rolling {
@@ -5106,8 +5115,8 @@ h2,
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 1em;
-  line-height: 1;
+  height: 1.15em;
+  line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
 
@@ -5236,7 +5245,9 @@ h2,
 }
 
 .partners__track {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
   align-items: center;
   gap: clamp(48px, 7vw, 88px);
   width: max-content;

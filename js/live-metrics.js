@@ -109,7 +109,7 @@
       ribbon.style.transition = 'none';
       ribbon.classList.remove('is-rolling');
     }
-    ribbon.style.transform = 'translate3d(0, ' + (-value) + 'em, 0)';
+    ribbon.style.transform = 'translate3d(0, ' + (-value * 1.15) + 'em, 0)';
   }
 
   function renderOdometer(meter, value, forceSnap) {
