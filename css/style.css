@@ -4840,7 +4840,8 @@ h2,
 .index-main .partners,
 .index-main .index-precision,
 .index-main .index-precision-video,
-.index-main .index-stats {
+.index-main .index-stats,
+.index-main .index-mission {
   line-height: normal;
 }
 
@@ -5584,6 +5585,31 @@ h2,
 }
 
 /* Homepage — Why Upstate IP Voice stats (real HTML, not Figma slice) */
+/* Homepage mission statement — replaces first Figma image slice */
+.index-mission {
+  margin: 0;
+  padding: clamp(72px, 10vw, 120px) clamp(24px, 6vw, 80px);
+  background: #ecece9;
+  line-height: normal;
+}
+
+.index-mission__inner {
+  max-width: 920px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.index-mission__text {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: clamp(15px, 1.45vw, 19px);
+  line-height: 1.65;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #2f2f2f;
+}
+
 .index-stats {
   margin: 0;
   padding: clamp(64px, 9vw, 120px) clamp(20px, 5vw, 64px);
