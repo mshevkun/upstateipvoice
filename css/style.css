@@ -4841,7 +4841,8 @@ h2,
 .index-main .index-precision,
 .index-main .index-precision-video,
 .index-main .index-stats,
-.index-main .index-integrations-mission {
+.index-main .index-integrations-mission,
+.index-main .index-why-choose {
   line-height: normal;
 }
 
@@ -5661,6 +5662,94 @@ h2,
 @media (max-width: 640px) {
   .index-integrations-mission__visual {
     aspect-ratio: 4 / 3;
+  }
+}
+
+/* Why businesses choose — three-column grid under science section */
+.index-why-choose {
+  margin: 0;
+  padding: clamp(72px, 9vw, 120px) clamp(20px, 5vw, 64px);
+  background: #f3f3f3;
+  line-height: normal;
+}
+
+.index-why-choose__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.index-why-choose__header {
+  max-width: 720px;
+  margin: 0 auto clamp(56px, 7vw, 88px);
+  text-align: center;
+}
+
+.index-why-choose__title {
+  margin: 0 0 clamp(20px, 3vw, 28px);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: clamp(18px, 1.65vw, 24px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #2a2a2a;
+}
+
+.index-why-choose__intro {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: clamp(14px, 1.25vw, 17px);
+  line-height: 1.65;
+  color: #666;
+}
+
+.index-why-choose__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(32px, 5vw, 56px);
+}
+
+.index-why-choose__item {
+  margin: 0;
+  text-align: left;
+}
+
+.index-why-choose__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 clamp(28px, 3.5vw, 36px);
+  border-radius: 14px;
+}
+
+.index-why-choose__item-title {
+  margin: 0 0 0.85rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: clamp(13px, 1.1vw, 15px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #222;
+}
+
+.index-why-choose__item-text {
+  margin: 0;
+  max-width: 18em;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: clamp(13px, 1.05vw, 15px);
+  line-height: 1.5;
+  color: #666;
+}
+
+@media (max-width: 900px) {
+  .index-why-choose__grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin: 0 auto;
   }
 }
 
