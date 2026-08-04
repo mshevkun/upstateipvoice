@@ -1,7 +1,7 @@
 /**
- * Production build: copy site to dist/ and point HTML to minified CSS/JS.
- * Run after: npm run build
- * Deploy the dist/ folder.
+ * Optional minified export to dist/ for manual hosting experiments.
+ * GitHub Pages for this project deploys the repo ROOT (style.css + main.js),
+ * NOT dist/. Always preview with `npm run dev` and deploy with `npm run deploy`.
  */
 const fs = require('fs');
 const path = require('path');

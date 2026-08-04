@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+Thumbs.db
+*.log
+
+# Local design/reference exports — never deploy
+images/figma-index/
+images/figma-about/
+images/Index-figma.png
+images/About-Us-figma.png
+images/ChatGPT Image*
+images/index/Index.png
+images/index/01-hero.mp4

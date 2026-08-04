@@ -7,7 +7,9 @@
     "build": "npm run minify:css && npm run minify:js",
     "build:production": "npm run build && node scripts/build-production.js",
     "dev": "serve .",
-    "test": "node --test tests/**/*.test.js"
+    "test": "node --test tests/**/*.test.js",
+    "verify:live": "node scripts/verify-live.js",
+    "deploy": "node scripts/deploy.js"
   },
   "devDependencies": {
     "clean-css-cli": "^5.6.3",
