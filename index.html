@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260801h">
+  <link rel="stylesheet" href="css/style.css">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -70,12 +70,13 @@
       </div>
       <p class="menuNavLabel">Navigate</p>
       <nav class="menuLinks">
+        <a href="solutions.html">Solutions</a>
         <a href="about.html">About Us</a>
         <a href="support.html">Support</a>
-        <a href="index.html#get-started">Contact</a>
+        <a href="solutions.html#convinced">Contact</a>
       </nav>
       <div class="menuCTA">
-        <a href="https://app.upstateipvoice.com/login" class="menuCTA-btn">Login</a>
+        <a href="#" class="menuCTA-btn">Login</a>
       </div>
       <div class="menuMeta">
         <a href="tel:+18452558500">(845) 255-8500</a>
@@ -89,17 +90,17 @@
       <nav class="main-nav" aria-label="Main navigation">
         <a href="index.html" class="nav-drawer-brand">Upstate IP Voice</a>
         <ul>
+          <li><a href="solutions.html">Solutions</a></li>
           <li><a href="about.html">About Us</a></li>
           <li><a href="support.html">Support</a></li>
-          <li><a href="index.html#get-started">Contact</a></li>
-          <li><a href="https://app.upstateipvoice.com/login" class="nav-cta">Login</a></li>
+          <li><a href="solutions.html#convinced">Contact</a></li>
+          <li><a href="#" class="nav-cta">Login</a></li>
         </ul>
       </nav>
     </div>
   </header>
 
-  <!-- Figma index stack: hero → precision → science → why choose → stats → integrations/mission → wordmark -->
-  <main class="index-main">
+  <main class="index-main index-figma">
     <section class="index-figma__section index-figma__hero index-hero-video" id="home">
       <video
         class="index-hero-video__media"
@@ -109,86 +110,282 @@
         loop
         playsinline
         preload="auto"
-        aria-label="Everything your business needs to communicate. Reliable cloud-based VoIP solutions for modern businesses."
+        aria-label="Upstate IP Voice hero video"
       ></video>
       <div class="index-hero-video__content">
-        <h1 class="index-hero-video__title">Everything your business needs to communicate.</h1>
-        <p class="index-hero-video__text">Reliable cloud-based VoIP solutions for modern businesses.</p>
-        <a class="index-hero-video__cta" href="https://book.upstateipvoice.com/review">Schedule a Call</a>
+        <div class="index-hero-video__stats partnerships-intro" aria-live="polite" aria-atomic="true">
+          <div class="partnerships-intro__rotator-viewport">
+            <ul class="partnerships-intro__rotator-track">
+              <li class="partnerships-intro__stat index-hero-subtext" data-stat="calls">
+                <span class="partnerships-intro__stat-text" data-stat-text="calls">60,120 calls handled</span>
+              </li>
+              <li class="partnerships-intro__stat index-hero-subtext" data-stat="messages">
+                <span class="partnerships-intro__stat-text" data-stat-text="messages">4,233 messages delivered</span>
+              </li>
+              <li class="partnerships-intro__stat index-hero-subtext" data-stat="automations">
+                <span class="partnerships-intro__stat-text" data-stat-text="automations">+150 conversations automated</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <h1 class="index-hero-video__title">The only communication<br>system your practice needs</h1>
+        <p class="index-hero-video__text">Answer more calls, automate routine patient requests, and manage every patient conversation from one place. Phones, patient texting, fax, appointment workflows, and an AI receptionist—all connected to your practice management software.</p>
+        <a class="index-hero-video__cta" href="https://book.upstateipvoice.com/review">
+          <span class="index-hero-video__cta-inner">
+            <span class="index-hero-video__cta-row">
+              <span class="index-hero-video__cta-text">Schedule a Call</span>
+              <svg class="index-hero-video__cta-arrow" width="20" height="18" viewBox="0 0 19 17" aria-hidden="true" focusable="false">
+                <path d="M0 8H18M7 0L18 8M7 16L18 8" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="index-hero-video__cta-line" aria-hidden="true"></span>
+          </span>
+        </a>
       </div>
     </section>
 
-    <section class="index-precision">
-      <div class="index-precision__inner">
-        <p class="index-precision__eyebrow">Upstate IP Voice</p>
-        <h2 class="index-precision__title">Designed with Precision</h2>
+    <section class="partner-strip" aria-label="Our partners">
+      <div class="partner-strip__viewport">
+        <div class="partner-strip__track">
+          <a class="partner-strip__link" href="https://www.northeasternbraces.com/" target="_blank" rel="noopener noreferrer">
+            <img class="partner-strip__logo partner-strip__logo--dark" src="images/partners/northeastern-braces-wordmark.png" alt="Northeastern Braces" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://vvortho.com/" target="_blank" rel="noopener noreferrer">
+            <img class="partner-strip__logo" src="images/partners/vv-ortho.png" alt="Van Vliet &amp; Ganz Orthodontics" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://hudsonvalleysmiles.com/" target="_blank" rel="noopener noreferrer">
+            <img class="partner-strip__logo" src="images/partners/hudson-valley-smiles-logo.png" alt="Van Vliet &amp; Ganz Orthodontics" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://areasontosmile.com/" target="_blank" rel="noopener noreferrer">
+            <img class="partner-strip__logo" src="images/partners/a-reason-to-smile.png" alt="A Reason to Smile" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://www.pavoneoms.com/" target="_blank" rel="noopener noreferrer">
+            <img class="partner-strip__logo" src="images/partners/pavone-oms.png" alt="Pavone Oral &amp; Maxillofacial Surgery" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link partner-strip__link--text" href="https://www.drelainamgroo.com/" target="_blank" rel="noopener noreferrer">
+            <span class="partner-strip__name partner-strip__name--stacked"><span>Dr. Elaina M. Groo</span><span class="partner-strip__name-line2 partner-strip__name-tagline">Optometry</span></span>
+          </a>
+          <a class="partner-strip__link partner-strip__link--text" href="https://www.associatedperiodontists.com/" target="_blank" rel="noopener noreferrer">
+            <span class="partner-strip__name partner-strip__name--stacked partner-strip__name--firm"><span class="partner-strip__name-eyebrow">Associated</span><span class="partner-strip__name-firm-main">Periodontists</span></span>
+          </a>
+          <a class="partner-strip__link" href="https://www.northeasternbraces.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+            <img class="partner-strip__logo partner-strip__logo--dark" src="images/partners/northeastern-braces-wordmark.png" alt="" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://vvortho.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+            <img class="partner-strip__logo" src="images/partners/vv-ortho.png" alt="" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://hudsonvalleysmiles.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+            <img class="partner-strip__logo" src="images/partners/hudson-valley-smiles-logo.png" alt="" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://areasontosmile.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+            <img class="partner-strip__logo" src="images/partners/a-reason-to-smile.png" alt="" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link" href="https://www.pavoneoms.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+            <img class="partner-strip__logo" src="images/partners/pavone-oms.png" alt="" width="220" height="52" loading="lazy" decoding="async">
+          </a>
+          <a class="partner-strip__link partner-strip__link--text" href="https://www.drelainamgroo.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+            <span class="partner-strip__name partner-strip__name--stacked"><span>Dr. Elaina M. Groo</span><span class="partner-strip__name-line2 partner-strip__name-tagline">Optometry</span></span>
+          </a>
+          <a class="partner-strip__link partner-strip__link--text" href="https://www.associatedperiodontists.com/" target="_blank" rel="noopener noreferrer" aria-hidden="true" tabindex="-1">
+            <span class="partner-strip__name partner-strip__name--stacked partner-strip__name--firm"><span class="partner-strip__name-eyebrow">Associated</span><span class="partner-strip__name-firm-main">Periodontists</span></span>
+          </a>
+        </div>
       </div>
     </section>
 
-    <section class="index-precision-video" aria-label="Designed with Precision product features">
+    <section class="index-precision-headline index-designed-headline index-figma__section" aria-labelledby="precision-headline">
+      <p class="index-precision__eyebrow">Upstate IP Voice</p>
+      <h2 id="precision-headline" class="index-precision-headline__title index-hero-subtext">Designed with Precision</h2>
+    </section>
+
+    <section class="index-figma__section index-precision-video" aria-label="Designed with Precision video">
       <video
         class="index-precision-video__media"
         src="images/index/video12.mp4"
-        poster="images/index/02-precision.jpg"
         autoplay
         muted
         loop
         playsinline
-        preload="metadata"
+        preload="auto"
+        aria-label="Designed with Precision demonstration"
       ></video>
       <div class="index-precision-video__overlay">
-        <img
-          class="index-precision-video__overlay-left"
-          src="images/index/precision-overlay-left.png"
-          alt="Hardware that just works. Every call answered even off-hours. Text clients."
-          width="1705"
-          height="1574"
-          loading="lazy"
-          decoding="async"
-        >
-        <img
-          class="index-precision-video__overlay-right"
-          src="images/index/precision-overlay-right.png"
-          alt="Internal messaging. Open 24/7. Meet Upstate Copilot."
-          width="1705"
-          height="1574"
-          loading="lazy"
-          decoding="async"
-        >
+        <div class="index-precision-video__copy">
+          <article class="index-precision__item index-precision-video__item index-precision-video__item--left index-precision-video__item--top">
+            <h3>Hardware That Just Works</h3>
+            <p>Reliable IP desk phones — cloud-managed and easy to update,<br>no certified technician required.</p>
+          </article>
+          <article class="index-precision__item index-precision-video__item index-precision-video__item--left index-precision-video__item--mid">
+            <h3>Every Call Answered. Even Off-Hours.</h3>
+            <p>Greets callers, talks directly to your PMS system, answers common questions,<br>and routes what matters — day or night.</p>
+          </article>
+          <article class="index-precision__item index-precision-video__item index-precision-video__item--left index-precision-video__item--bottom">
+            <h3>Text Clients. Automate The Rest</h3>
+            <p>Send updates yourself, or let automated messages<br>handle reminders and confirmations.</p>
+          </article>
+          <article class="index-precision__item index-precision-video__item index-precision-video__item--right index-precision-video__item--top">
+            <h3>Internal Messaging, Built Right In</h3>
+            <p>Keep staff connected and coordinated —<br>no separate app, no missed handoffs.</p>
+          </article>
+          <article class="index-precision__item index-precision-video__item index-precision-video__item--right index-precision-video__item--mid">
+            <h3>Open 24/7. Even When You're Not</h3>
+            <p>When the office closes, your system keeps working —<br>every call and message covered.</p>
+          </article>
+          <article class="index-precision__item index-precision-video__item index-precision-video__item--right index-precision-video__item--bottom">
+            <h3>Meet Upstate Copilot</h3>
+            <p>Your built-in automation engine, handling routine messaging<br>so nothing falls through the cracks.</p>
+          </article>
+        </div>
       </div>
     </section>
 
-    <section class="index-figma__section">
-      <img src="images/index/03-science.jpg" alt="The science behind Upstate IP Voice: IP Phone System, Our App, and Automations." width="1932" height="1450" loading="lazy" decoding="async">
+    <section class="index-precision-headline index-science-headline index-figma__section" aria-labelledby="science-headline">
+      <h2 id="science-headline" class="index-precision-headline__title index-hero-subtext">The Science Behind Upstate IP Voice</h2>
+      <p class="index-science-headline__desc index-hero-subtext">Every part of your business communication, in one system: dependable phones, an app that keeps you connected, and automations that keep things moving after hours.</p>
     </section>
 
-    <section class="index-why-choose" aria-labelledby="index-why-choose-heading">
-      <div class="index-why-choose__inner">
-        <header class="index-why-choose__header">
-          <h2 id="index-why-choose-heading" class="index-why-choose__title">Why businesses choose our VoIP system</h2>
-          <p class="index-why-choose__intro">From the first call of the morning to the last message of the night, what your business runs on shapes everything in between.</p>
-        </header>
-        <ul class="index-why-choose__grid">
-          <li class="index-why-choose__item">
-            <img class="index-why-choose__image" src="images/index/why-choose-call-flow.png" alt="Visual call flow interface for routing calls and messages." width="302" height="312" loading="lazy" decoding="async">
-            <h3 class="index-why-choose__item-title">Design your call flow</h3>
-            <p class="index-why-choose__item-text">Visual interface for routing calls and messages.</p>
-          </li>
-          <li class="index-why-choose__item">
-            <img class="index-why-choose__image" src="images/index/why-choose-any-device.png" alt="Upstate IP Voice app on smartphone, tablet, and desktop." width="308" height="312" loading="lazy" decoding="async">
-            <h3 class="index-why-choose__item-title">Use any device</h3>
-            <p class="index-why-choose__item-text">Answer calls from your smartphone, laptop, or desktop.</p>
-          </li>
-          <li class="index-why-choose__item">
-            <img class="index-why-choose__image" src="images/index/why-choose-anywhere.png" alt="Modern office desk with VoIP phone for business communication anywhere." width="302" height="312" loading="lazy" decoding="async">
-            <h3 class="index-why-choose__item-title">Business communication, anywhere</h3>
-            <p class="index-why-choose__item-text">In the office, at home, or on the road.</p>
-          </li>
-        </ul>
+    <section class="index-science-features index-figma__section" aria-label="Upstate IP Voice product features">
+      <div class="index-science-features__inner">
+        <div class="index-science-features__grid">
+          <article class="index-science-features__card">
+            <div class="index-science-features__media">
+              <img
+                src="images/index/science-hardware.png"
+                alt="Black IP desk phone handset"
+                width="1024"
+                height="1024"
+                loading="lazy"
+                decoding="async"
+              >
+            </div>
+            <div class="index-science-features__body">
+              <p class="index-precision__eyebrow index-science-features__eyebrow">Hardware</p>
+              <h3 class="index-science-features__title">IP Phone System</h3>
+              <div class="index-science-features__footer">
+                <p class="index-science-features__desc index-hero-subtext">Enterprise-grade hardware without the enterprise headache — set up once, runs itself.</p>
+                <a href="solutions.html" class="index-science-features__cta" aria-label="Learn more about IP Phone System">
+                  <svg class="index-science-features__cta-arrow" width="19" height="17" viewBox="0 0 19 17" aria-hidden="true" focusable="false">
+                    <path d="M0 8H18M7 0L18 8M7 16L18 8" stroke="currentColor" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          <article class="index-science-features__card">
+            <div class="index-science-features__media">
+              <img
+                src="images/index/science-mobile-app.png"
+                alt="Upstate IP Voice mobile app call history screen"
+                width="1024"
+                height="1024"
+                loading="lazy"
+                decoding="async"
+              >
+            </div>
+            <div class="index-science-features__body">
+              <p class="index-precision__eyebrow index-science-features__eyebrow">Mobile Access</p>
+              <h3 class="index-science-features__title">Our App</h3>
+              <div class="index-science-features__footer">
+                <p class="index-science-features__desc index-hero-subtext">Every call, voicemail, and forwarding rule — right from your phone, wherever you are.</p>
+                <a href="solutions.html" class="index-science-features__cta" aria-label="Learn more about Our App">
+                  <svg class="index-science-features__cta-arrow" width="19" height="17" viewBox="0 0 19 17" aria-hidden="true" focusable="false">
+                    <path d="M0 8H18M7 0L18 8M7 16L18 8" stroke="currentColor" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          <article class="index-science-features__card">
+            <div class="index-science-features__media">
+              <img
+                src="images/index/science-automations.png"
+                alt="Upstate IP Voice automations dashboard on laptop"
+                width="1024"
+                height="1024"
+                loading="lazy"
+                decoding="async"
+              >
+            </div>
+            <div class="index-science-features__body">
+              <p class="index-precision__eyebrow index-science-features__eyebrow">Always-On</p>
+              <h3 class="index-science-features__title">Automations</h3>
+              <div class="index-science-features__footer">
+                <p class="index-science-features__desc index-hero-subtext">Automated replies, smart routing, and follow-ups — so no client goes unanswered.</p>
+                <a href="solutions.html" class="index-science-features__cta" aria-label="Learn more about Automations">
+                  <svg class="index-science-features__cta-arrow" width="19" height="17" viewBox="0 0 19 17" aria-hidden="true" focusable="false">
+                    <path d="M0 8H18M7 0L18 8M7 16L18 8" stroke="currentColor" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </article>
+        </div>
       </div>
     </section>
 
-    <section class="index-stats" aria-labelledby="index-stats-heading">
+    <section class="index-why-choose index-figma__section" aria-labelledby="why-headline">
+      <div class="index-precision-headline index-science-headline index-why-headline index-why-choose__headline">
+        <h2 id="why-headline" class="index-precision-headline__title index-hero-subtext">Why businesses choose our VoIP system</h2>
+        <p class="index-science-headline__desc index-hero-subtext">From the first call of the morning to the last message of the night, what your business runs on shapes everything in between.</p>
+      </div>
+
+      <div class="index-science-features index-why-choose__features">
+        <div class="index-science-features__inner">
+          <div class="index-science-features__grid">
+            <article class="index-science-features__card">
+              <div class="index-science-features__media">
+                <img
+                  src="images/index/why-choose-call-flow.png"
+                  alt="Visual call flow routing interface"
+                  width="1024"
+                  height="1024"
+                  loading="lazy"
+                  decoding="async"
+                >
+              </div>
+              <div class="index-science-features__body">
+                <h3 class="index-science-features__title">Design Your Call Flow</h3>
+                <p class="index-science-features__desc index-hero-subtext">Visual interface for routing calls and messages.</p>
+              </div>
+            </article>
+            <article class="index-science-features__card">
+              <div class="index-science-features__media">
+                <img
+                  src="images/index/why-choose-any-device.png"
+                  alt="Upstate IP Voice on smartphone, tablet, and laptop"
+                  width="1024"
+                  height="1024"
+                  loading="lazy"
+                  decoding="async"
+                >
+              </div>
+              <div class="index-science-features__body">
+                <h3 class="index-science-features__title">Use Any Device</h3>
+                <p class="index-science-features__desc index-hero-subtext">Answer calls from your smartphone, laptop, or desktop.</p>
+              </div>
+            </article>
+            <article class="index-science-features__card">
+              <div class="index-science-features__media">
+                <img
+                  src="images/index/why-choose-anywhere.png"
+                  alt="Business communication setup in office and remote workspace"
+                  width="1024"
+                  height="1024"
+                  loading="lazy"
+                  decoding="async"
+                >
+              </div>
+              <div class="index-science-features__body">
+                <h3 class="index-science-features__title">Business Communication, Anywhere</h3>
+                <p class="index-science-features__desc index-hero-subtext">In the office, at home, or on the road.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="index-stats index-figma__section" aria-labelledby="index-stats-heading">
       <div class="index-stats__inner">
         <h2 id="index-stats-heading" class="index-stats__title">Why Upstate IP Voice?</h2>
         <ul class="index-stats__grid">
@@ -220,26 +417,31 @@
       </div>
     </section>
 
-    <section class="index-integrations-mission" id="get-started" aria-labelledby="index-integrations-heading">
-      <div class="index-integrations-mission__visual" aria-hidden="true">
-        <img
-          src="images/index/integrations-mission-phone.png"
-          alt=""
-          width="1932"
-          height="1200"
-          loading="lazy"
-          decoding="async"
-        >
+    <section class="index-mobile-connection index-integrations-mission index-figma__section" aria-labelledby="integrations-headline">
+      <img
+        class="index-mobile-connection__media"
+        src="images/index/mobile-connection.png"
+        alt="Cinematic Yealink IP desk phone with illuminated display on a reflective black surface"
+        width="1920"
+        height="1080"
+        loading="lazy"
+        decoding="async"
+      >
+      <div class="index-mobile-connection__content">
+        <h2 id="integrations-headline" class="index-mobile-connection__title">Flexible Integrations</h2>
+        <p class="index-mobile-connection__desc">Connect your VoIP system with the tools your business already uses. Our integrations allow your existing software to work seamlessly with your phone system.</p>
+        <a class="index-hero-video__cta index-mobile-connection__cta" href="https://book.upstateipvoice.com/review">
+          <span class="index-hero-video__cta-inner">
+            <span class="index-hero-video__cta-row">
+              <span class="index-hero-video__cta-text">Schedule a Call</span>
+              <svg class="index-hero-video__cta-arrow" width="20" height="18" viewBox="0 0 19 17" aria-hidden="true" focusable="false">
+                <path d="M0 8H18M7 0L18 8M7 16L18 8" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="index-hero-video__cta-line" aria-hidden="true"></span>
+          </span>
+        </a>
       </div>
-
-      <div class="index-integrations-mission__integrations">
-        <h2 id="index-integrations-heading" class="index-integrations-mission__integrations-title">Flexible Integrations</h2>
-        <p class="index-integrations-mission__integrations-text">
-          Connect your VoIP system with the tools your business already uses. Our integrations allow your existing software to work seamlessly with your phone system.
-        </p>
-        <a class="index-integrations-mission__cta" href="https://book.upstateipvoice.com/review">Schedule a Call</a>
-      </div>
-
       <div class="index-integrations-mission__mission" aria-labelledby="index-mission-heading">
         <h2 id="index-mission-heading" class="index-integrations-mission__mission-title">Our Mission</h2>
         <p class="index-integrations-mission__mission-text">
@@ -247,10 +449,27 @@
         </p>
         <a class="index-integrations-mission__link index-integrations-mission__link--story" href="about.html">Our Story</a>
       </div>
+      <img
+        class="index-integrations-mission__crowd"
+        src="images/index/mission-crowd.png"
+        alt="Overhead view of professionals walking through a busy business concourse"
+        width="1920"
+        height="1080"
+        loading="lazy"
+        decoding="async"
+      >
     </section>
 
-    <section class="index-figma__section index-figma__wordmark" aria-hidden="true">
-      <img src="images/index/07-wordmark.jpg" alt="" width="1932" height="601" loading="lazy" decoding="async">
+    <section class="index-wordmark index-figma__section" aria-label="Upstate IP Voice wordmark">
+      <img
+        class="index-wordmark__media"
+        src="images/index/index-wordmark.png"
+        alt="Upstate IP Voice"
+        width="1024"
+        height="381"
+        loading="lazy"
+        decoding="async"
+      >
     </section>
   </main>
 
@@ -264,7 +483,8 @@
         <div class="footer-navigate">
           <h3 class="footer-heading">Navigate</h3>
           <ul class="footer-links-list">
-            <li><a href="index.html#get-started">Get Started</a></li>
+            <li><a href="solutions.html">Solutions</a></li>
+            <li><a href="index.html">Get Started</a></li>
             <li><a href="about.html">About Us</a></li>
             <li><a href="support.html">Support</a></li>
             <li><a href="privacy.html">Privacy Policy</a></li>
@@ -295,6 +515,8 @@
     </div>
   </footer>
 
-  <script src="js/main.js?v=20260801h"></script>
+  <script src="js/live-stats.js"></script>
+  <script src="js/partnerships-intro.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

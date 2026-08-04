@@ -11,6 +11,33 @@
     yearEl.textContent = new Date().getFullYear();
   }
 
+  // Homepage hero: black frame until video is ready (avoids static poster flash)
+  var heroVideo = document.querySelector('.index-hero-video__media');
+  if (heroVideo) {
+    var showHeroVideo = function () {
+      heroVideo.classList.add('is-ready');
+    };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      showHeroVideo();
+    } else if (heroVideo.readyState >= 2) {
+      showHeroVideo();
+    } else {
+      heroVideo.addEventListener('canplay', showHeroVideo, { once: true });
+      heroVideo.addEventListener('playing', showHeroVideo, { once: true });
+    }
+  }
+
+  // About page: hide hero immediately when navigating home (avoids stale image during reload)
+  var aboutHero = document.querySelector('.about-figma__hero');
+  if (aboutHero) {
+    document.querySelectorAll('a[href="index.html"], a[href="/"]').forEach(function (link) {
+      link.addEventListener('click', function () {
+        aboutHero.style.visibility = 'hidden';
+        document.body.style.background = '#000';
+      });
+    });
+  }
+
   // Support email card: click to copy, show "Copied"
   var supportEmailEl = document.querySelector('.support-email');
   if (supportEmailEl) {
