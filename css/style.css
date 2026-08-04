@@ -4839,6 +4839,17 @@ h2,
   background: #000;
 }
 
+.about-figma__hero {
+  aspect-ratio: 3864 / 1920;
+}
+
+.about-figma__hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
 .index-hero-video.index-figma__hero {
   background: var(--index-strip-bg);
 }
