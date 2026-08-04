@@ -27,8 +27,7 @@ os.makedirs(out_dir, exist_ok=True)
 
 sections = [
     ('01-hero.jpg', 0, 160, w, 2080),
-    ('02-mission.jpg', 0, 2080, w, 3180),
-    ('03-came-from.jpg', 0, 3180, w, 5580),
+    ('03-came-from.jpg', 0, 3200, w, 5580),
     ('04-vision.jpg', 0, 5580, w, 7980),
     ('05-brand.jpg', 0, 7980, w, 10400),
     ('06-horse.jpg', 0, 10400, w, 12800),

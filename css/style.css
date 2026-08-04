@@ -4850,6 +4850,35 @@ h2,
   object-position: center top;
 }
 
+.about-mission {
+  line-height: normal;
+  background: #fff;
+  padding: clamp(80px, 7.5vw, 132px) clamp(24px, 5vw, 64px);
+  text-align: center;
+}
+
+.about-mission__eyebrow {
+  margin: 0 0 clamp(28px, 3vw, 44px);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #7E7E7E;
+}
+
+.about-mission__text {
+  margin: 0 auto;
+  max-width: min(920px, 100%);
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(22px, 2.35vw, 34px);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #3A3A3A;
+}
+
 .index-hero-video.index-figma__hero {
   background: var(--index-strip-bg);
 }
