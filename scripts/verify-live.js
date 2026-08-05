@@ -13,12 +13,6 @@ const LIVE_BASE = getArg('--live', process.env.LIVE_SITE_URL || 'https://www.ups
 const PAGES = [
   'index.html',
   'about.html',
-  'solutions.html',
-  'support.html',
-  'privacy.html',
-  'acceptable-use-policy.html',
-  'privacy-policy/index.html',
-  'terms/index.html',
 ];
 
 const ASSETS = [
@@ -27,9 +21,24 @@ const ASSETS = [
   'js/live-stats.js',
   'js/partnerships-intro.js',
   'images/index/hero.mp4',
-  'images/index/index-wordmark.png',
-  'images/index/mobile-connection.png',
+  'images/index/video12.mp4',
+  'images/index/science-hardware.png',
+  'images/index/science-mobile-app.png',
+  'images/index/science-automations.png',
+  'images/index/why-choose-call-flow.png',
+  'images/index/why-choose-any-device.png',
+  'images/index/why-choose-anywhere.png',
   'images/index/mission-crowd.png',
+  'images/index/mobile-connection.jpg',
+  'images/index/mobile-connection@2x.jpg',
+  'images/about/01-hero.jpg',
+  'images/about/came-from.png',
+  'images/about/vision.png',
+  'images/about/brand.png',
+  'images/about/apart.png',
+  'images/footer/instagram.svg',
+  'images/footer/wordmark-1920.png',
+  'images/footer/wordmark@2x.png',
 ];
 
 function getArg(flag, fallback) {

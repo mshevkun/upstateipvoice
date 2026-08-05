@@ -11,6 +11,24 @@
     yearEl.textContent = new Date().getFullYear();
   }
 
+  document.querySelectorAll('.site-footer__book-form').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var emailInput = form.querySelector('.site-footer__book-email');
+      if (!emailInput) return;
+      if (!emailInput.checkValidity()) {
+        emailInput.reportValidity();
+        return;
+      }
+      var email = emailInput.value.trim();
+      window.location.href =
+        'mailto:info@upstateipvoice.com?subject=' +
+        encodeURIComponent('Subscribe') +
+        '&body=' +
+        encodeURIComponent('Please subscribe: ' + email);
+    });
+  });
+
   // Homepage hero: black frame until video is ready (avoids static poster flash)
   var heroVideo = document.querySelector('.index-hero-video__media');
   if (heroVideo) {
