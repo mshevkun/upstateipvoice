@@ -17,7 +17,7 @@
   <link rel="preload" as="image" href="images/upstate-ip-voice-hero.webp" fetchpriority="high" media="(min-width: 1024px)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="no-hero" id="top">
@@ -179,46 +179,78 @@
     </div>
   </main>
 
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div class="footer-brand">
-        <a href="index.html" class="footer-logo"><img src="images/original logo.svg" alt="Upstate IP Voice" class="footer-logo-img"></a>
-        <p class="footer-tagline">Reliable cloud-based VoIP solutions for modern businesses.</p>
+  <footer class="site-footer site-footer--figma" aria-label="Site footer">
+  <div class="site-footer__inner">
+    <div class="site-footer__nav">
+      <div class="site-footer__col">
+        <h2 class="site-footer__heading">Service</h2>
+        <ul class="site-footer__links">
+          <li><a href="solutions.html">IP Phone System</a></li>
+          <li><a href="solutions.html">Our App</a></li>
+          <li><a href="solutions.html">Automations</a></li>
+        </ul>
       </div>
-      <div class="footer-main">
-        <div class="footer-navigate">
-          <h3 class="footer-heading">Navigate</h3>
-          <ul class="footer-links-list">
-            <li><a href="index.html#get-started">Get Started</a></li>
-            <li><a href="about.html">About Us</a></li>
-            <li><a href="support.html">Support</a></li>
-            <li><a href="privacy.html">Privacy Policy</a></li>
-            <li><a href="acceptable-use-policy.html">Acceptable Use Policy</a></li>
-          </ul>
-        </div>
-        <div class="footer-contact-block">
-          <div class="footer-contact-item-block">
-            <h3 class="footer-heading">Phone</h3>
-            <p class="footer-contact-value"><a href="tel:+18452558500">(845) 255-8500</a></p>
-          </div>
-          <div class="footer-contact-item-block">
-            <h3 class="footer-heading">Email</h3>
-            <p class="footer-contact-value"><a href="mailto:info@upstateipvoice.com">info@upstateipvoice.com</a></p>
-          </div>
-        </div>
+      <div class="site-footer__col">
+        <h2 class="site-footer__heading">About</h2>
+        <ul class="site-footer__links">
+          <li><a href="about.html">Our Story</a></li>
+          <li><a href="about.html">Where To Find Us</a></li>
+          <li><a href="https://www.instagram.com/upstateipvoice/" target="_blank" rel="noopener noreferrer">Instagram</a></li>
+        </ul>
       </div>
-      <div class="footer-bottom">
-        <p class="footer-copy">&copy; <span id="year"></span> Upstate IP Voice</p>
-        <div class="footer-legal-inline">
-          <a href="privacy.html">Privacy Policy</a>
-          <span class="footer-sep" aria-hidden="true">|</span>
-          <a href="acceptable-use-policy.html">Acceptable Use Policy</a>
-          <span class="footer-sep" aria-hidden="true">|</span>
-          <a href="#top" class="back-to-top">↑ Back to top</a>
-        </div>
+      <div class="site-footer__col">
+        <h2 class="site-footer__heading">Support</h2>
+        <ul class="site-footer__links">
+          <li><a href="support.html">Contact</a></li>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="mailto:info@upstateipvoice.com">Email Us</a></li>
+          <li><a href="acceptable-use-policy.html">Use Policy</a></li>
+        </ul>
+      </div>
+      <div class="site-footer__col site-footer__col--book">
+        <h2 class="site-footer__heading">Book A Meeting To Start</h2>
+        <ul class="site-footer__links">
+          <li><a href="https://book.upstateipvoice.com/review">Click Here</a></li>
+        </ul>
+        <form class="site-footer__book-row site-footer__book-form" action="#" method="post" novalidate>
+          <input
+            type="email"
+            class="site-footer__book-email"
+            name="email"
+            placeholder="Email"
+            autocomplete="email"
+            inputmode="email"
+            spellcheck="false"
+            required
+            aria-label="Email address"
+          >
+          <button type="submit" class="site-footer__subscribe">Subscribe</button>
+        </form>
+        <a class="site-footer__back-top" href="#top">↑ Back To Top</a>
       </div>
     </div>
-  </footer>
+
+    <div class="site-footer__meta">
+      <a class="site-footer__instagram" href="https://www.instagram.com/upstateipvoice/" target="_blank" rel="noopener noreferrer" aria-label="Upstate IP Voice on Instagram">
+        <img src="images/footer/instagram.svg" alt="" width="24" height="24" decoding="async">
+      </a>
+      <p class="site-footer__copy">&copy; <span id="year"></span> Upstate IP Voice</p>
+    </div>
+  </div>
+
+  <div class="site-footer__wordmark" aria-hidden="true">
+    <img
+      class="site-footer__wordmark-img"
+      src="images/footer/wordmark-1920.png"
+      srcset="images/footer/wordmark-1920.png 1920w, images/footer/wordmark@2x.png 3840w"
+      sizes="100vw"
+      alt=""
+      width="3840"
+      height="1354"
+      decoding="async"
+    >
+  </div>
+</footer>
 
   <script src="js/main.js"></script>
 </body>

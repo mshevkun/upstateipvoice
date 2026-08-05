@@ -13,6 +13,12 @@ const LIVE_BASE = getArg('--live', process.env.LIVE_SITE_URL || 'https://www.ups
 const PAGES = [
   'index.html',
   'about.html',
+  'solutions.html',
+  'support.html',
+  'privacy.html',
+  'acceptable-use-policy.html',
+  'privacy-policy/index.html',
+  'terms/index.html',
 ];
 
 const ASSETS = [
