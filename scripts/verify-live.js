@@ -74,11 +74,20 @@ function fetchUrl(url) {
   });
 }
 
-function compareBuffers(local, live, label) {
-  if (local.length !== live.length) {
-    return `${label}: size mismatch (local ${local.length} vs live ${live.length})`;
+function normalizeForCompare(buffer, label) {
+  if (/\.(html|css|js|svg)$/i.test(label)) {
+    return Buffer.from(buffer.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
   }
-  if (!local.equals(live)) {
+  return buffer;
+}
+
+function compareBuffers(local, live, label) {
+  const localNorm = normalizeForCompare(local, label);
+  const liveNorm = normalizeForCompare(live, label);
+  if (localNorm.length !== liveNorm.length) {
+    return `${label}: size mismatch (local ${localNorm.length} vs live ${liveNorm.length})`;
+  }
+  if (!localNorm.equals(liveNorm)) {
     return `${label}: content mismatch (same size, different bytes)`;
   }
   return null;
