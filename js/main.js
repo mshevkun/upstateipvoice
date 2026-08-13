@@ -350,4 +350,49 @@
       section.classList.add('is-inview');
     });
   }
+
+  // Solutions feature cards — smooth scroll to detail sections
+  var SOLUTIONS_SECTION_IDS = ['ip-phone-system', 'our-app', 'automations'];
+
+  function scrollToSolutionsSection(id) {
+    var target = document.getElementById(id);
+    if (!target) return;
+    var smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+  }
+
+  document.querySelectorAll('.index-science-features--solutions .index-science-features__cta[href^="#"], .solutions-buckets__links a[href^="#"]').forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      var id = (link.getAttribute('href') || '').slice(1);
+      if (!id || !document.getElementById(id)) return;
+      e.preventDefault();
+      if (history.replaceState) {
+        history.replaceState(null, '', '#' + id);
+      } else {
+        window.location.hash = id;
+      }
+      scrollToSolutionsSection(id);
+    });
+  });
+
+  if (document.querySelector('.index-science-features--solutions') && window.location.hash) {
+    var hashId = window.location.hash.slice(1);
+    if (SOLUTIONS_SECTION_IDS.indexOf(hashId) !== -1 && document.getElementById(hashId)) {
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      window.scrollTo(0, 0);
+
+      function animateSolutionsHashScroll() {
+        scrollToSolutionsSection(hashId);
+      }
+
+      requestAnimationFrame(function () {
+        requestAnimationFrame(animateSolutionsHashScroll);
+      });
+      window.addEventListener('load', function () {
+        setTimeout(animateSolutionsHashScroll, 120);
+      });
+    }
+  }
 })();
