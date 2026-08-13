@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260812x">
+  <link rel="stylesheet" href="css/style.css?v=20260813sol4">
   <script>
     (function () {
       if (!/^#(ip-phone-system|our-app|automations)$/.test(window.location.hash)) return;
@@ -48,6 +48,7 @@
       <nav class="menuLinks">
         <a href="solutions.html" class="active" aria-current="page">Solutions</a>
         <a href="about.html">About Us</a>
+        <a href="blog.html">Blog</a>
         <a href="support.html">Support</a>
         <a href="/review/">Contact</a>
       </nav>
@@ -68,6 +69,7 @@
         <ul>
           <li><a href="solutions.html" class="active">Solutions</a></li>
           <li><a href="about.html">About Us</a></li>
+          <li><a href="blog.html">Blog</a></li>
           <li><a href="support.html">Support</a></li>
           <li><a href="/review/">Contact</a></li>
           <li><a href="https://app.upstateipvoice.com/login" class="nav-cta">Login</a></li>
@@ -166,45 +168,93 @@
       </div>
     </section>
 
-    <section class="solutions-buckets index-figma__section" id="ip-phone-system" aria-labelledby="solutions-buckets-title-ip">
+    <section class="solutions-buckets index-figma__section" aria-label="Solutions details">
       <div class="solutions-buckets__inner">
         <div class="solutions-buckets__layout">
           <div class="solutions-buckets__main">
-            <header class="solutions-buckets__intro">
-              <h2 id="solutions-buckets-title-ip" class="solutions-buckets__intro-title">IP Phone System</h2>
-              <p class="solutions-buckets__intro-body index-hero-subtext">Deploy new phones in minutes</p>
-            </header>
+            <div class="solutions-buckets__pillar" id="ip-phone-system" aria-labelledby="solutions-buckets-title-ip">
+              <header class="solutions-buckets__intro">
+                <h2 id="solutions-buckets-title-ip" class="solutions-buckets__intro-title">IP Phone System</h2>
+                <p class="solutions-buckets__intro-body index-hero-subtext">Deploy new phones in minutes</p>
+              </header>
 
-            <div class="solutions-buckets__grid">
-              <article class="ip-compare-card">
-                <div class="ip-compare-card__copy">
-                  <h3 class="ip-compare-card__title">One system — no technician needed</h3>
-                  <p class="ip-compare-card__body index-hero-subtext">Every handset ships pre-configured and stays synced to the cloud, so adding a line, moving desks, or updating a greeting takes minutes — no equipment closet, no service call, no technician required.</p>
-                  <ul class="ip-compare-card__links">
-                    <li><a href="#ip-phone-system">IP Phone System</a></li>
-                    <li><a href="support.html">Device support</a></li>
-                    <li><a href="/review/">Schedule a demo</a></li>
-                  </ul>
-                </div>
-                <div class="ip-compare-card__media">
-                  <img src="images/index/ip-phone-comparison-from-design.png" alt="The old way versus the Upstate way on two phones" width="880" height="658" decoding="async">
-                </div>
-              </article>
+              <div class="solutions-buckets__grid">
+                <article class="ip-compare-card">
+                  <div class="ip-compare-card__copy">
+                    <h3 class="ip-compare-card__title">One system — no technician needed</h3>
+                    <p class="ip-compare-card__body index-hero-subtext">Every handset ships pre-configured and stays synced to the cloud, so adding a line, moving desks, or updating a greeting takes minutes — no equipment closet, no service call, no technician required.</p>
+                    <ul class="ip-compare-card__links">
+                      <li><a href="#ip-phone-system">IP Phone System</a></li>
+                      <li><a href="support.html">Device support</a></li>
+                      <li><a href="/review/">Schedule a demo</a></li>
+                    </ul>
+                  </div>
+                  <div class="ip-compare-card__media">
+                    <img src="images/index/ip-phone-comparison-from-design.png" alt="The old way versus the Upstate way on two phones" width="880" height="658" decoding="async">
+                  </div>
+                </article>
 
-              <article class="ip-compare-card ip-compare-card--tablet">
-                <div class="ip-compare-card__copy">
-                  <h3 class="ip-compare-card__title">Whole new way to run system</h3>
-                  <p class="ip-compare-card__body index-hero-subtext">Run the exact same system from a tablet instead of a desk phone — calls, voicemail, and automations all included, with the software already integrated and ready to use out of the box.</p>
-                  <ul class="ip-compare-card__links">
-                    <li><a href="#ip-phone-system">IP Phone System</a></li>
-                    <li><a href="support.html">Device support</a></li>
-                    <li><a href="/review/">Schedule a demo</a></li>
-                  </ul>
-                </div>
-                <div class="ip-compare-card__media">
-                  <img src="images/index/ip-phone-tablet-detail.png" alt="Upstate IP Voice dashboard on a tablet" width="2144" height="1548" loading="lazy" decoding="async">
-                </div>
-              </article>
+                <article class="ip-compare-card ip-compare-card--tablet">
+                  <div class="ip-compare-card__copy">
+                    <h3 class="ip-compare-card__title">Whole new way to run system</h3>
+                    <p class="ip-compare-card__body index-hero-subtext">Run the exact same system from a tablet instead of a desk phone — calls, voicemail, and automations all included, with the software already integrated and ready to use out of the box.</p>
+                    <ul class="ip-compare-card__links">
+                      <li><a href="#ip-phone-system">IP Phone System</a></li>
+                      <li><a href="support.html">Device support</a></li>
+                      <li><a href="/review/">Schedule a demo</a></li>
+                    </ul>
+                  </div>
+                  <div class="ip-compare-card__media">
+                    <img src="images/index/ip-phone-tablet-detail.png" alt="Upstate IP Voice dashboard on a tablet" width="2144" height="1548" loading="lazy" decoding="async">
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div class="solutions-buckets__pillar" id="our-app" aria-labelledby="solutions-buckets-title-app">
+              <header class="solutions-buckets__intro">
+                <h2 id="solutions-buckets-title-app" class="solutions-buckets__intro-title">Our App</h2>
+                <p class="solutions-buckets__intro-body index-hero-subtext">Carry one number across every device</p>
+              </header>
+
+              <div class="solutions-buckets__grid">
+                <article class="ip-compare-card ip-compare-card--app">
+                  <div class="ip-compare-card__copy">
+                    <h3 class="ip-compare-card__title">One app, every way you answer</h3>
+                    <p class="ip-compare-card__body index-hero-subtext">Calls, voicemail, and forwarding rules follow you automatically across your desk phone, laptop, and the app in your pocket. Answer from the office, home, or the road without missing a rule change or a callback.</p>
+                    <ul class="ip-compare-card__links">
+                      <li><a href="#our-app">Our App</a></li>
+                      <li><a href="support.html">Mobile setup</a></li>
+                    </ul>
+                  </div>
+                  <div class="ip-compare-card__media">
+                    <img src="images/index/our-app-phone.png" alt="Upstate IP Voice app on a smartphone" width="620" height="524" loading="lazy" decoding="async">
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div class="solutions-buckets__pillar" id="automations" aria-labelledby="solutions-buckets-title-automations">
+              <header class="solutions-buckets__intro">
+                <h2 id="solutions-buckets-title-automations" class="solutions-buckets__intro-title">Automations</h2>
+                <p class="solutions-buckets__intro-body index-hero-subtext">Catch every call your team can't</p>
+              </header>
+
+              <div class="solutions-buckets__grid">
+                <article class="ip-compare-card ip-compare-card--automations">
+                  <div class="ip-compare-card__copy">
+                    <h3 class="ip-compare-card__title">One receptionist that never clocks out</h3>
+                    <p class="ip-compare-card__body index-hero-subtext">Build call flows and automated replies visually — no code required. Route callers to the right person, follow up on missed calls automatically, and let an AI receptionist handle routine questions so nothing goes unanswered after hours or<br>during a rush.</p>
+                    <ul class="ip-compare-card__links">
+                      <li><a href="#automations">Automations</a></li>
+                      <li><a href="/review/">Talk to us</a></li>
+                    </ul>
+                  </div>
+                  <div class="ip-compare-card__media">
+                    <img src="images/index/automations-247.png" alt="AI receptionist available 24/7 on mobile" width="828" height="658" loading="lazy" decoding="async">
+                  </div>
+                </article>
+              </div>
             </div>
           </div>
 
@@ -222,151 +272,25 @@
               </article>
 
               <article class="solutions-buckets__listing">
-                <a class="solutions-buckets__listing-media" href="about.html">
-                  <img src="images/index/why-choose-anywhere.png" alt="" width="1024" height="1024" loading="lazy" decoding="async">
+                <a class="solutions-buckets__listing-media" href="blog-one-number-every-device.html">
+                  <img src="images/index/science-mobile-app.png" alt="Upstate IP Voice mobile app call history screen" width="1024" height="1024" loading="lazy" decoding="async">
                 </a>
-                <p class="solutions-buckets__listing-type">Our story</p>
+                <p class="solutions-buckets__listing-type">From the blog</p>
                 <h3 class="solutions-buckets__listing-title">
-                  <a href="about.html">Built in Upstate NY for businesses that need reliable communication anywhere</a>
+                  <a href="blog-one-number-every-device.html">One number, every device — stop missing calls away from the desk</a>
                 </h3>
-                <a class="solutions-buckets__listing-cta" href="about.html">Learn more</a>
+                <a class="solutions-buckets__listing-cta" href="blog-one-number-every-device.html">Read article</a>
               </article>
 
               <article class="solutions-buckets__listing">
-                <div class="solutions-buckets__listing-stat" aria-hidden="true">&gt;99%</div>
-                <p class="solutions-buckets__listing-type">Reliability</p>
-                <h3 class="solutions-buckets__listing-title">
-                  <a href="support.html">Cloud uptime you can count on for every call</a>
-                </h3>
-                <a class="solutions-buckets__listing-cta" href="support.html">Learn more</a>
-              </article>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </section>
-
-    <section class="solutions-buckets index-figma__section" id="our-app" aria-labelledby="solutions-buckets-title-app">
-      <div class="solutions-buckets__inner">
-        <div class="solutions-buckets__layout">
-          <div class="solutions-buckets__main">
-            <header class="solutions-buckets__intro">
-              <h2 id="solutions-buckets-title-app" class="solutions-buckets__intro-title">Our App</h2>
-              <p class="solutions-buckets__intro-body index-hero-subtext">Carry one number across every device</p>
-            </header>
-
-            <div class="solutions-buckets__grid">
-              <article class="ip-compare-card ip-compare-card--app">
-                <div class="ip-compare-card__copy">
-                  <h3 class="ip-compare-card__title">One app, every way you answer</h3>
-                  <p class="ip-compare-card__body index-hero-subtext">Calls, voicemail, and forwarding rules follow you automatically across your desk phone, laptop, and the app in your pocket. Answer from the office, home, or the road without missing a rule change or a callback.</p>
-                  <ul class="ip-compare-card__links">
-                    <li><a href="#our-app">Our App</a></li>
-                    <li><a href="support.html">Mobile setup</a></li>
-                  </ul>
-                </div>
-                <div class="ip-compare-card__media">
-                  <img src="images/index/our-app-phone.png" alt="Upstate IP Voice app on a smartphone" width="620" height="524" loading="lazy" decoding="async">
-                </div>
-              </article>
-            </div>
-          </div>
-
-          <aside class="solutions-buckets__aside" aria-label="Resources">
-            <div class="solutions-buckets__aside-sticky">
-              <article class="solutions-buckets__listing">
-                <a class="solutions-buckets__listing-media" href="/review/">
-                  <img src="images/index/mission-crowd.png" alt="" width="717" height="480" loading="lazy" decoding="async">
+                <a class="solutions-buckets__listing-media" href="blog-after-hours-call-flow.html">
+                  <img src="images/index/science-automations.png" alt="Upstate IP Voice automations dashboard on laptop" width="1024" height="1024" loading="lazy" decoding="async">
                 </a>
-                <p class="solutions-buckets__listing-type">Get started</p>
+                <p class="solutions-buckets__listing-type">From the blog</p>
                 <h3 class="solutions-buckets__listing-title">
-                  <a href="/review/">Book a communications review for your business</a>
+                  <a href="blog-after-hours-call-flow.html">What happens to a call after hours — and how to never leave it unanswered</a>
                 </h3>
-                <a class="solutions-buckets__listing-cta" href="/review/">Learn more</a>
-              </article>
-
-              <article class="solutions-buckets__listing">
-                <a class="solutions-buckets__listing-media" href="about.html">
-                  <img src="images/index/why-choose-anywhere.png" alt="" width="1024" height="1024" loading="lazy" decoding="async">
-                </a>
-                <p class="solutions-buckets__listing-type">Our story</p>
-                <h3 class="solutions-buckets__listing-title">
-                  <a href="about.html">Built in Upstate NY for businesses that need reliable communication anywhere</a>
-                </h3>
-                <a class="solutions-buckets__listing-cta" href="about.html">Learn more</a>
-              </article>
-
-              <article class="solutions-buckets__listing">
-                <div class="solutions-buckets__listing-stat" aria-hidden="true">&gt;99%</div>
-                <p class="solutions-buckets__listing-type">Reliability</p>
-                <h3 class="solutions-buckets__listing-title">
-                  <a href="support.html">Cloud uptime you can count on for every call</a>
-                </h3>
-                <a class="solutions-buckets__listing-cta" href="support.html">Learn more</a>
-              </article>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </section>
-
-    <section class="solutions-buckets index-figma__section" id="automations" aria-labelledby="solutions-buckets-title-automations">
-      <div class="solutions-buckets__inner">
-        <div class="solutions-buckets__layout">
-          <div class="solutions-buckets__main">
-            <header class="solutions-buckets__intro">
-              <h2 id="solutions-buckets-title-automations" class="solutions-buckets__intro-title">Automations</h2>
-              <p class="solutions-buckets__intro-body index-hero-subtext">Catch every call your team can't</p>
-            </header>
-
-            <div class="solutions-buckets__grid">
-              <article class="ip-compare-card ip-compare-card--automations">
-                <div class="ip-compare-card__copy">
-                  <h3 class="ip-compare-card__title">One receptionist that never clocks out</h3>
-                  <p class="ip-compare-card__body index-hero-subtext">Build call flows and automated replies visually — no code required. Route callers to the right person, follow up on missed calls automatically, and let an AI receptionist handle routine questions so nothing goes unanswered after hours or<br>during a rush.</p>
-                  <ul class="ip-compare-card__links">
-                    <li><a href="#automations">Automations</a></li>
-                    <li><a href="/review/">Talk to us</a></li>
-                  </ul>
-                </div>
-                <div class="ip-compare-card__media">
-                  <img src="images/index/automations-247.png" alt="AI receptionist available 24/7 on mobile" width="828" height="658" loading="lazy" decoding="async">
-                </div>
-              </article>
-            </div>
-          </div>
-
-          <aside class="solutions-buckets__aside" aria-label="Resources">
-            <div class="solutions-buckets__aside-sticky">
-              <article class="solutions-buckets__listing">
-                <a class="solutions-buckets__listing-media" href="/review/">
-                  <img src="images/index/mission-crowd.png" alt="" width="717" height="480" loading="lazy" decoding="async">
-                </a>
-                <p class="solutions-buckets__listing-type">Get started</p>
-                <h3 class="solutions-buckets__listing-title">
-                  <a href="/review/">Book a communications review for your business</a>
-                </h3>
-                <a class="solutions-buckets__listing-cta" href="/review/">Learn more</a>
-              </article>
-
-              <article class="solutions-buckets__listing">
-                <a class="solutions-buckets__listing-media" href="about.html">
-                  <img src="images/index/why-choose-anywhere.png" alt="" width="1024" height="1024" loading="lazy" decoding="async">
-                </a>
-                <p class="solutions-buckets__listing-type">Our story</p>
-                <h3 class="solutions-buckets__listing-title">
-                  <a href="about.html">Built in Upstate NY for businesses that need reliable communication anywhere</a>
-                </h3>
-                <a class="solutions-buckets__listing-cta" href="about.html">Learn more</a>
-              </article>
-
-              <article class="solutions-buckets__listing">
-                <div class="solutions-buckets__listing-stat" aria-hidden="true">&gt;99%</div>
-                <p class="solutions-buckets__listing-type">Reliability</p>
-                <h3 class="solutions-buckets__listing-title">
-                  <a href="support.html">Cloud uptime you can count on for every call</a>
-                </h3>
-                <a class="solutions-buckets__listing-cta" href="support.html">Learn more</a>
+                <a class="solutions-buckets__listing-cta" href="blog-after-hours-call-flow.html">Read article</a>
               </article>
             </div>
           </aside>
@@ -390,6 +314,7 @@
         <h2 class="site-footer__heading">About</h2>
         <ul class="site-footer__links">
           <li><a href="about.html">Our Story</a></li>
+          <li><a href="blog.html">Blog</a></li>
           <li><a href="about.html">Where To Find Us</a></li>
           <li><a href="https://www.instagram.com/upstateipvoice/" target="_blank" rel="noopener noreferrer">Instagram</a></li>
         </ul>

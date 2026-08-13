@@ -202,7 +202,9 @@ body {
 }
 
 .pr-field:focus-within .pr-field__label,
-.pr-field.has-value .pr-field__label {
+.pr-field.has-value .pr-field__label,
+.pr-field:has(.pr-input:not(:placeholder-shown)) .pr-field__label,
+.pr-field:has(.pr-input:-webkit-autofill) .pr-field__label {
   opacity: 0;
   transform: translateY(-50%) scale(0.96);
 }
@@ -227,6 +229,47 @@ body {
   border-color: rgba(255, 255, 255, 0.28);
   background: rgba(31, 31, 31, 0.14);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+}
+
+.pr-field.has-value .pr-input,
+.pr-field:has(.pr-input:not(:placeholder-shown)) .pr-input,
+.pr-field:has(.pr-input:-webkit-autofill) .pr-input {
+  background: #fff;
+  color: #1a2430;
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.pr-field.has-value .pr-input:focus,
+.pr-field:has(.pr-input:not(:placeholder-shown)) .pr-input:focus,
+.pr-field:has(.pr-input:-webkit-autofill) .pr-input:focus {
+  background: #fff;
+  color: #1a2430;
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
+.pr-input::placeholder {
+  color: transparent;
+}
+
+@keyframes pr-autofill-start {
+  from {
+    opacity: 0.99;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.pr-input:-webkit-autofill,
+.pr-input:-webkit-autofill:hover,
+.pr-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1a2430;
+  caret-color: #1a2430;
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 99999s ease-out;
+  animation-name: pr-autofill-start;
+  animation-duration: 0.001s;
 }
 
 .pr-field__err {
@@ -419,6 +462,24 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
+.pr-time.has-value .pr-time__trigger {
+  background: #fff;
+  color: #1a2430;
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.pr-time.has-value .pr-time__trigger.is-open,
+.pr-time.has-value .pr-time__trigger:focus-visible {
+  background: #fff;
+  color: #1a2430;
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
+.pr-time.has-value .pr-time__caret {
+  color: #1a2430;
+}
+
 .pr-time.is-disabled .pr-time__trigger {
   cursor: not-allowed;
   color: rgba(255, 255, 255, 0.92);
@@ -467,6 +528,14 @@ body {
   max-height: 240px;
   overflow-y: auto;
   padding: 0.35rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.pr-time__list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .pr-time__opt {

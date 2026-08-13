@@ -15,17 +15,23 @@ const PAGES = [
   'about.html',
   'solutions.html',
   'support.html',
+  'blog.html',
+  'blog-setup-new-business-phone-line.html',
   'privacy.html',
   'acceptable-use-policy.html',
   'privacy-policy/index.html',
   'terms/index.html',
+  'review/index.html',
 ];
 
 const ASSETS = [
   'css/style.css',
+  'css/review.css',
   'js/main.js',
+  'js/review.js',
   'js/live-stats.js',
   'js/partnerships-intro.js',
+  'images/support-hero.png',
   'images/index/hero.mp4',
   'images/index/video12.mp4',
   'images/index/science-hardware.png',

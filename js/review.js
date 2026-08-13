@@ -199,6 +199,7 @@
   function renderTime() {
     const disabled = !state.meetingDate;
     timeWrap.classList.toggle("is-disabled", disabled);
+    timeWrap.classList.toggle("has-value", Boolean(state.meetingDate && state.meetingTime));
     timeTrigger.disabled = disabled;
     timeValue.textContent = disabled
       ? "Time (Pick date first)"
@@ -322,10 +323,10 @@
     form.classList.add("is-hidden");
     doneCard.classList.remove("is-hidden");
     doneText.innerHTML = meetingSlotLabel
-      ? `Your call is scheduled for <strong>${meetingSlotLabel}</strong>.`
+      ? `Your call is scheduled for<br><strong>${meetingSlotLabel}</strong>.`
       : "Your meeting request has been received.";
     if (email) {
-      doneSub.innerHTML = `A calendar invite with the meeting link is on its way to <strong>${email}</strong>.`;
+      doneSub.innerHTML = `A calendar invite with the meeting link is on its way to<br><strong>${email}</strong>.`;
       doneSub.classList.remove("is-hidden");
     } else {
       doneSub.classList.add("is-hidden");
@@ -406,7 +407,25 @@
       syncFieldLabels();
       render();
     });
+    input.addEventListener("change", syncFieldLabels);
     input.addEventListener("blur", syncFieldLabels);
+    input.addEventListener("animationstart", (event) => {
+      if (event.animationName === "pr-autofill-start") syncFieldLabels();
+    });
+  });
+
+  // Browser autofill can fill sibling fields without firing input.
+  let autofillWatch = null;
+  form.addEventListener("focusin", (event) => {
+    if (!event.target.classList.contains("pr-input")) return;
+    syncFieldLabels();
+    let ticks = 0;
+    clearInterval(autofillWatch);
+    autofillWatch = setInterval(() => {
+      syncFieldLabels();
+      ticks += 1;
+      if (ticks >= 20) clearInterval(autofillWatch);
+    }, 100);
   });
   syncFieldLabels();
 
