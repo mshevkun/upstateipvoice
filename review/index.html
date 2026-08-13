@@ -1,16 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="icon" type="image/svg+xml" href="../images/original logo.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg" media="(prefers-color-scheme: dark)">
   <title>Book a communications review — Upstate IP Voice</title>
-  <link rel="canonical" href="https://book.upstateipvoice.com/review">
-  <meta http-equiv="refresh" content="0;url=https://book.upstateipvoice.com/review">
-  <script>
-    location.replace('https://book.upstateipvoice.com/review' + location.pathname.replace(/^\/review/, '') + location.search);
-  </script>
+  <meta name="description" content="Pick a date and time for a 45-minute communications review with Upstate IP Voice.">
+  <link rel="canonical" href="https://www.upstateipvoice.com/review/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/review.css?v=20260813r">
 </head>
 <body>
-  <p>Redirecting to <a href="https://book.upstateipvoice.com/review">book a communications review</a>…</p>
+  <video
+    class="public-review__bg"
+    src="../images/booking/review-bg.mp4"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="auto"
+    aria-hidden="true"
+  ></video>
+  <div class="public-review__bg-filter" aria-hidden="true"></div>
+  <a class="public-review__home" href="/">
+    <span>Back to home page</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 6l6 6-6 6"></path>
+      <path d="M3 12h17.5"></path>
+    </svg>
+  </a>
+  <p class="public-review__loading">Loading…</p>
+  <main class="public-review is-hidden">
+    <div class="public-review__inner">
+      <header class="public-review__hero">
+        <img class="public-review__logo" src="../images/booking/logo-wordmark.svg" width="154" height="34" alt="Upstate IP Voice">
+        <h1 class="public-review__headline">Choose your time<br>with Upstate.</h1>
+        <p class="public-review__sub">Pick a date and time that works for you — that’s all we need to lock it in.</p>
+      </header>
+
+      <form class="pr-book-card">
+        <div class="pr-prefill pr-prefill--lead is-hidden">
+          <div class="pr-prefill__text">
+            <strong></strong>
+            <span data-prefill-meta></span>
+          </div>
+        </div>
+
+        <div class="pr-book-grid">
+          <div class="pr-book-col pr-book-col--left">
+            <div class="pr-book-contact">
+              <label class="pr-field">
+                <span class="pr-field__label">Business name</span>
+                <input class="pr-input" name="business_name" autocomplete="organization" value="">
+              </label>
+              <label class="pr-field">
+                <span class="pr-field__label">Email</span>
+                <input class="pr-input" name="email" type="email" autocomplete="email" value="">
+              </label>
+            </div>
+            <div class="pr-schedule__cal">
+              <div class="pr-cal">
+                <div class="pr-cal__head">
+                  <button type="button" class="pr-cal__nav" disabled aria-label="Previous month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+                  </button>
+                  <span class="pr-cal__month">August 2026</span>
+                  <button type="button" class="pr-cal__nav" aria-label="Next month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+                  </button>
+                </div>
+                <div class="pr-cal__grid pr-cal__grid--dow">
+                  <span class="pr-cal__dow">Su</span>
+                  <span class="pr-cal__dow">Mo</span>
+                  <span class="pr-cal__dow">Tu</span>
+                  <span class="pr-cal__dow">We</span>
+                  <span class="pr-cal__dow">Th</span>
+                  <span class="pr-cal__dow">Fr</span>
+                  <span class="pr-cal__dow">Sa</span>
+                </div>
+                <div class="pr-cal__grid" data-cal-grid></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pr-book-col pr-book-col--right">
+            <div class="pr-book-contact pr-book-contact--right">
+              <label class="pr-field">
+                <span class="pr-field__label">Your name</span>
+                <input class="pr-input" name="contact_name" autocomplete="name" value="">
+              </label>
+              <label class="pr-field">
+                <span class="pr-field__label">Phone <em>(optional)</em></span>
+                <input class="pr-input" name="phone" type="tel" autocomplete="tel" value="">
+              </label>
+            </div>
+            <div class="pr-schedule__side">
+              <div class="pr-time is-disabled">
+                <button type="button" class="pr-time__trigger" aria-haspopup="listbox" aria-expanded="false" disabled>
+                  <span class="pr-time__value">Time (Pick date first)</span>
+                  <span class="pr-time__caret">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+                  </span>
+                </button>
+                <div class="pr-time__pop is-hidden">
+                  <div class="pr-time__meta"></div>
+                  <div class="pr-time__list" role="listbox"></div>
+                </div>
+              </div>
+              <div class="pr-summary">
+                <p class="pr-note">
+                  <span class="pr-note__icon" aria-hidden="true">
+                    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 6V12L16 14M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                  45-minute communications review
+                </p>
+                <p class="pr-summary__when is-hidden"></p>
+                <p class="pr-summary__hint">Times shown reflect live availability on our calendar (6 AM–10 PM ET).</p>
+              </div>
+              <div class="pr-confirm">
+                <button type="submit" class="pr-confirm__btn" disabled>Confirm meeting</button>
+                <p class="pr-confirm__hint">We'll send a calendar invite and Google Meet link to your email.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <p class="public-review__error is-hidden"></p>
+      <div class="public-review__done-card is-hidden">
+        <h2 class="public-review__done-title">You're all set</h2>
+        <p class="public-review__done-text">Your meeting request has been received.</p>
+        <p class="public-review__done-sub is-hidden"></p>
+        <a class="public-review__done-meet is-hidden" target="_blank" rel="noreferrer">Join Google Meet</a>
+      </div>
+    </div>
+  </main>
+  <script src="../js/review.js?v=20260813a"></script>
 </body>
 </html>
