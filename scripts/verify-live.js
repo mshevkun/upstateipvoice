@@ -146,7 +146,7 @@ async function main() {
   console.log('');
   if (failures.length) {
     console.error('LIVE VERIFICATION FAILED:');
-    for (const failure of failures) console.error(`  - ${failure}`);
+    for (const failure of failures) console.error(` - ${failure}`);
     console.error('');
     console.error('Live site is NOT identical to localhost. Do not consider deploy complete.');
     process.exit(1);

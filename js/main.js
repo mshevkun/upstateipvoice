@@ -11,6 +11,67 @@
     yearEl.textContent = new Date().getFullYear();
   }
 
+  document.querySelectorAll('.support-ticket').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var emailInput = form.querySelector('#support-email');
+      var messageInput = form.querySelector('#support-message');
+      if (!emailInput || !messageInput) return;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      var email = emailInput.value.trim();
+      var message = messageInput.value.trim();
+      window.location.href =
+        'mailto:support@upstateipvoice.com?subject=' +
+        encodeURIComponent('Support ticket') +
+        '&body=' +
+        encodeURIComponent('From: ' + email + '\n\n' + message);
+    });
+  });
+
+  function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function scrollToGetSupport() {
+    var el = document.getElementById('get-support');
+    if (!el) return;
+    el.scrollIntoView({
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      block: 'start'
+    });
+  }
+
+  if (window.location.hash === '#get-support' && document.getElementById('get-support')) {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+    var startGetSupportScroll = function () {
+      setTimeout(scrollToGetSupport, 60);
+    };
+    if (document.readyState === 'complete') {
+      startGetSupportScroll();
+    } else {
+      window.addEventListener('load', startGetSupportScroll);
+    }
+  }
+
+  document.querySelectorAll('a[href="#get-support"], a[href$="support.html#get-support"]').forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      if (!document.getElementById('get-support')) return;
+      event.preventDefault();
+      if (history.replaceState) {
+        history.replaceState(null, '', '#get-support');
+      } else {
+        window.location.hash = 'get-support';
+      }
+      scrollToGetSupport();
+    });
+  });
+
   document.querySelectorAll('.site-footer__book-form').forEach(function (form) {
     form.addEventListener('submit', function (event) {
       event.preventDefault();

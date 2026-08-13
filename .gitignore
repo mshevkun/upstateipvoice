@@ -37,3 +37,5 @@ images/upstate-ip-voice-hero.png
 scripts/fix-blog-footer.js
 scripts/qa-blog.js
 
+# Support Figma sources — never deploy
+images/SUPPORT/

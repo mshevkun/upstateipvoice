@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260813m1">
+  <link rel="stylesheet" href="css/style.css?v=20260813m7">
 </head>
 <body class="has-hero" id="top">
   <header class="mobileHeader" aria-label="Site header">
@@ -43,7 +43,7 @@
         <a href="about.html">About Us</a>
         <a href="blog.html">Blog</a>
         <a href="support.html" class="active" aria-current="page">Support</a>
-        <a href="solutions.html#convinced">Contact</a>
+        <a href="#get-support">Contact</a>
       </nav>
       <div class="menuCTA">
         <a href="https://app.upstateipvoice.com/login" class="menuCTA-btn">Login</a>
@@ -64,41 +64,34 @@
           <li><a href="about.html">About Us</a></li>
           <li><a href="blog.html">Blog</a></li>
           <li><a href="support.html" class="active">Support</a></li>
-          <li><a href="solutions.html#convinced">Contact</a></li>
+          <li><a href="#get-support">Contact</a></li>
           <li><a href="https://app.upstateipvoice.com/login" class="nav-cta">Login</a></li>
         </ul>
       </nav>
     </div>
   </header>
 
-  <main>
-    <!-- Hero (same pattern as main page) -->
+  <main class="support-page">
     <section class="hero hero-dark hero-support">
-      <img src="images/support-hero.png" alt="Upstate IP Voice Support" class="hero-bg-img" width="1280" height="720" sizes="(max-width: 900px) 100vw, 1280px" loading="eager" fetchpriority="high" decoding="async">
-      <div class="index-hero-video__content hero-solutions__content hero-support__content">
+      <img src="images/support-hero.png" alt="" class="hero-bg-img" width="1672" height="941" sizes="100vw" loading="eager" fetchpriority="high" decoding="async">
+      <div class="index-hero-video__content hero-support__content">
         <h1 class="index-hero-video__title hero-solutions__title">
           <em class="hero-solutions__title-main">Support</em>
           <span class="hero-solutions__title-copy index-hero-video__text">At Upstate IP Voice, reliable support is part of the service. Our team is here to help you stay connected, resolve issues quickly, and get the most out of your phone system.</span>
         </h1>
         <div class="hero-support__ctas">
-          <a class="index-hero-video__cta hero-solutions__cta" href="mailto:support@upstateipvoice.com">
+          <a class="index-hero-video__cta" href="mailto:support@upstateipvoice.com">
             <span class="index-hero-video__cta-inner">
               <span class="index-hero-video__cta-row">
                 <span class="index-hero-video__cta-text">Email Support</span>
-                <svg class="index-hero-video__cta-arrow" width="20" height="18" viewBox="0 0 19 17" aria-hidden="true" focusable="false">
-                  <path d="M0 8H18M7 0L18 8M7 16L18 8" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
               </span>
               <span class="index-hero-video__cta-line" aria-hidden="true"></span>
             </span>
           </a>
-          <a class="index-hero-video__cta hero-solutions__cta" href="/review/">
+          <a class="index-hero-video__cta" href="/review/">
             <span class="index-hero-video__cta-inner">
               <span class="index-hero-video__cta-row">
-                <span class="index-hero-video__cta-text">Book a communications review</span>
-                <svg class="index-hero-video__cta-arrow" width="20" height="18" viewBox="0 0 19 17" aria-hidden="true" focusable="false">
-                  <path d="M0 8H18M7 0L18 8M7 16L18 8" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <span class="index-hero-video__cta-text">Book a communication review</span>
               </span>
               <span class="index-hero-video__cta-line" aria-hidden="true"></span>
             </span>
@@ -107,126 +100,131 @@
       </div>
     </section>
 
-    <!-- How to Get Support (image left, text right) -->
-    <section class="section section-grid-aside section-aside-reverse section-image-text support-section">
-      <div class="section__container container split">
+    <section class="support-howto" id="get-support" aria-labelledby="howto-heading">
+      <h2 id="howto-heading" class="support-page__title">How to get support</h2>
+      <p class="support-page__lead">The fastest way to get help is to open a support ticket. Simply email our support team with a brief description of your issue.</p>
+      <form class="support-ticket" action="mailto:support@upstateipvoice.com" method="post" enctype="text/plain">
+        <label class="visually-hidden" for="support-email">Your Email</label>
+        <input
+          id="support-email"
+          class="support-ticket__field"
+          type="email"
+          name="email"
+          placeholder="Your Email"
+          autocomplete="email"
+          inputmode="email"
+          required
+        >
+        <label class="visually-hidden" for="support-message">Message</label>
+        <textarea
+          id="support-message"
+          class="support-ticket__field support-ticket__field--message"
+          name="message"
+          placeholder="Message"
+          rows="4"
+          required
+        ></textarea>
+        <button type="submit" class="support-page__pill support-ticket__submit">Send</button>
+      </form>
+    </section>
 
-        <div class="section__image-wrap section-image support-media">
-          <img src="images/voip-support-team.webp"
-               alt="Upstate IP Voice support team"
-               class="section__image block-image"
-               width="800"
-               height="600"
-               sizes="(max-width: 900px) 100vw, 50vw"
-               loading="lazy"
-               decoding="async">
-        </div>
-
-        <div class="help-copy">
-          <div class="help-copy-inner">
-
-            <h2 class="section__title grid-heading">HOW TO GET SUPPORT</h2>
-
-            <div class="section__text feature-card">
-              <p class="grid-text">
-                The fastest way to get help is to open a support ticket. Simply email our support team with a brief description of your issue.
-              </p>
-
-              <div class="support-email"
-                   data-email="support@upstateipvoice.com"
-                   role="button"
-                   tabindex="0"
-                   title="Click to copy email">
-                <span class="support-email-value">support@upstateipvoice.com</span>
-                <span class="support-email-feedback" aria-live="polite"></span>
+    <section class="support-trust" aria-labelledby="trust-heading">
+      <h2 id="trust-heading" class="support-page__title">Response times &amp; reliability</h2>
+      <div class="index-science-features index-why-choose__features support-trust__features">
+        <div class="index-science-features__inner">
+          <div class="index-science-features__grid">
+            <article class="index-science-features__card">
+              <div class="index-science-features__media">
+                <img src="images/support-cards/card-fast.jpg" alt="Support specialist on a headset" width="1064" height="1060" loading="lazy" decoding="async">
               </div>
-
-              <p class="grid-text">
-                Once your message is received, a ticket is automatically created and assigned to a support specialist.
-              </p>
-
-              <a href="mailto:support@upstateipvoice.com" class="btn btn-block-cta btn-md">
-                Create a ticket
-              </a>
-
-            </div>
-
+              <div class="index-science-features__body">
+                <p class="index-precision__eyebrow index-science-features__eyebrow">Response</p>
+                <div class="support-trust__heading">
+                  <h3 class="index-science-features__title">Fast Response</h3>
+                  <p class="support-trust__metric">&lt; 1 day</p>
+                </div>
+                <p class="index-science-features__desc index-hero-subtext">We respond within 1 business day.</p>
+              </div>
+            </article>
+            <article class="index-science-features__card">
+              <div class="index-science-features__media">
+                <img src="images/support-cards/card-urgent.webp" alt="Support team collaborating" width="1064" height="1060" loading="lazy" decoding="async">
+              </div>
+              <div class="index-science-features__body">
+                <p class="index-precision__eyebrow index-science-features__eyebrow">Uptime</p>
+                <div class="support-trust__heading">
+                  <h3 class="index-science-features__title">Urgent Priority</h3>
+                  <p class="support-trust__metric">98.9%</p>
+                </div>
+                <p class="index-science-features__desc index-hero-subtext">Urgent issues are prioritized.</p>
+              </div>
+            </article>
+            <article class="index-science-features__card">
+              <div class="index-science-features__media">
+                <img src="images/support-cards/card-direct.jpg" alt="Desk phone and headset" width="1064" height="1060" loading="lazy" decoding="async">
+              </div>
+              <div class="index-science-features__body">
+                <p class="index-precision__eyebrow index-science-features__eyebrow">Critical support</p>
+                <div class="support-trust__heading">
+                  <h3 class="index-science-features__title">Direct Access</h3>
+                  <p class="support-trust__metric">24/7</p>
+                </div>
+                <p class="index-science-features__desc index-hero-subtext">Direct access to support engineers.</p>
+              </div>
+            </article>
           </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- What We Can Help With: left panel 420â€“520px, content centered vertically -->
-    <section class="section section-grid-aside section-aside-reverse section-image-text help-section">
-      <div class="section__container container split">
-        <div class="help-copy">
-          <div class="help-copy-inner">
-            <h2 class="section__title grid-heading">WHAT WE CAN HELP WITH</h2>
-            <div class="section__text feature-card">
-              <p class="grid-text">Our support team can assist with:</p>
-              <ul class="feature-list">
-                <li class="feature-item">
-                  <strong class="feature-item-title">Service Setup &amp; Configuration</strong>
-                  <span class="feature-item-desc">We help you get your system configured and running.</span>
-                </li>
-                <li class="feature-item">
-                  <strong class="feature-item-title">Phone &amp; Device Troubleshooting</strong>
-                  <span class="feature-item-desc">Resolve issues with phones and devices.</span>
-                </li>
-                <li class="feature-item">
-                  <strong class="feature-item-title">Call Routing &amp; Features</strong>
-                  <span class="feature-item-desc">Questions about call routing and platform features.</span>
-                </li>
-                <li class="feature-item">
-                  <strong class="feature-item-title">Account &amp; Billing</strong>
-                  <span class="feature-item-desc">Inquiries about your account and billing.</span>
-                </li>
-                <li class="feature-item">
-                  <strong class="feature-item-title">Service Changes &amp; Upgrades</strong>
-                  <span class="feature-item-desc">Add-ons, upgrades, and service changes.</span>
-                </li>
-                <li class="feature-item">
-                  <strong class="feature-item-title">General Technical Support</strong>
-                  <span class="feature-item-desc">Ongoing technical assistance when you need it.</span>
-                </li>
-              </ul>
-              <a href="mailto:support@upstateipvoice.com" class="btn btn-block-cta btn-md">Get help</a>
-              <p class="help-note">Typical response: under 1 business day</p>
-            </div>
-          </div>
-        </div>
-        <div class="section__image-wrap section-image help-media">
-          <img src="images/voip-technical-support.webp" alt="Upstate IP Voice technical support" class="section__image block-image" width="800" height="600" sizes="(max-width: 900px) 100vw, 50vw" loading="lazy" decoding="async">
         </div>
       </div>
     </section>
 
-    <section class="section section-get-started section-integrations">
-      <div class="container section-integrations-content section-content-card">
-        <h2 class="section__title grid-heading"><span class="section-heading-line">RESPONSE TIMES</span><span class="section-heading-line">&amp; RELIABILITY</span></h2>
-        <ul class="feature-list section-text trust-bullets">
-          <li class="feature-item">
-            <strong class="feature-item-title">Fast Response</strong>
-            <span class="feature-item-desc">We respond within 1 business day.</span>
-          </li>
-          <li class="feature-item">
-            <strong class="feature-item-title">Urgent Priority</strong>
-            <span class="feature-item-desc">Urgent issues are prioritized.</span>
-          </li>
-          <li class="feature-item">
-            <strong class="feature-item-title">Direct Access</strong>
-            <span class="feature-item-desc">Direct access to support engineers.</span>
-          </li>
-        </ul>
-        <a href="mailto:support@upstateipvoice.com" class="btn btn-primary btn-md">Contact Support</a>
-        <hr class="stats-divider" aria-hidden="true">
-        <div class="hero-metrics stats">
-          <div class="metric"><div class="metric-value">&lt; 1 day</div><div class="metric-label">response</div></div>
-          <div class="metric"><div class="metric-value">98.9%</div><div class="metric-label">uptime</div></div>
-          <div class="metric"><div class="metric-value">24/7</div><div class="metric-label">critical support</div></div>
-        </div>
+    <section class="support-help" aria-labelledby="help-heading">
+      <h2 id="help-heading" class="support-page__title">What we can help with</h2>
+      <p class="support-page__lead">Our support team can assist with</p>
+      <div class="support-help__grid">
+        <article class="support-help__item">
+          <div class="support-help__media">
+            <img src="images/support-cards/help-phone.jpg" alt="" width="992" height="980" loading="lazy" decoding="async">
+          </div>
+          <h3 class="support-help__name">Phone &amp; Device Troubleshooting</h3>
+          <p class="support-help__copy">Resolve issues with phones and devices.</p>
+        </article>
+        <article class="support-help__item">
+          <div class="support-help__media">
+            <img src="images/support-cards/help-setup.jpg" alt="" width="992" height="980" loading="lazy" decoding="async">
+          </div>
+          <h3 class="support-help__name">Service Setup &amp; Configuration</h3>
+          <p class="support-help__copy">We help you get your system configured and running.</p>
+        </article>
+        <article class="support-help__item">
+          <div class="support-help__media">
+            <img src="images/support-cards/help-routing.png" alt="" width="992" height="980" loading="lazy" decoding="async">
+          </div>
+          <h3 class="support-help__name">Call Routing &amp; Features</h3>
+          <p class="support-help__copy">Questions about call routing and platform features.</p>
+        </article>
+        <article class="support-help__item">
+          <div class="support-help__media">
+            <img src="images/support-cards/help-billing.png" alt="" width="992" height="980" loading="lazy" decoding="async">
+          </div>
+          <h3 class="support-help__name">Account &amp; Billing</h3>
+          <p class="support-help__copy">Inquiries about your account and billing.</p>
+        </article>
+        <article class="support-help__item">
+          <div class="support-help__media">
+            <img src="images/support-cards/help-upgrades.png" alt="" width="992" height="980" loading="lazy" decoding="async">
+          </div>
+          <h3 class="support-help__name">Service Changes &amp; Upgrades</h3>
+          <p class="support-help__copy">Add-ons, upgrades, and service changes.</p>
+        </article>
+        <article class="support-help__item">
+          <div class="support-help__media">
+            <img src="images/support-cards/help-general.png" alt="" width="992" height="980" loading="lazy" decoding="async">
+          </div>
+          <h3 class="support-help__name">General Technical Support</h3>
+          <p class="support-help__copy">Ongoing technical assistance when you need it.</p>
+        </article>
       </div>
+      <a class="support-page__pill" href="#get-support">Contact Support</a>
     </section>
   </main>
 
@@ -253,7 +251,7 @@
       <div class="site-footer__col">
         <h2 class="site-footer__heading">Support</h2>
         <ul class="site-footer__links">
-          <li><a href="support.html">Contact</a></li>
+          <li><a href="#get-support">Contact</a></li>
           <li><a href="privacy.html">Privacy Policy</a></li>
           <li><a href="mailto:info@upstateipvoice.com">Email Us</a></li>
           <li><a href="acceptable-use-policy.html">Use Policy</a></li>
@@ -278,7 +276,7 @@
           >
           <button type="submit" class="site-footer__subscribe">Subscribe</button>
         </form>
-        <a class="site-footer__back-top" href="#top">â†‘ Back To Top</a>
+        <a class="site-footer__back-top" href="#top">↑ Back To Top</a>
       </div>
     </div>
 
@@ -304,6 +302,6 @@
   </div>
 </footer>
 
-  <script src="js/main.js?v=20260813m1"></script>
+  <script src="js/main.js?v=20260813m7"></script>
 </body>
 </html>
