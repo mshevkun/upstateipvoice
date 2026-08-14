@@ -12,16 +12,16 @@ for (const file of files) {
   const p = path.join(__dirname, "..", file);
   let t = fs.readFileSync(p, "utf8");
   const next = t
-    .replace(/css\/style\.css(\?v=[^"'\s]+)?/g, "css/style.css?v=20260813m8")
+    .replace(/css\/style\.css(\?v=[^"'\s]+)?/g, "css/style.css?v=20260813m9")
     .replace(/js\/main\.js(\?v=[^"'\s]+)?/g, (m) =>
       m.startsWith("../") || t.includes('../js/main.js') && file.includes("/")
-        ? m.replace(/js\/main\.js(\?v=[^"'\s]+)?/, "js/main.js?v=20260813m8")
-        : "js/main.js?v=20260813m8"
+        ? m.replace(/js\/main\.js(\?v=[^"'\s]+)?/, "js/main.js?v=20260813m9")
+        : "js/main.js?v=20260813m9"
     );
   // nested paths keep ../
   let out = t
-    .replace(/(href=")(\.\.\/)?css\/style\.css(\?v=[^"]+)?"/g, '$1$2css/style.css?v=20260813m8"')
-    .replace(/(src=")(\.\.\/)?js\/main\.js(\?v=[^"]+)?"/g, '$1$2js/main.js?v=20260813m8"');
+    .replace(/(href=")(\.\.\/)?css\/style\.css(\?v=[^"]+)?"/g, '$1$2css/style.css?v=20260813m9"')
+    .replace(/(src=")(\.\.\/)?js\/main\.js(\?v=[^"]+)?"/g, '$1$2js/main.js?v=20260813m9"');
   fs.writeFileSync(p, out);
   console.log("updated", file);
 }

@@ -76,7 +76,7 @@ function head({ title, description, keywords, canonical, ogTitle, ogDescription,
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260813m8">
+  <link rel="stylesheet" href="css/style.css?v=20260813m9">
 </head>`;
 }
 
@@ -452,7 +452,7 @@ ${ASIDE}
   </main>
 
 ${FOOTER}
-  <script src="js/main.js?v=20260813m8"></script>
+  <script src="js/main.js?v=20260813m9"></script>
 </body>
 </html>
 `;
@@ -532,7 +532,7 @@ ${ASIDE}
   </main>
 
 ${FOOTER}
-  <script src="js/main.js?v=20260813m8"></script>
+  <script src="js/main.js?v=20260813m9"></script>
 </body>
 </html>
 `;

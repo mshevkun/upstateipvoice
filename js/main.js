@@ -12,23 +12,10 @@
   }
 
   document.querySelectorAll('.support-ticket').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      var emailInput = form.querySelector('#support-email');
-      var messageInput = form.querySelector('#support-message');
-      if (!emailInput || !messageInput) return;
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
-      var email = emailInput.value.trim();
-      var message = messageInput.value.trim();
-      window.location.href =
-        'mailto:tech@upstateipvoice.com?subject=' +
-        encodeURIComponent('Support ticket') +
-        '&body=' +
-        encodeURIComponent('From: ' + email + '\n\n' + message);
-    });
+    if (/[?&]sent=1(?:&|$)/.test(window.location.search)) {
+      var status = form.querySelector('.support-ticket__status');
+      if (status) status.hidden = false;
+    }
   });
 
   function prefersReducedMotion() {

@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260813m8">
+  <link rel="stylesheet" href="css/style.css?v=20260813m9">
 </head>
 <body class="has-hero" id="top">
   <header class="mobileHeader" aria-label="Site header">
@@ -103,7 +103,13 @@
     <section class="support-howto" id="get-support" aria-labelledby="howto-heading">
       <h2 id="howto-heading" class="support-page__title">How to get support</h2>
       <p class="support-page__lead">The fastest way to get help is to open a support ticket. Simply email our support team with a brief description of your issue.</p>
-      <form class="support-ticket">
+      <form class="support-ticket" action="https://formsubmit.co/tech@upstateipvoice.com" method="POST">
+        <input type="hidden" name="_subject" value="Support ticket from upstateipvoice.com">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_next" value="https://www.upstateipvoice.com/support.html?sent=1#get-support">
+        <input type="text" name="_honey" class="visually-hidden" tabindex="-1" autocomplete="off">
+        <p class="support-ticket__status" hidden>Message sent. We’ll get back to you soon.</p>
         <label class="visually-hidden" for="support-email">Your Email</label>
         <input
           id="support-email"
@@ -302,6 +308,6 @@
   </div>
 </footer>
 
-  <script src="js/main.js?v=20260813m8"></script>
+  <script src="js/main.js?v=20260813m9"></script>
 </body>
 </html>

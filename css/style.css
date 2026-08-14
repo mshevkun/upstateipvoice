@@ -7491,6 +7491,15 @@ h2,
   cursor: pointer;
 }
 
+.support-ticket__status {
+  margin: 0 0 4px;
+  font-family: var(--font-instrument);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #141A23;
+}
+
 .support-page__pill {
   display: inline-flex;
   align-items: center;
