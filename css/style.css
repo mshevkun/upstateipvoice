@@ -39,9 +39,12 @@ html {
   .section-image-text .section__text,
   .section-image-text .help-copy,
   .about-reveal,
-  .about-hero__card {
+  .about-hero__card,
+  .will-animate,
+  .will-animate.is-visible {
     opacity: 1 !important;
     transform: none !important;
+    transition: none !important;
   }
 }
 
@@ -784,38 +787,6 @@ main .container {
   }
   .support-section .section__text .btn-block-cta {
     margin-top: 0;
-  }
-
-  /* Scroll reveal: image slight parallax, text 20px fade-up */
-  .section-image-text .section__image-wrap {
-    transition: transform 0.6s ease-out;
-    transform: translateY(12px);
-  }
-  .section-image-text.is-inview .section__image-wrap {
-    transform: translateY(0);
-  }
-  .section-image-text .section__text,
-  .section-image-text .help-copy {
-    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  .section-image-text.is-inview .section__text,
-  .section-image-text.is-inview .help-copy {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Help section: no scroll-reveal so image block appears immediately (avoids slow 0.6s animation) */
-  .help-section .section__image-wrap {
-    transform: none;
-    transition: none;
-  }
-  .help-section .section__text,
-  .help-section .help-copy {
-    opacity: 1;
-    transform: none;
-    transition: none;
   }
 
   .section-image-text:not(.section-aside-reverse) .section__image-wrap {
@@ -1989,33 +1960,6 @@ main .container {
   opacity: 1;
 }
 
-/* Sections visible by default on mobile (no dependency on JS). */
-@media (max-width: 900px) {
-  .section {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Sections stay visible on mobile by default (no dependency on JS for visibility). */
-
-/* 8. Subtle scroll animation: fade + 10px upward, 400ms; first section always visible so content never missing */
-@media (max-width: 900px) and (prefers-reduced-motion: no-preference) {
-  .section {
-    opacity: 0;
-    transform: translateY(10px);
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-  }
-  .section:first-of-type {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  .section.in-view {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* --- Main --- */
 main {
   flex: 1;
@@ -2477,19 +2421,6 @@ main {
   font-weight: 300;
 }
 
-/* Bullet scroll animation: fade in + slide up when section enters view (all pages) */
-@media (prefers-reduced-motion: no-preference) {
-  .feature-item {
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-  }
-  .section.in-view .feature-item,
-  .section:first-of-type .feature-item {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .feature-list li:not(.feature-item) {
   font-family: 'Inter', sans-serif;
@@ -7491,15 +7422,6 @@ h2,
   cursor: pointer;
 }
 
-.support-ticket__status {
-  margin: 0 0 4px;
-  font-family: var(--font-instrument);
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: #141A23;
-}
-
 .support-page__pill {
   display: inline-flex;
   align-items: center;
@@ -7658,5 +7580,25 @@ h2,
   .support-ticket {
     width: 100%;
     max-width: 420px;
+  }
+}
+
+/* Scroll reveal: JS adds .will-animate, then .is-visible. Without JS, content stays visible. */
+@media (prefers-reduced-motion: no-preference) {
+  .will-animate:not(.is-visible) {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .will-animate {
+    transition:
+      opacity 650ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  .will-animate.is-visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

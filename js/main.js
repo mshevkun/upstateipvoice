@@ -12,10 +12,23 @@
   }
 
   document.querySelectorAll('.support-ticket').forEach(function (form) {
-    if (/[?&]sent=1(?:&|$)/.test(window.location.search)) {
-      var status = form.querySelector('.support-ticket__status');
-      if (status) status.hidden = false;
-    }
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var emailInput = form.querySelector('#support-email');
+      var messageInput = form.querySelector('#support-message');
+      if (!emailInput || !messageInput) return;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      var email = emailInput.value.trim();
+      var message = messageInput.value.trim();
+      window.location.href =
+        'mailto:tech@upstateipvoice.com?subject=' +
+        encodeURIComponent('Support ticket') +
+        '&body=' +
+        encodeURIComponent('From: ' + email + '\n\n' + message);
+    });
   });
 
   function prefersReducedMotion() {
@@ -289,24 +302,6 @@
     }
   });
 
-  // Atmos-style: section scroll-reveal (add .in-view when section enters viewport)
-  var sections = document.querySelectorAll('.section');
-  if (sections.length && 'IntersectionObserver' in window) {
-    var observer = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('in-view');
-          }
-        });
-      },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0 }
-    );
-    sections.forEach(function (el) {
-      observer.observe(el);
-    });
-  }
-
   // Big-screen header: scroll effect (when horizontal menu is shown, ≥901px)
   var siteHeader = document.querySelector('.site-header');
   var desktopScroll = function () {
@@ -409,31 +404,140 @@
     setTimeout(applyScroll, 500);
   });
 
-  // Scroll reveal: image slight parallax, text 20px fade-up
-  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!reducedMotion && 'IntersectionObserver' in window) {
-    var revealSections = document.querySelectorAll('.section-image-text');
+  function initScrollReveal() {
+    if (prefersReducedMotion() || !('IntersectionObserver' in window)) return;
+
+    var STAGGER_MS = 90;
+    var STAGGER_CAP = 2;
+    var STAGGER_GROUPS =
+      '.index-science-features__grid, .support-help__grid, .index-stats__grid, .solutions-buckets__aside-sticky';
+    var hashTarget = null;
+    if (window.location.hash.length > 1) {
+      try {
+        hashTarget = document.querySelector(window.location.hash);
+      } catch (err) {
+        hashTarget = null;
+      }
+    }
+
+    function isHeroSection(section) {
+      return (
+        section.classList.contains('hero') ||
+        section.classList.contains('index-figma__hero') ||
+        section.classList.contains('about-figma__hero')
+      );
+    }
+
+    function containsHash(el) {
+      return !!(hashTarget && (el === hashTarget || el.contains(hashTarget) || hashTarget.contains(el)));
+    }
+
+    function collectTargets() {
+      var targets = [];
+      var seen = typeof WeakSet === 'function' ? new WeakSet() : null;
+
+      function add(el, delayIndex) {
+        if (!el || (seen && seen.has(el))) return;
+        if (seen) seen.add(el);
+        else {
+          for (var i = 0; i < targets.length; i++) {
+            if (targets[i].el === el) return;
+          }
+        }
+        targets.push({
+          el: el,
+          delay: Math.min(delayIndex || 0, STAGGER_CAP) * STAGGER_MS
+        });
+      }
+
+      document.querySelectorAll('main > section').forEach(function (section) {
+        if (isHeroSection(section)) return;
+
+        var pillars = section.querySelectorAll('.solutions-buckets__pillar');
+        var groups = section.querySelectorAll(STAGGER_GROUPS);
+        var mainCol = section.querySelector('.solutions-buckets__main');
+
+        if (pillars.length) {
+          pillars.forEach(function (pillar) {
+            add(pillar, 0);
+          });
+        } else if (mainCol && groups.length) {
+          add(mainCol, 0);
+        }
+
+        groups.forEach(function (group) {
+          Array.prototype.forEach.call(group.children, function (child, index) {
+            add(child, index % 3);
+          });
+        });
+
+        if (!pillars.length && !groups.length) {
+          add(section, 0);
+          return;
+        }
+
+        if (pillars.length) return;
+
+        Array.prototype.forEach.call(section.children, function (child) {
+          if (child.matches(STAGGER_GROUPS) || child.querySelector(STAGGER_GROUPS)) return;
+          if (mainCol && (child === mainCol || mainCol.contains(child) || child.contains(mainCol))) return;
+          add(child, 0);
+        });
+      });
+
+      var legalInner = document.querySelector('main.legal-page > .legal-page-inner');
+      if (legalInner) add(legalInner, 0);
+
+      return targets;
+    }
+
+    var targets = collectTargets();
+    if (!targets.length) return;
+
     var observer = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-inview');
-          }
+          if (!entry.isIntersecting) return;
+          reveal(entry.target);
+          observer.unobserve(entry.target);
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+      { root: null, rootMargin: '1000% 0px -15% 0px', threshold: 0 }
     );
-    revealSections.forEach(function (section) {
-      observer.observe(section);
-      if (section.getBoundingClientRect().top < window.innerHeight) {
-        section.classList.add('is-inview');
+
+    function reveal(el) {
+      if (el.classList.contains('is-visible')) return;
+      var rect = el.getBoundingClientRect();
+      if (rect.bottom <= 0) {
+        el.classList.remove('will-animate');
+        el.style.removeProperty('--reveal-delay');
+        return;
       }
-    });
-  } else {
-    document.querySelectorAll('.section-image-text').forEach(function (section) {
-      section.classList.add('is-inview');
+      el.classList.add('is-visible');
+      var cleaned = false;
+      function cleanup() {
+        if (cleaned) return;
+        cleaned = true;
+        el.classList.remove('will-animate');
+        el.style.removeProperty('--reveal-delay');
+      }
+      el.addEventListener('transitionend', function (event) {
+        if (event.target !== el || event.propertyName !== 'opacity') return;
+        cleanup();
+      });
+      window.setTimeout(cleanup, 900);
+    }
+
+    targets.forEach(function (item) {
+      var el = item.el;
+      if (containsHash(el)) return;
+      el.style.setProperty('--reveal-delay', item.delay + 'ms');
+      el.classList.add('will-animate');
+      observer.observe(el);
     });
   }
+
+  initScrollReveal();
 
   // Solutions feature cards — smooth scroll to detail sections
   var SOLUTIONS_SECTION_IDS = ['ip-phone-system', 'our-app', 'automations'];

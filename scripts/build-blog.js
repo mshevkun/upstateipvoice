@@ -57,8 +57,7 @@ function head({ title, description, keywords, canonical, ogTitle, ogDescription,
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="images/original logo.svg" media="(prefers-color-scheme: light)">
-  <link rel="icon" type="image/svg+xml" href="images/favicon.svg" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg?v=20260813f1">
   <title>${title}</title>
   <meta name="description" content="${description}">
   <meta name="keywords" content="${keywords}">
@@ -76,7 +75,7 @@ function head({ title, description, keywords, canonical, ogTitle, ogDescription,
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260813m9">
+  <link rel="stylesheet" href="css/style.css?v=20260813m10">
 </head>`;
 }
 
@@ -452,7 +451,7 @@ ${ASIDE}
   </main>
 
 ${FOOTER}
-  <script src="js/main.js?v=20260813m9"></script>
+  <script src="js/main.js?v=20260813m10"></script>
 </body>
 </html>
 `;
@@ -532,7 +531,7 @@ ${ASIDE}
   </main>
 
 ${FOOTER}
-  <script src="js/main.js?v=20260813m9"></script>
+  <script src="js/main.js?v=20260813m10"></script>
 </body>
 </html>
 `;
