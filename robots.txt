@@ -4,5 +4,10 @@
 User-agent: *
 Allow: /
 
-# Sitemap location (update base URL if your domain differs)
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
 Sitemap: https://www.upstateipvoice.com/sitemap.xml
