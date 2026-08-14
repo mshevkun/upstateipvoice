@@ -1262,9 +1262,10 @@ main .container {
 
   .main-nav > ul > li > a {
     padding: 8px 0;
+    font-family: var(--font-instrument);
     font-size: 16px;
     font-weight: 500;
-    letter-spacing: 0.02em;
+    letter-spacing: -0.02em;
     transition: color 0.2s ease;
     position: relative;
   }
@@ -1630,9 +1631,11 @@ main .container {
     justify-content: space-between;
     min-height: 52px;
     padding: 0 4px;
+    font-family: var(--font-instrument);
     font-size: 18px;
     font-weight: 500;
     line-height: 1.25;
+    letter-spacing: -0.02em;
     color: #131313;
     text-decoration: none;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
@@ -1821,12 +1824,12 @@ main .container {
 }
 
 .main-nav a {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 17px;
+  font-family: var(--font-instrument);
+  font-weight: 500;
+  font-size: 16px;
   line-height: 1.2;
   color: #131313;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.02em;
   text-decoration: none;
 }
 
@@ -4521,22 +4524,32 @@ h2,
   pointer-events: none;
 }
 
-.legal-page-header-hero::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 60px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
-  z-index: 0.5;
-  pointer-events: none;
+.legal-page-header-hero--ink::before {
+  background: none;
 }
 
 .legal-page-header-hero .legal-page-header-inner {
   position: relative;
   z-index: 2;
-  max-width: 520px;
+  max-width: min(1120px, 100%);
+}
+
+.legal-page-header-hero--down .legal-page-header-inner {
+  transform: translateY(40px);
+}
+
+.legal-page-header-hero--shift-7 .legal-page-header-inner {
+  top: 7%;
+}
+
+.legal-page-header-hero--ink .index-hero-video__title,
+.legal-page-header-hero--ink .index-hero-video__text {
+  color: #141A23;
+  cursor: default;
+}
+
+.legal-page-header-hero--ink .index-hero-video__text {
+  margin: 1.24em 0 0;
 }
 
 /* Legal/Pricing/About hero: same stronger, tighter title as main hero */
@@ -4600,6 +4613,10 @@ h2,
     min-height: 420px;
     height: auto;
     max-height: none;
+  }
+
+  .legal-page-header-hero--down .legal-page-header-inner {
+    transform: translateY(24px);
   }
 }
 
@@ -6973,6 +6990,9 @@ h2,
 
 .index-precision-video__item {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: min(560px, 46vw);
   max-width: none;
   transform: translate(-50%, -50%);
@@ -7002,6 +7022,7 @@ h2,
 
 .index-precision-video__item h3,
 .index-precision-video__item .index-science-features__title {
+  width: 100%;
   margin: 0 0 10px;
   font-family: var(--font-instrument);
   font-size: clamp(24px, 1.75vw, 28px);
@@ -7009,17 +7030,23 @@ h2,
   line-height: 1.1;
   letter-spacing: -0.02em;
   text-transform: none;
+  text-align: center;
   color: #141A23;
 }
 
-.index-precision-video__item p,
-.index-precision-video__item .index-science-features__desc {
-  max-width: 52ch;
-  margin: 0 auto;
+.index-precision-video .index-precision-video__item p,
+.index-precision-video .index-precision-video__item .index-science-features__desc {
+  width: 100%;
+  max-width: none;
+  margin: 0;
   font-family: var(--font-instrument);
   font-size: 18px;
   font-weight: 400;
   line-height: 26px;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: #141A23;
+}
   letter-spacing: -0.02em;
   color: #141A23;
 }
@@ -7075,7 +7102,7 @@ h2,
     left: auto;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 28px;
     width: 100%;
     max-width: none;
@@ -7090,14 +7117,18 @@ h2,
   .index-precision-video__item {
     position: static;
     left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     width: 100%;
     max-width: 100%;
     transform: none;
-    text-align: left;
+    text-align: center;
   }
 
   .index-precision-video__item h3,
   .index-precision-video__item .index-science-features__title {
+    width: 100%;
     max-width: none;
     margin: 0 0 6px;
     font-family: var(--font-instrument);
@@ -7105,12 +7136,14 @@ h2,
     font-weight: 600;
     letter-spacing: -0.02em;
     text-transform: none;
+    text-align: center;
     line-height: 1.1;
     color: #141A23;
   }
 
-  .index-precision-video__item p,
-  .index-precision-video__item .index-science-features__desc {
+  .index-precision-video .index-precision-video__item p,
+  .index-precision-video .index-precision-video__item .index-science-features__desc {
+    width: 100%;
     margin: 0;
     max-width: none;
     font-family: var(--font-instrument);
@@ -7118,6 +7151,7 @@ h2,
     font-weight: 400;
     line-height: 26px;
     letter-spacing: -0.02em;
+    text-align: center;
     color: #141A23;
   }
 
