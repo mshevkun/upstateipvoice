@@ -24,7 +24,7 @@
       var email = emailInput.value.trim();
       var message = messageInput.value.trim();
       window.location.href =
-        'mailto:support@upstateipvoice.com?subject=' +
+        'mailto:tech@upstateipvoice.com?subject=' +
         encodeURIComponent('Support ticket') +
         '&body=' +
         encodeURIComponent('From: ' + email + '\n\n' + message);
