@@ -7000,13 +7000,28 @@ h2,
   top: calc(47% + 20%);
 }
 
-.index-precision-video__item h3 {
+.index-precision-video__item h3,
+.index-precision-video__item .index-science-features__title {
   margin: 0 0 10px;
+  font-family: var(--font-instrument);
+  font-size: clamp(24px, 1.75vw, 28px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: #141A23;
 }
 
-.index-precision-video__item p {
+.index-precision-video__item p,
+.index-precision-video__item .index-science-features__desc {
   max-width: 52ch;
   margin: 0 auto;
+  font-family: var(--font-instrument);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 26px;
+  letter-spacing: -0.02em;
+  color: #141A23;
 }
 
 /* Phone: REVIVR-style benefits stack — video full-width, then left-aligned copy below */
@@ -7081,24 +7096,29 @@ h2,
     text-align: left;
   }
 
-  .index-precision-video__item h3 {
+  .index-precision-video__item h3,
+  .index-precision-video__item .index-science-features__title {
     max-width: none;
     margin: 0 0 6px;
-    font-size: 18px;
+    font-family: var(--font-instrument);
+    font-size: clamp(24px, 1.75vw, 28px);
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     text-transform: none;
-    line-height: 1.3;
+    line-height: 1.1;
     color: #141A23;
   }
 
-  .index-precision-video__item p {
+  .index-precision-video__item p,
+  .index-precision-video__item .index-science-features__desc {
     margin: 0;
     max-width: none;
-    font-size: 15px;
+    font-family: var(--font-instrument);
+    font-size: 18px;
     font-weight: 400;
-    line-height: 1.45;
-    color: #7e7e7e;
+    line-height: 26px;
+    letter-spacing: -0.02em;
+    color: #141A23;
   }
 
   .index-precision-video__item br {
