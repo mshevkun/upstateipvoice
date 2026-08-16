@@ -302,14 +302,16 @@
     }
   });
 
-  // Big-screen header: scroll effect (when horizontal menu is shown, ≥901px)
+  // Header scroll fade (laptop + phone)
   var siteHeader = document.querySelector('.site-header');
+  var mobileHeader = document.querySelector('.mobileHeader');
   var desktopScroll = function () {
-    if (!siteHeader || !window.matchMedia('(min-width: 901px)').matches) return;
-    if (window.scrollY > 30) {
-      siteHeader.classList.add('is-scrolled');
-    } else {
-      siteHeader.classList.remove('is-scrolled');
+    var scrolled = window.scrollY > 30;
+    if (siteHeader && window.matchMedia('(min-width: 901px)').matches) {
+      siteHeader.classList.toggle('is-scrolled', scrolled);
+    }
+    if (mobileHeader && window.matchMedia('(max-width: 1023px)').matches) {
+      mobileHeader.classList.toggle('is-scrolled', scrolled);
     }
   };
   window.addEventListener('scroll', desktopScroll, { passive: true });
@@ -538,6 +540,181 @@
   }
 
   initScrollReveal();
+
+  function initSnapCarousel(root, trackSelector, cardSelector, dotsSelector, dotClass, labelSelector, options) {
+    var track = root.querySelector(trackSelector);
+    var dotsWrap = root.querySelector(dotsSelector);
+    if (!track || !dotsWrap) return;
+
+    var cards = Array.prototype.slice.call(track.querySelectorAll(cardSelector));
+    if (!cards.length) return;
+
+    options = options || {};
+    var mobileQuery = window.matchMedia('(max-width: 900px)');
+    var dots = [];
+    var autoplayTimer = null;
+    var resumeTimer = null;
+    var userPaused = false;
+    var AUTOPLAY_MS = options.autoplayMs || 3800;
+
+    function scrollToIndex(index, behavior) {
+      var card = cards[index];
+      if (!card) return;
+      track.scrollTo({
+        left: card.offsetLeft,
+        behavior: behavior || (prefersReducedMotion() ? 'auto' : 'smooth')
+      });
+    }
+
+    cards.forEach(function (card, index) {
+      var labelEl = labelSelector ? card.querySelector(labelSelector) : null;
+      var label = labelEl ? labelEl.textContent.trim() : 'Slide ' + (index + 1);
+      var dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = dotClass;
+      dot.setAttribute('role', 'tab');
+      dot.setAttribute('aria-label', label);
+      dot.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+      dot.addEventListener('click', function () {
+        if (!mobileQuery.matches) return;
+        pauseAutoplay(true);
+        scrollToIndex(index);
+      });
+      dotsWrap.appendChild(dot);
+      dots.push(dot);
+    });
+
+    function getActiveIndex() {
+      var trackLeft = track.scrollLeft;
+      var bestIndex = 0;
+      var bestDistance = Infinity;
+      cards.forEach(function (card, index) {
+        var distance = Math.abs(card.offsetLeft - trackLeft);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+      return bestIndex;
+    }
+
+    function updateDots() {
+      var active = mobileQuery.matches ? getActiveIndex() : 0;
+      dots.forEach(function (dot, index) {
+        dot.setAttribute('aria-selected', index === active ? 'true' : 'false');
+      });
+    }
+
+    function stopAutoplay() {
+      if (autoplayTimer) {
+        window.clearInterval(autoplayTimer);
+        autoplayTimer = null;
+      }
+      if (resumeTimer) {
+        window.clearTimeout(resumeTimer);
+        resumeTimer = null;
+      }
+    }
+
+    function advanceAutoplay() {
+      if (!mobileQuery.matches || prefersReducedMotion() || userPaused) return;
+      var next = (getActiveIndex() + 1) % cards.length;
+      scrollToIndex(next);
+    }
+
+    function startAutoplay() {
+      stopAutoplay();
+      if (!options.autoplay || !mobileQuery.matches || prefersReducedMotion() || userPaused) return;
+      autoplayTimer = window.setInterval(advanceAutoplay, AUTOPLAY_MS);
+    }
+
+    function pauseAutoplay(temporary) {
+      stopAutoplay();
+      if (!options.autoplay) return;
+      if (temporary) {
+        userPaused = true;
+        resumeTimer = window.setTimeout(function () {
+          userPaused = false;
+          startAutoplay();
+        }, AUTOPLAY_MS * 2);
+      }
+    }
+
+    track.addEventListener('scroll', updateDots, { passive: true });
+    track.addEventListener('pointerdown', function () {
+      pauseAutoplay(true);
+    });
+    track.addEventListener('touchstart', function () {
+      pauseAutoplay(true);
+    }, { passive: true });
+
+    window.addEventListener('resize', function () {
+      updateDots();
+      startAutoplay();
+    });
+    if (typeof mobileQuery.addEventListener === 'function') {
+      mobileQuery.addEventListener('change', function () {
+        updateDots();
+        startAutoplay();
+      });
+    } else if (typeof mobileQuery.addListener === 'function') {
+      mobileQuery.addListener(function () {
+        updateDots();
+        startAutoplay();
+      });
+    }
+
+    if (options.autoplay && 'IntersectionObserver' in window) {
+      var io = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              userPaused = false;
+              startAutoplay();
+            } else {
+              stopAutoplay();
+            }
+          });
+        },
+        { threshold: 0.35 }
+      );
+      io.observe(root);
+    } else if (options.autoplay) {
+      startAutoplay();
+    }
+
+    updateDots();
+  }
+
+  function initScienceFeaturesCarousel() {
+    document.querySelectorAll('.index-science-features').forEach(function (section) {
+      initSnapCarousel(
+        section,
+        '.index-science-features__grid',
+        '.index-science-features__card',
+        '.index-science-features__dots',
+        'index-science-features__dot',
+        '.index-science-features__title'
+      );
+    });
+  }
+
+  function initSolutionsAsideCarousel() {
+    document.querySelectorAll('.solutions-buckets__aside').forEach(function (aside) {
+      initSnapCarousel(
+        aside,
+        '.solutions-buckets__aside-sticky',
+        '.solutions-buckets__listing',
+        '.solutions-buckets__aside-dots',
+        'solutions-buckets__aside-dot',
+        '.solutions-buckets__listing-title',
+        { autoplay: true, autoplayMs: 3800 }
+      );
+    });
+  }
+
+  initScienceFeaturesCarousel();
+  initSolutionsAsideCarousel();
 
   // Solutions feature cards — smooth scroll to detail sections
   var SOLUTIONS_SECTION_IDS = ['ip-phone-system', 'our-app', 'automations'];

@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260813m13">
+  <link rel="stylesheet" href="css/style.css?v=20260816m41">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -61,8 +61,9 @@
 </head>
 <body class="has-hero" id="top">
   <header class="mobileHeader" aria-label="Site header">
-    <a href="index.html" class="brand"><img src="images/original logo.svg" alt="Upstate IP Voice" class="mobileHeader-logo"></a>
+    <a href="index.html" class="brand"><img src="images/white transparent.svg" alt="Upstate IP Voice" class="mobileHeader-logo"></a>
     <button type="button" class="menuBtn" aria-label="Open menu" aria-expanded="false">
+      <span class="menuBtn-bar"></span>
       <span class="menuBtn-bar"></span>
       <span class="menuBtn-bar"></span>
     </button>
@@ -252,7 +253,7 @@
 
     <section class="index-science-features index-figma__section" aria-label="Upstate IP Voice product features">
       <div class="index-science-features__inner">
-        <div class="index-science-features__grid">
+        <div class="index-science-features__grid" tabindex="0" aria-label="Product feature cards">
           <article class="index-science-features__card">
             <div class="index-science-features__media">
               <img
@@ -325,6 +326,9 @@
               </div>
             </div>
           </article>
+        </div>
+        <div class="index-science-features__nav" aria-label="Feature carousel controls">
+          <div class="index-science-features__dots" role="tablist" aria-label="Feature slides"></div>
         </div>
       </div>
     </section>
@@ -415,6 +419,9 @@
                 <p class="index-science-features__desc index-hero-subtext">In the office, at home, or on the road.</p>
               </div>
             </article>
+          </div>
+          <div class="index-science-features__nav" aria-label="Why choose carousel controls">
+            <div class="index-science-features__dots" role="tablist" aria-label="Why choose slides"></div>
           </div>
         </div>
       </div>
@@ -524,6 +531,6 @@
 
   <script src="js/live-stats.js"></script>
   <script src="js/partnerships-intro.js"></script>
-  <script src="js/main.js?v=20260813m10"></script>
+  <script src="js/main.js?v=20260816m40"></script>
 </body>
 </html>

@@ -787,37 +787,74 @@ body {
 @media (max-width: 640px) {
   .public-review {
     align-items: flex-start;
-    padding: 1.25rem 0.9rem 2rem;
+    justify-content: flex-start;
+    min-height: 100svh;
+    padding:
+      calc(3.75rem + env(safe-area-inset-top, 0px))
+      1rem
+      calc(2.75rem + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
+  .public-review__inner {
+    width: 100%;
+    transform: none;
+  }
+
+  /* Clear logo — sit above content; short label so it doesn't collide */
   .public-review__home {
-    top: 0.75rem;
-    right: 0.75rem;
-    padding: 0.55rem 0.8rem;
+    top: max(0.65rem, env(safe-area-inset-top, 0px));
+    right: max(0.65rem, env(safe-area-inset-right, 0px));
+    left: auto;
+    padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
+    gap: 0.35rem;
+    max-width: calc(100vw - 1.5rem);
   }
 
   .public-review__home span {
-    max-width: 9.5ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
     white-space: nowrap;
+    font-size: 0;
+  }
+
+  .public-review__home span::before {
+    content: "Home";
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .public-review__hero {
+    margin: 0 0 1.25rem;
+    padding: 0 0.15rem;
   }
 
   .public-review__logo {
-    height: 30px;
-    margin-top: 0.35rem;
-    transform: translateY(5%);
+    height: 28px;
+    width: auto;
+    max-width: min(154px, 58vw);
+    margin: 0 auto 1rem;
+    transform: none;
   }
 
   .public-review__headline {
-    font-size: clamp(2.4rem, 10vw, 74px);
-    line-height: 1;
+    font-size: clamp(2rem, 8.5vw, 2.6rem);
+    line-height: 1.05;
+    margin-bottom: 0.65rem;
   }
 
   .public-review__sub {
     white-space: normal;
     width: 100%;
+    max-width: 34ch;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 0.95rem;
+    line-height: 1.45;
   }
 
   .pr-note,
@@ -826,15 +863,49 @@ body {
   }
 
   .pr-book-card {
-    padding: 0.9rem;
-    border-radius: 16px;
+    min-height: 0;
+    padding: 1rem 0.85rem 1.15rem;
+    border-radius: 18px;
+  }
+
+  .pr-book-grid,
+  .pr-book-col,
+  .pr-book-contact {
+    gap: 0.75rem;
+  }
+
+  /* Stack: contact fields → name/phone → calendar → time/confirm */
+  .pr-book-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pr-book-col--left,
+  .pr-book-col--right {
+    display: contents;
+  }
+
+  .pr-book-col--left > .pr-book-contact {
+    order: 1;
+  }
+
+  .pr-book-contact--right {
+    order: 2;
+  }
+
+  .pr-schedule__cal {
+    order: 3;
+  }
+
+  .pr-schedule__side {
+    order: 4;
   }
 
   .pr-input,
   .pr-time__trigger,
   .pr-confirm__btn {
-    height: 52px;
-    border-radius: 26px;
+    height: 50px;
+    border-radius: 25px;
   }
 
   .pr-field__label {
@@ -843,8 +914,13 @@ body {
   }
 
   .pr-cal {
-    min-height: 230px;
-    border-radius: 22px;
-    padding: 0.6rem 0.7rem 0.65rem;
+    min-height: 0;
+    border-radius: 18px;
+    padding: 0.55rem 0.55rem 0.6rem;
+  }
+
+  .pr-summary {
+    margin-top: 0.35rem;
+    padding-bottom: 0.15rem;
   }
 }

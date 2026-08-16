@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Source+Sans+3:wght@300;400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260813m10">
+  <link rel="stylesheet" href="css/style.css?v=20260816m41">
   <script>
     (function () {
       if (!/^#(ip-phone-system|our-app|automations)$/.test(window.location.hash)) return;
@@ -37,8 +37,9 @@
 </head>
 <body class="has-hero" id="top">
   <header class="mobileHeader" aria-label="Site header">
-    <a href="index.html" class="brand"><img src="images/original logo.svg" alt="Upstate IP Voice" class="mobileHeader-logo"></a>
+    <a href="index.html" class="brand"><img src="images/white transparent.svg" alt="Upstate IP Voice" class="mobileHeader-logo"></a>
     <button type="button" class="menuBtn" aria-label="Open menu" aria-expanded="false">
+      <span class="menuBtn-bar"></span>
       <span class="menuBtn-bar"></span>
       <span class="menuBtn-bar"></span>
     </button>
@@ -169,6 +170,9 @@
             </div>
           </article>
         </div>
+        <div class="index-science-features__nav" aria-label="Feature carousel controls">
+          <div class="index-science-features__dots" role="tablist" aria-label="Feature slides"></div>
+        </div>
       </div>
     </section>
 
@@ -194,35 +198,14 @@
                     </ul>
                   </div>
                   <div class="ip-compare-card__media ip-compare-card__media--compare">
-                    <div class="ip-compare-pair" aria-label="Old way versus the Upstate way">
-                      <figure class="ip-compare-pair__item">
-                        <figcaption class="ip-compare-pair__label">Old way</figcaption>
-                        <div class="ip-compare-pair__crop">
-                          <img
-                            src="images/index/ip-phone-comparison-from-design.png"
-                            alt="Legacy phone setup - the old way"
-                            width="880"
-                            height="658"
-                            decoding="async"
-                            class="ip-compare-pair__img ip-compare-pair__img--old"
-                          >
-                        </div>
-                      </figure>
-                      <figure class="ip-compare-pair__item">
-                        <figcaption class="ip-compare-pair__label">Upstate way</figcaption>
-                        <div class="ip-compare-pair__crop">
-                          <img
-                            src="images/index/ip-phone-comparison-from-design.png"
-                            alt="Upstate IP Voice cloud handset - the Upstate way"
-                            width="880"
-                            height="658"
-                            loading="lazy"
-                            decoding="async"
-                            class="ip-compare-pair__img ip-compare-pair__img--new"
-                          >
-                        </div>
-                      </figure>
-                    </div>
+                    <img
+                      src="images/index/ip-phone-compare-group.png"
+                      alt="The old way versus the Upstate way"
+                      width="998"
+                      height="596"
+                      loading="lazy"
+                      decoding="async"
+                    >
                   </div>
                 </article>
 
@@ -325,6 +308,9 @@
                 <a class="solutions-buckets__listing-cta" href="blog-after-hours-call-flow.html">Read article</a>
               </article>
             </div>
+            <div class="solutions-buckets__aside-nav" aria-label="Resource carousel controls">
+              <div class="solutions-buckets__aside-dots" role="tablist" aria-label="Resource slides"></div>
+            </div>
           </aside>
         </div>
       </div>
@@ -404,6 +390,6 @@
     >
   </div>
 </footer>
-  <script src="js/main.js?v=20260813m10"></script>
+  <script src="js/main.js?v=20260816m40"></script>
 </body>
 </html>

@@ -47,6 +47,9 @@ const ASIDE = `
                 <a class="solutions-buckets__listing-cta" href="blog-after-hours-call-flow.html">Read article</a>
               </article>
             </div>
+            <div class="solutions-buckets__aside-nav" aria-label="Resource carousel controls">
+              <div class="solutions-buckets__aside-dots" role="tablist" aria-label="Resource slides"></div>
+            </div>
           </aside>`;
 
 const FOOTER = fs.readFileSync(path.join(ROOT, "partials", "site-footer.html"), "utf8").trim();
@@ -99,6 +102,7 @@ function headers(active = "blog") {
   return `  <header class="mobileHeader" aria-label="Site header">
     <a href="index.html" class="brand"><img src="images/original logo.svg" alt="Upstate IP Voice" class="mobileHeader-logo"></a>
     <button type="button" class="menuBtn" aria-label="Open menu" aria-expanded="false">
+      <span class="menuBtn-bar"></span>
       <span class="menuBtn-bar"></span>
       <span class="menuBtn-bar"></span>
     </button>
@@ -455,7 +459,7 @@ ${ASIDE}
   </main>
 
 ${FOOTER}
-  <script src="js/main.js?v=20260813m10"></script>
+  <script src="js/main.js?v=20260816m32"></script>
 </body>
 </html>
 `;
@@ -510,6 +514,9 @@ ${hero({
         <div class="index-science-features__grid">
 ${articles.map(cardHtml).join("\n")}
         </div>
+        <div class="index-science-features__nav" aria-label="Blog carousel controls">
+          <div class="index-science-features__dots" role="tablist" aria-label="Blog article slides"></div>
+        </div>
       </div>
     </section>
 
@@ -535,7 +542,7 @@ ${ASIDE}
   </main>
 
 ${FOOTER}
-  <script src="js/main.js?v=20260813m10"></script>
+  <script src="js/main.js?v=20260816m32"></script>
 </body>
 </html>
 `;
