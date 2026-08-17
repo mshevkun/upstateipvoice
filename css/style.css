@@ -5579,7 +5579,7 @@ h2,
   width: max-content;
   gap: clamp(56px, 7vw, 104px);
   padding: 0 clamp(20px, 3vw, 40px);
-  animation: partner-strip-scroll 42s linear infinite;
+  animation: partner-strip-scroll 68s linear infinite;
   will-change: transform;
 }
 
@@ -5622,6 +5622,17 @@ h2,
 
 .partner-strip__logo.partner-strip__logo--dark {
   filter: invert(1);
+}
+
+.partner-strip__logo.partner-strip__logo--pcs {
+  max-width: clamp(176px, 19vw, 236px);
+  max-height: clamp(50px, 5.4vw, 64px);
+  transform: translateY(1%);
+}
+
+.partner-strip__logo.partner-strip__logo--mando {
+  max-width: clamp(176px, 19vw, 244px);
+  max-height: clamp(42px, 4.6vw, 52px);
 }
 
 .partner-strip__link--text {
