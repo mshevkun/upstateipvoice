@@ -115,6 +115,7 @@ function headers(active = "blog") {
       <p class="menuNavLabel">Navigate</p>
       <nav class="menuLinks">
         ${link("solutions.html", "Solutions", "solutions")}
+        ${link("tools.html", "Free Tools", "tools")}
         ${link("about.html", "About Us", "about")}
         ${link("blog.html", "Blog", "blog")}
         ${link("support.html", "Support", "support")}
@@ -136,6 +137,7 @@ function headers(active = "blog") {
         <a href="index.html" class="nav-drawer-brand">Upstate IP Voice</a>
         <ul>
           ${li("solutions.html", "Solutions", "solutions")}
+          ${li("tools.html", "Free Tools", "tools")}
           ${li("about.html", "About Us", "about")}
           ${li("blog.html", "Blog", "blog")}
           ${li("support.html", "Support", "support")}
@@ -583,6 +585,7 @@ function patchSiteNavFooter() {
     "about.html",
     "support.html",
     "solutions.html",
+    "tools.html",
     "privacy.html",
     "acceptable-use-policy.html",
   ];

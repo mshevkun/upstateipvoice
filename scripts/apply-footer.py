@@ -17,6 +17,7 @@ files = [
     "index.html",
     "about.html",
     "solutions.html",
+    "tools.html",
     "support.html",
     "privacy.html",
     "acceptable-use-policy.html",

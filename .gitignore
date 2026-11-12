@@ -1,5 +1,17 @@
+.env
+.env.*
 node_modules/
 dist/
+planner/.test-build/
+planner/.eval-build/
+planner/eval/results/
+planner/walkthroughs/
+planner/walkthrough-screenshots/
+planner/blender/
+planner/.critic/
+planner/.smoke/
+planner/*.blend
+planner/*.blend1
 .DS_Store
 Thumbs.db
 *.log

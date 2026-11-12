@@ -7992,3 +7992,125 @@ h2,
     transform: translateY(0);
   }
 }
+
+/* Free Tools */
+.tools-featured {
+  background: #fff;
+  padding: clamp(48px, 7vw, 96px) 0;
+}
+
+.tools-featured__inner {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: clamp(28px, 4vw, 64px);
+  align-items: center;
+}
+
+.tools-featured__title {
+  margin: 10px 0 16px;
+  font-family: var(--font-instrument);
+  font-size: clamp(28px, 3.2vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  color: #141a23;
+}
+
+.tools-featured__lead {
+  margin: 0 0 20px;
+  font-family: var(--font-instrument);
+  font-size: clamp(16px, 1.2vw, 20px);
+  line-height: 1.5;
+  color: #5a625d;
+}
+
+.tools-featured__points {
+  margin: 0 0 28px;
+  padding-left: 18px;
+  color: #3f4742;
+  font-family: var(--font-instrument);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.tools-featured__points li + li {
+  margin-top: 8px;
+}
+
+.tools-featured__cta {
+  display: inline-flex;
+}
+
+.tools-featured__assurance {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #666d67;
+}
+
+.tools-featured__scene {
+  display: block;
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #ece8e3;
+  text-decoration: none;
+  color: #141a23;
+}
+
+.tools-featured__scene img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tools-featured__scene span {
+  position: absolute;
+  left: 20px;
+  bottom: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d5d8d1;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: var(--font-instrument);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tools-coming {
+  background: #f2f2f2;
+  padding: clamp(40px, 6vw, 72px) 0 clamp(72px, 8vw, 120px);
+}
+
+.tools-coming__inner {
+  width: min(720px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.tools-coming h2 {
+  margin: 10px 0 12px;
+  font-family: var(--font-instrument);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: #141a23;
+}
+
+.tools-coming p:last-child {
+  margin: 0;
+  font-family: var(--font-instrument);
+  font-size: 16px;
+  line-height: 1.55;
+  color: #5a625d;
+}
+
+@media (max-width: 900px) {
+  .tools-featured__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .tools-featured__scene {
+    order: -1;
+  }
+}
