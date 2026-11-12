@@ -131,6 +131,8 @@ export function Architect() {
     const [messages, setMessages] = useState<ChatMessage[]>(saved.current?.messages?.length ? saved.current.messages : [{ id: 'greet', role: 'assistant', content: GREETING, questionId: null }]);
     const [sessionId, setSessionId] = useState(saved.current?.sessionId || '');
     const [remoteRevision, setRemoteRevision] = useState(saved.current?.revision || 0);
+    const sessionIdRef = useRef(saved.current?.sessionId || '');
+    const remoteRevRef = useRef(saved.current?.revision || 0);
     const [input, setInput] = useState('');
     const [busy, setBusy] = useState(false);
     const [typing, setTyping] = useState(false);
@@ -167,8 +169,8 @@ export function Architect() {
     function persistLocal(next: { plan?: Plan; facts?: Record<string, Fact>; future?: string[]; messages?: ChatMessage[]; sessionId?: string; revision?: number; questionId?: string | null }) {
         const prev = readConversation();
         const record: ConversationRecord = {
-            sessionId: next.sessionId ?? prev?.sessionId ?? sessionId,
-            revision: next.revision ?? prev?.revision ?? remoteRevision,
+            sessionId: next.sessionId ?? prev?.sessionId ?? sessionIdRef.current,
+            revision: next.revision ?? prev?.revision ?? remoteRevRef.current,
             facts: next.facts ?? prev?.facts ?? facts,
             currentQuestionId: next.questionId ?? prev?.currentQuestionId ?? question?.id ?? null,
             futureConsiderations: next.future ?? prev?.futureConsiderations ?? future,
@@ -295,25 +297,31 @@ export function Architect() {
         });
     }
 
+    function rememberRemote(id: string, revision: number) {
+        sessionIdRef.current = id;
+        remoteRevRef.current = revision;
+        setSessionId(id);
+        setRemoteRevision(revision);
+    }
+
     async function ensureSession(plan: Plan) {
-        if (sessionId)
-            return { id: sessionId, revision: remoteRevision };
+        if (sessionIdRef.current)
+            return { id: sessionIdRef.current, revision: remoteRevRef.current };
         const created = await createRemoteSession(plan);
-        setSessionId(created.id);
-        setRemoteRevision(created.revision);
+        rememberRemote(created.id, created.revision);
         persistLocal({ sessionId: created.id, revision: created.revision });
         return created;
     }
 
-    async function syncPlan(plan: Plan, nextFacts: Record<string, Fact>, nextFuture: string[], sid: string, revision: number) {
+    async function syncPlan(plan: Plan, nextFacts: Record<string, Fact>, nextFuture: string[], sid: string, revision = remoteRevRef.current) {
         try {
             const savedRemote = await persistRemotePlan(sid, plan, revision, nextFacts, nextFuture);
-            setRemoteRevision(savedRemote.revision);
+            rememberRemote(sid, savedRemote.revision);
             persistLocal({ plan, facts: nextFacts, future: nextFuture, sessionId: sid, revision: savedRemote.revision });
         }
         catch (err) {
             if ((err as Error).message === 'conflict')
-                setError('This plan was updated in another tab. Reload to continue.');
+                setError('Could not sync this draft to the server. Your answers are still saved on this device.');
         }
     }
 
@@ -374,8 +382,10 @@ export function Architect() {
                 history: [...messages, userMsg].filter(m => !isHearDump(m)),
                 timezone: p.hours.timezone
             });
+            if (typeof result.revision === 'number')
+                remoteRevRef.current = result.revision;
             const applied = applyInterpreter(p, facts, result.interpreter, trimmed, { question: targetQuestion, correcting: !!correcting });
-            await syncPlan(applied.plan, applied.facts, applied.future, remote.id, remote.revision);
+            await syncPlan(applied.plan, applied.facts, applied.future, remote.id, remoteRevRef.current);
         }
         catch (err) {
             if (trimmed === EXAMPLE) {
@@ -443,8 +453,10 @@ export function Architect() {
         setCorrecting(null);
         try {
             const remote = await ensureSession(nextPlan);
-            await recordRemoteTurn(remote.id, newId(), chip.label, merged.ack, question?.id || null);
-            await syncPlan(nextPlan, merged.facts, future, remote.id, remote.revision);
+            const recorded = await recordRemoteTurn(remote.id, newId(), chip.label, merged.ack, question?.id || null);
+            if (typeof recorded === 'number')
+                remoteRevRef.current = recorded;
+            await syncPlan(nextPlan, merged.facts, future, remote.id, remoteRevRef.current);
         }
         catch { /* chips work without the API */ }
     }

@@ -119,7 +119,7 @@ export async function persistRemotePlan(sessionId: string, plan: Plan, expectedR
 
 export async function recordRemoteTurn(sessionId: string, clientMessageId: string, userText: string, assistantText: string, questionId: string | null) {
     try {
-        await fetch(plannerApiBase() + '/api/public/planner/sessions/' + encodeURIComponent(sessionId) + '/messages', {
+        const res = await fetch(plannerApiBase() + '/api/public/planner/sessions/' + encodeURIComponent(sessionId) + '/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -130,8 +130,14 @@ export async function recordRemoteTurn(sessionId: string, clientMessageId: strin
                 currentQuestionId: questionId
             })
         });
+        if (!res.ok)
+            return null;
+        const body = await res.json().catch(() => null) as { revision?: number } | null;
+        return typeof body?.revision === 'number' ? body.revision : null;
     }
-    catch { /* local chips still work if the API is down */ }
+    catch {
+        return null;
+    }
 }
 
 export { INTERPRETER_SYSTEM_PROMPT, interpreterResponseSchema };
