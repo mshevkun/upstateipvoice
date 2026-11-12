@@ -648,6 +648,22 @@ test('after a take-a-message dump the next question is who checks the mailbox', 
   assert.equal(turned.follow?.id, 'messages.owner');
 });
 
+test('before-opening recording chip does not crash caller hear', async () => {
+  const mod = await load();
+  let plan = mod.initial();
+  plan.mode = 'opening';
+  plan.policy.beforeOpening = 'information';
+  assert.doesNotThrow(() => mod.callerHear(plan));
+  const rows = mod.callerHear(plan);
+  assert.ok(rows.some(row => /Before opening day/.test(row.when) && /not open yet/i.test(row.hear)));
+  const turned = update(mod, { ...mod.initial(), mode: 'opening' }, {}, [
+    { field_id: 'beforeOpening', operation: 'set', value: 'information' }
+  ]);
+  assert.equal(turned.plan.policy.beforeOpening, 'information');
+  assert.ok(turned.plan.policy.beforeOpeningText.trim());
+  assert.doesNotThrow(() => mod.callerHear(turned.plan));
+});
+
 test('caller hear preview uses the practice name and lunch close', async () => {
   const mod = await load();
   let plan = mod.initial();

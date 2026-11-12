@@ -85,7 +85,7 @@ export function callerHear(p: Plan): CallerHear[] {
         if (p.policy.beforeOpening === 'information')
             out.push({
                 when: 'Before opening day',
-                hear: publicInstructions(p.policy.beforeOpeningText.trim()) || 'A short recording that you are not open yet. Do not advertise the number until that recording exists.'
+                hear: publicInstructions(p.policy.beforeOpeningText?.trim() || '') || 'A short recording that you are not open yet. Do not advertise the number until that recording exists.'
             });
         else if (p.policy.beforeOpening === 'message')
             out.push({

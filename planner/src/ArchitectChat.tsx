@@ -494,7 +494,13 @@ export function Architect() {
     const simulation = trace?.trace[Math.min(shown - 1, (trace?.trace.length || 1) - 1)]?.label || '';
     const showExample = !p.mode && messages.length <= 1 && !interacting;
     const welcome = !p.mode && messages.length <= 2;
-    const hear = callerHear(p);
+    let hear: ReturnType<typeof callerHear> = [];
+    try {
+        hear = callerHear(p);
+    }
+    catch {
+        hear = [];
+    }
     const draftReady = !question && !typing && !busy && !suppressPrompt && !correcting && !welcome;
     const showHear = draftReady && canPreviewHear(p) && hear.some(row => row.kind !== 'note');
 

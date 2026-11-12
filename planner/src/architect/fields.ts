@@ -1,5 +1,5 @@
 import { days, type Plan } from '../config';
-import { applyHoursPreset } from '../flow';
+import { applyHoursPreset, suggestedGreeting } from '../flow';
 import { setRole, type Role } from '../team-state';
 import type { FieldCatalogEntry, FieldDef, FieldOperation, Scalar } from './types';
 export { updatesFromOwnerText, detectIntent, clinicianRouteAmbiguous, mergeInterpreterUpdates, specifiesUrgentScope } from './extract';
@@ -889,6 +889,8 @@ export const fields: FieldDef[] = [
     enumField('busy.exit', ['message', 'backup', 'assistant', 'undecided'], 'What happens after the queue wait. message is voicemail.', p => p.policy.queueExit, (p, value) => policy(p, { queueExit: value as Plan['policy']['queueExit'] }), 'busy'),
     enumField('beforeOpening', ['information', 'message', 'undecided'], 'How callers reach you before opening day. message is a callback request. Not the after-hours path.', p => p.policy.beforeOpening, (p, value) => {
         let next = policy(p, { beforeOpening: value as Plan['policy']['beforeOpening'] });
+        if (value === 'information' && !next.policy.beforeOpeningText?.trim())
+            next = policy(next, { beforeOpeningText: suggestedGreeting(next) });
         if (value === 'message' && !next.policy.beforeOpeningOwner) {
             const owner = next.after.owner || next.busy.owner;
             if (owner)
