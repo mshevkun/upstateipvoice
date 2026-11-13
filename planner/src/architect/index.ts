@@ -6,5 +6,5 @@ export { nextQuestion, questionById, composeAcknowledgement } from './questions'
 export { interpretTurn, chipTurn } from './turn';
 export { sceneFromPlan, headerChapter, chapterForQuestion, QUESTION_CHAPTER } from './scene-from-plan';
 export { callerHear, callerHearText, canPreviewHear } from './hear';
-export { plannerApiBase, readConversation, saveConversation, createRemoteSession, interpretRemote, persistRemotePlan, recordRemoteTurn, conversationKey } from './client';
+export { plannerApiBase, readConversation, saveConversation, clearConversation, createRemoteSession, interpretRemote, persistRemotePlan, recordRemoteTurn, conversationKey } from './client';
 export type { Chip, ConversationRecord, Fact, InterpreterResponse, InterpreterUpdate, MergeResult, NextQuestion, Scalar } from './types';

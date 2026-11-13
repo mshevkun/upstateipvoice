@@ -10,8 +10,9 @@ export default defineConfig(({ command }) => ({
       name: 'planner-index',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (req.url === '/planner' || req.url === '/planner/' || req.url === '/planner/index.html') {
-            req.url = '/planner/dev.html';
+          const [path, query] = (req.url || '').split('?');
+          if (path === '/planner' || path === '/planner/' || path === '/planner/index.html') {
+            req.url = '/planner/dev.html' + (query ? '?' + query : '');
           }
           next();
         });

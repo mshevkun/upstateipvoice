@@ -46,6 +46,17 @@ export function saveConversation(record: ConversationRecord) {
     catch { /* private browsing */ }
 }
 
+export function clearConversation() {
+    try {
+        localStorage.removeItem(conversationKey);
+    }
+    catch { /* private browsing */ }
+    try {
+        sessionStorage.removeItem(SESSION_KEY);
+    }
+    catch { /* private browsing */ }
+}
+
 export type InterpretRequest = {
     sessionId: string;
     clientMessageId: string;

@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Review } from './Review';
 import { Scene } from './ScenePanel';
 import { Note } from './components';
-import { read, commit, key, scenarios, simulate, type Plan } from './config';
+import { read, commit, initial, key, scenarios, simulate, type Plan } from './config';
 import { chapterIndex, chapters, help } from './flow';
 import {
-    callerHear, canPreviewHear, chapterForQuestion, chipTurn, createRemoteSession, emptyFacts, headerChapter, interpretRemote, interpretTurn, nextQuestion, questionById, updatesFromOwnerText,
+    callerHear, canPreviewHear, chapterForQuestion, chipTurn, clearConversation, createRemoteSession, emptyFacts, headerChapter, interpretRemote, interpretTurn, nextQuestion, questionById, updatesFromOwnerText,
     persistRemotePlan, readConversation, recordRemoteTurn, saveConversation, sceneFromPlan
 } from './architect/index';
 import type { Chip, ConversationRecord, Fact, InterpreterResponse, NextQuestion } from './architect/index';
@@ -144,6 +144,7 @@ export function Architect() {
     const [error, setError] = useState('');
     const [warning, setWarning] = useState(loaded.current.warning);
     const [reviewing, setReviewing] = useState(false);
+    const [restarting, setRestarting] = useState(false);
     const [correcting, setCorrecting] = useState<ChatMessage | null>(null);
     const [highlightId, setHighlightId] = useState<string | null>(null);
     const [notice, setNotice] = useState('');
@@ -152,7 +153,7 @@ export function Architect() {
     const [testPreset, setTestPreset] = useState('normal'), [customDate, setCustomDate] = useState(''), [customTime, setCustomTime] = useState('09:00');
     const [callerReason, setCallerReason] = useState(''), [callerLanguage, setCallerLanguage] = useState('');
     const [scenario, setScenario] = useState('normal'), [trace, setTrace] = useState<ReturnType<typeof simulate> | null>(null), [shown, setShown] = useState(0);
-    const log = useRef<HTMLDivElement>(null), generation = useRef(0), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const log = useRef<HTMLDivElement>(null), generation = useRef(0), epoch = useRef(0), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const skipAutoScroll = useRef(false);
     const pendingScroll = useRef<string | 'prompt' | null>(null);
@@ -236,6 +237,16 @@ export function Architect() {
         const id = requestAnimationFrame(() => scrollChatTo(target));
         return () => cancelAnimationFrame(id);
     }, [reviewing, messages]);
+    useEffect(() => {
+        if (!restarting)
+            return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape')
+                setRestarting(false);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [restarting]);
 
     function scrollChatTo(target: string | 'prompt') {
         const reduce = prefersReducedMotion();
@@ -304,6 +315,64 @@ export function Architect() {
         setRemoteRevision(revision);
     }
 
+    function restart() {
+        epoch.current += 1;
+        generation.current += 1;
+        if (timer.current)
+            clearTimeout(timer.current);
+        try {
+            localStorage.removeItem(key);
+            localStorage.removeItem('upstate.practice-plan.v1');
+        }
+        catch { /* private browsing */ }
+        clearConversation();
+        const fresh = initial();
+        loaded.current = { plan: fresh, warning: '' };
+        saved.current = null;
+        sessionIdRef.current = '';
+        remoteRevRef.current = 0;
+        setP(fresh);
+        setFacts(emptyFacts());
+        setFuture([]);
+        setMessages([{ id: 'greet', role: 'assistant', content: GREETING, questionId: null }]);
+        setSessionId('');
+        setRemoteRevision(0);
+        setInput('');
+        setBusy(false);
+        setTyping(false);
+        setPicked(null);
+        setLeaving(false);
+        setSuppressPrompt(false);
+        setHeldQuestion(null);
+        setFreshId(null);
+        setError('');
+        setWarning('');
+        setReviewing(false);
+        setRestarting(false);
+        setCorrecting(null);
+        setHighlightId(null);
+        setNotice('');
+        setPdfBusy(false);
+        setPaused(false);
+        setAssistantRequest('');
+        setHumanRequest(false);
+        setTestPreset('normal');
+        setCustomDate('');
+        setCustomTime('09:00');
+        setCallerReason('');
+        setCallerLanguage('');
+        setScenario('normal');
+        setTrace(null);
+        setShown(0);
+        skipAutoScroll.current = true;
+        pendingScroll.current = null;
+        requestAnimationFrame(() => {
+            autoSize(inputRef.current);
+            log.current?.scrollTo({ top: 0 });
+            inputRef.current?.focus();
+        });
+    }
+
     async function ensureSession(plan: Plan) {
         if (sessionIdRef.current)
             return { id: sessionIdRef.current, revision: remoteRevRef.current };
@@ -354,6 +423,7 @@ export function Architect() {
         const trimmed = text.trim();
         if (!trimmed || interacting)
             return;
+        const token = epoch.current;
         const targetQuestion = correctingQuestion || question;
         const userMsg: ChatMessage = { id: newId(), role: 'user', content: trimmed, questionId: targetQuestion?.id || null };
         setHeldQuestion(targetQuestion);
@@ -366,11 +436,15 @@ export function Architect() {
         setLeaving(true);
         setBusy(true);
         await wait(220);
+        if (epoch.current !== token)
+            return;
         setSuppressPrompt(true);
         setLeaving(false);
         setTyping(true);
         try {
             const remote = await ensureSession(p);
+            if (epoch.current !== token)
+                return;
             const result = await interpretRemote({
                 sessionId: remote.id,
                 clientMessageId: newId(),
@@ -382,12 +456,16 @@ export function Architect() {
                 history: [...messages, userMsg].filter(m => !isHearDump(m)),
                 timezone: p.hours.timezone
             });
+            if (epoch.current !== token)
+                return;
             if (typeof result.revision === 'number')
                 remoteRevRef.current = result.revision;
             const applied = applyInterpreter(p, facts, result.interpreter, trimmed, { question: targetQuestion, correcting: !!correcting });
             await syncPlan(applied.plan, applied.facts, applied.future, remote.id, remoteRevRef.current);
         }
         catch (err) {
+            if (epoch.current !== token)
+                return;
             if (trimmed === EXAMPLE) {
                 applyInterpreter(p, facts, EXAMPLE_INTERPRETER, trimmed, { question: targetQuestion, correcting: !!correcting });
                 return;
@@ -410,6 +488,8 @@ export function Architect() {
             setError(code === 'rate' ? 'Too many messages. Please wait a few minutes.' : 'The planning assistant is temporarily unavailable. You can still choose an option below or download a draft.');
         }
         finally {
+            if (epoch.current !== token)
+                return;
             setBusy(false);
             setTyping(false);
             setSuppressPrompt(false);
@@ -422,6 +502,7 @@ export function Architect() {
     async function choose(chip: Chip) {
         if (interacting)
             return;
+        const token = epoch.current;
         setError('');
         skipAutoScroll.current = false;
         setHeldQuestion(question);
@@ -432,8 +513,12 @@ export function Architect() {
         const userMsg: ChatMessage = { id: newId(), role: 'user', content: chip.label, questionId: question?.id || null };
         const assistant: ChatMessage = { id: newId(), role: 'assistant', content: merged.ack, questionId: merged.follow?.id || null };
         await wait(200);
+        if (epoch.current !== token)
+            return;
         setLeaving(true);
         await wait(280);
+        if (epoch.current !== token)
+            return;
         setFreshId(userMsg.id);
         setMessages(m => [...m, userMsg]);
         setPicked(null);
@@ -441,6 +526,8 @@ export function Architect() {
         setLeaving(false);
         setTyping(true);
         await wait(520);
+        if (epoch.current !== token)
+            return;
         setFreshId(assistant.id);
         setMessages(m => {
             const nextMessages = [...m, assistant];
@@ -453,7 +540,11 @@ export function Architect() {
         setCorrecting(null);
         try {
             const remote = await ensureSession(nextPlan);
+            if (epoch.current !== token)
+                return;
             const recorded = await recordRemoteTurn(remote.id, newId(), chip.label, merged.ack, question?.id || null);
+            if (epoch.current !== token)
+                return;
             if (typeof recorded === 'number')
                 remoteRevRef.current = recorded;
             await syncPlan(nextPlan, merged.facts, future, remote.id, remoteRevRef.current);
@@ -517,15 +608,28 @@ export function Architect() {
     const showHear = draftReady && canPreviewHear(p) && hear.some(row => row.kind !== 'note');
 
     return <div className={'planner architect' + (reviewing ? ' reviewing' : '')} data-step="architect" data-revision={p.revision}>
-        <header className="header">
-            <a className="brand" href="/tools.html" aria-label="Back to Free Tools"><img src="/assets/upstate-logo.svg" alt="Upstate IP Voice"/></a>
-            <button type="button" className="product-name" onClick={() => { setReviewing(false); setCorrecting(null); }}>Practice planner</button>
+        <header className={'header' + (restarting ? ' header-restarting' : '')}>
+            <div className="header-brand">
+                <a className="brand" href="/tools.html" aria-label="Back to Free Tools"><img src="/assets/upstate-logo.svg" alt="Upstate IP Voice"/></a>
+                <button type="button" className="product-name" onClick={() => { setReviewing(false); setCorrecting(null); setRestarting(false); }}>Practice planner</button>
+            </div>
             <nav aria-label="Planner chapters">
                 <ol className="chapters">{chapters.map((c, i) => <li key={c} className={i <= reached ? 'reached' : ''}>
                     <button aria-current={i === currentChapter ? 'step' : undefined} onClick={() => goChapter(i)}><i />{c}</button>
                 </li>)}</ol>
             </nav>
-            <a className="free-label" href="/tools.html">Free planning tool</a>
+            <div className="header-actions">
+                {restarting
+                    ? <>
+                        <p className="restart-copy" id="restart-copy">Start a new plan?</p>
+                        <button type="button" autoFocus onClick={() => setRestarting(false)}>Keep this</button>
+                        <button type="button" className="restart-confirm" aria-describedby="restart-copy" onClick={restart}>Start over</button>
+                    </>
+                    : <>
+                        <button type="button" className="header-restart" onClick={() => { setRestarting(true); setCorrecting(null); }}>Start over</button>
+                        <a className="free-label" href="/tools.html">Free planning tool</a>
+                    </>}
+            </div>
         </header>
         <main className="layout">
             <section className={'conversation architect-chat' + (welcome ? ' welcome' : '')} aria-label="Practice architect">
