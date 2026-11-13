@@ -128,6 +128,39 @@ export async function persistRemotePlan(sessionId: string, plan: Plan, expectedR
     return await res.json() as { revision: number };
 }
 
+export async function readRemoteSession(sessionId: string) {
+    const res = await fetch(plannerApiBase() + '/api/public/planner/sessions/' + encodeURIComponent(sessionId), { headers: { Accept: 'application/json' } });
+    if (res.status === 404)
+        throw new Error('not_found');
+    if (!res.ok)
+        throw new Error('session');
+    return await res.json() as {
+        id: string;
+        planId?: string;
+        revision: number;
+        plan?: Plan;
+        facts?: Record<string, Fact>;
+        messages?: ConversationRecord['messages'];
+        futureConsiderations?: string[];
+        lockedRevision?: number | null;
+        lockedChecksum?: string | null;
+        lockedAt?: string | null;
+    };
+}
+
+export async function lockRemoteSession(sessionId: string, revision: number, checksum: string) {
+    const res = await fetch(plannerApiBase() + '/api/public/planner/sessions/' + encodeURIComponent(sessionId) + '/lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revision, checksum })
+    });
+    if (res.status === 409)
+        throw new Error('conflict');
+    if (!res.ok)
+        throw new Error('lock');
+    return await res.json() as { lockedRevision: number; lockedChecksum: string };
+}
+
 export async function recordRemoteTurn(sessionId: string, clientMessageId: string, userText: string, assistantText: string, questionId: string | null) {
     try {
         const res = await fetch(plannerApiBase() + '/api/public/planner/sessions/' + encodeURIComponent(sessionId) + '/messages', {

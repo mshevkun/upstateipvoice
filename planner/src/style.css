@@ -146,23 +146,35 @@
 .blueprint-name{font-size:28px;letter-spacing:-.8px;margin:0;font-weight:600;line-height:1.2;color:#131313}
 .blueprint-dek{font-size:15px;color:#5c635d;margin:8px 0 0;line-height:1.45}
 .blueprint-status{font-size:13px;color:#8a847c;margin:8px 0 0;line-height:1.45}
-.blueprint-facts{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
-.blueprint-facts li{background:#fffcf8;border:1px solid #e4dfd8;border-radius:999px;padding:6px 12px;font-size:13px;line-height:1.35;color:#3d4740;transition:transform .18s cubic-bezier(.22,1,.36,1),border-color .18s,background .18s,box-shadow .18s}
-.blueprint-facts li:hover{background:#fff;border-color:#d7cdbf;transform:translateY(-1px);box-shadow:0 6px 16px #202b200c}
-.blueprint-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 18px}
-.blueprint-metrics div{background:#fffcf8;border:1px solid #e4dfd8;border-radius:14px;padding:14px 10px;text-align:center;transition:transform .18s cubic-bezier(.22,1,.36,1),border-color .18s,box-shadow .18s,background .18s}
+.blueprint-line{margin:12px 0 0;font-size:14px;line-height:1.5;color:#3d4740}
+.blueprint-buy{margin:0 0 20px}
+.blueprint-buy .decision-kicker{margin:0 0 10px}
+.blueprint-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0}
+.blueprint-metrics div{background:#fffcf8;border:1px solid #e4dfd8;border-radius:16px;padding:16px 10px 14px;text-align:center;transition:transform .18s cubic-bezier(.22,1,.36,1),border-color .18s,box-shadow .18s,background .18s}
+.blueprint-metrics div.is-known{background:#fff;border-color:#d7cdbf}
 .blueprint-metrics div:hover{background:#fff;border-color:#d7cdbf;transform:translateY(-2px);box-shadow:0 10px 22px #202b2010}
-.blueprint-metrics strong{display:block;font-size:26px;letter-spacing:-1px;font-weight:600;color:#131313}
-.blueprint-metrics span{display:block;margin-top:4px;font-size:12px;color:#6d746c;line-height:1.3}
-.blueprint-open{background:#fffcf8;border:1px solid #e4dfd8;border-radius:16px;padding:18px 18px 8px;margin:20px 0 0}
-.blueprint-open h3{font-size:18px;letter-spacing:-.4px;margin:0 0 4px;font-weight:600}
+.blueprint-metrics strong{display:block;font-size:32px;letter-spacing:-1.2px;font-weight:650;color:#131313;font-variant-numeric:tabular-nums;line-height:1}
+.blueprint-metrics span{display:block;margin-top:8px;font-size:12px;font-weight:550;color:#3d4740;line-height:1.3}
+.blueprint-metrics small{display:block;margin-top:4px;font-size:11px;color:#6d746c;line-height:1.35}
+.blueprint-buy-note{margin:10px 0 0;font-size:13px;line-height:1.45;color:#6d746c}
+.blueprint-open{background:#fffcf8;border:1px solid #e4dfd8;border-radius:16px;padding:4px 18px 8px;margin:20px 0 0}
+.blueprint-open>summary{list-style:none;cursor:pointer;padding:14px 28px 10px 0;position:relative}
+.blueprint-open>summary::-webkit-details-marker{display:none}
+.blueprint-open>summary:after{content:'';position:absolute;right:2px;top:28px;width:8px;height:8px;border-right:1.5px solid #8a847c;border-bottom:1.5px solid #8a847c;transform:rotate(45deg);transition:transform .18s cubic-bezier(.22,1,.36,1)}
+.blueprint-open[open]>summary:after{transform:rotate(-135deg);top:32px}
+.blueprint-open>summary:hover h3{color:#131313}
+.blueprint-open h3{font-size:16px;letter-spacing:-.3px;margin:0;font-weight:600}
+.blueprint-open .decision-kicker{margin:0 0 4px}
 .blueprint-more{font-size:13px;color:#6d746c;margin:8px 0 10px}
-.blueprint-actions{display:grid;gap:8px;margin:2px 0 0;max-width:28rem}
+.blueprint-actions{display:grid;gap:10px;margin:2px 0 0;max-width:32rem}
+.blueprint-book{width:100%;min-height:52px;border:1px solid #426e69;background:#426e69;color:#fff;border-radius:14px;font-size:16px;font-weight:650;letter-spacing:-.2px;display:inline-flex;align-items:center;justify-content:center;padding:14px 18px;text-decoration:none;transition:transform .18s cubic-bezier(.22,1,.36,1),background .18s,box-shadow .18s,color .18s}
+.blueprint-book:hover{background:#355a56;color:#fff;transform:translateY(-2px);box-shadow:0 10px 22px #202b2016}
+.blueprint-book:active{transform:scale(.97) translateY(0);box-shadow:none}
 .blueprint-download{width:100%;min-height:48px;border:1px solid #131313;background:#131313;color:#fff;border-radius:14px;font-size:15px;font-weight:550;letter-spacing:-.2px;display:inline-flex;align-items:center;justify-content:center;padding:13px 16px;transition:transform .18s cubic-bezier(.22,1,.36,1),background .18s,box-shadow .18s}
 .blueprint-download:hover:not(:disabled){background:#303631;transform:translateY(-2px);box-shadow:0 10px 22px #202b2016}
 .blueprint-download:active:not(:disabled){transform:scale(.97) translateY(0);box-shadow:none}
 .blueprint-download:disabled{background:#d8d3cc;border-color:#d8d3cc;color:#fff}
-.blueprint-aside{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:2px}
+.blueprint-aside{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:2px}
 .blueprint-aside button,.blueprint-aside a{border:0;background:none;color:#6d746c;font-size:14px;font-weight:500;min-height:36px;padding:6px 2px;text-decoration:none;display:inline-flex;align-items:center}
 .blueprint-aside button:hover,.blueprint-aside a:hover{color:#131313;text-decoration:underline;text-underline-offset:3px}
 .blueprint-aside .is-open,.blueprint-aside [aria-pressed="true"]{color:#131313;font-weight:600}
@@ -287,17 +299,13 @@
 .composer-shell.has-text .composer-send:not(:disabled):hover{background:#303631;transform:scale(1.05)}
 .composer-shell.has-text .composer-send:not(:disabled):active{transform:scale(.92)}
 .architect .blueprint-head{animation:dock-in .48s cubic-bezier(.22,1,.36,1) both}
-.architect .blueprint-facts li{animation:chip-in .42s cubic-bezier(.22,1,.36,1) both}
-.architect .blueprint-facts li:nth-child(1){animation-delay:.04s}
-.architect .blueprint-facts li:nth-child(2){animation-delay:.07s}
-.architect .blueprint-facts li:nth-child(3){animation-delay:.1s}
-.architect .blueprint-facts li:nth-child(4){animation-delay:.13s}
-.architect .blueprint-facts li:nth-child(5){animation-delay:.16s}
-.architect .blueprint-facts li:nth-child(6){animation-delay:.19s}
-.architect .blueprint-facts li:nth-child(n+7){animation-delay:.22s}
-.architect .blueprint-metrics{animation:dock-in .48s cubic-bezier(.22,1,.36,1) .08s both}
-.architect .blueprint-open{animation:dock-in .48s cubic-bezier(.22,1,.36,1) .12s both}
-.architect .blueprint-actions{animation:dock-in .48s cubic-bezier(.22,1,.36,1) .16s both}
+.architect .blueprint-buy{animation:dock-in .48s cubic-bezier(.22,1,.36,1) .06s both}
+.architect .blueprint-metrics div{animation:chip-in .42s cubic-bezier(.22,1,.36,1) both}
+.architect .blueprint-metrics div:nth-child(1){animation-delay:.08s}
+.architect .blueprint-metrics div:nth-child(2){animation-delay:.12s}
+.architect .blueprint-metrics div:nth-child(3){animation-delay:.16s}
+.architect .blueprint-open{animation:dock-in .48s cubic-bezier(.22,1,.36,1) .2s both}
+.architect .blueprint-actions{animation:dock-in .48s cubic-bezier(.22,1,.36,1) .12s both}
 .architect .blueprint-panel{animation:dock-in .42s cubic-bezier(.22,1,.36,1) both}
 .architect-review{padding:24px 32px 40px;background:transparent}
 .review-back{border:0;background:none;color:#6d746c;font-size:13px;font-weight:500;padding:0 0 16px;min-height:32px;text-align:left;transition:color .16s}
@@ -310,13 +318,14 @@
 .architect .branch-reason{color:#6d746c!important;font-style:normal}
 .architect .blueprint .field input,.architect .blueprint .field select,.architect .blueprint .field textarea{background:#fffcf8;border-color:#e4dfd8;border-radius:12px}
 .architect .blueprint .notice{background:#fffcf8;border:1px solid #e4dfd8;color:#3d4740;border-radius:14px;padding:12px 14px;margin:16px 0 0}
-.architect .blueprint-download:focus-visible,.architect .blueprint-secondary:focus-visible,.architect .blueprint-presets button:focus-visible,.architect .review-back:focus-visible{outline:none;box-shadow:inset 0 0 0 1px #131313}
+.architect .blueprint-download:focus-visible,.architect .blueprint-book:focus-visible,.architect .blueprint-secondary:focus-visible,.architect .blueprint-presets button:focus-visible,.architect .review-back:focus-visible{outline:none;box-shadow:inset 0 0 0 1px #131313}
 .decision-kicker{margin:0 0 6px;font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:#8a847c}
 .decision-list{list-style:none;margin:10px 0 0;padding:0}
 .decision-list li{padding:12px 4px;margin:0 -4px;border-top:1px solid #eee9e2;border-radius:8px;transition:background .18s}
 .decision-list li:hover{background:#fff}
 .decision-list li:first-child{border-top:0}
 .decision-list strong{display:block;font-size:14px;font-weight:600;letter-spacing:-.2px;line-height:1.35;color:#131313}
+.blueprint-open .decision-list{margin:0 0 6px}
 .decision-list small{display:block;margin-top:4px;font-size:13px;line-height:1.45;color:#735423}
 .architect .decision-list small{color:#6d746c}
 .architect .impl-block{border:0;border-top:1px solid #e4dfd8}
@@ -378,5 +387,29 @@
 .architect .header-actions .header-restart{font-size:12px;min-height:30px;padding:0 11px}
 .architect .header-restarting .product-name,.architect .header-restarting .restart-copy{display:none}
 .architect .header-actions .restart-confirm{min-height:30px;padding:0 12px;font-size:12px}
+}
+.blueprint-column{display:flex;flex-direction:column;min-height:0;background:#f2f1ed;border-left:1px solid #e4dfd8;overflow:hidden;position:relative}
+.scene-illustration-caption{margin:10px 16px 0;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#6d746c}
+.blueprint-scene{position:relative;flex:0 0 38%;min-height:180px}
+.blueprint-scene .scene-panel{position:absolute;inset:0;height:auto;border:0}
+.blueprint-rail{flex:1;overflow:auto;padding:16px 20px 28px;background:#fffcf8;border-top:1px solid #e4dfd8}
+.blueprint-kicker{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6d746c}
+.blueprint-name{margin:0 0 4px;font-size:22px;letter-spacing:-.4px}
+.blueprint-meta,.blueprint-id,.blueprint-hours,.blueprint-privacy{margin:0 0 8px;font-size:13px;color:#5c635d;line-height:1.45}
+.blueprint-id{font-variant-numeric:tabular-nums}
+.blueprint-label{margin:0 0 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6d746c}
+.blueprint-order,.blueprint-hear,.blueprint-open{margin:14px 0}
+.blueprint-hear ol,.blueprint-open ul{margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.45;color:#3d4740}
+.blueprint-hear li{margin:0 0 8px}
+.blueprint-hint{margin:6px 0 0;font-size:12px;color:#6d746c}
+.blueprint-actions{display:flex;flex-direction:column;gap:8px;margin:16px 0}
+.blueprint-sheet-toggle{display:none}
+@media(max-width:850px){
+.architect .blueprint-column{order:-1;height:auto;max-height:none;border-left:0;border-bottom:1px solid #e4dfd8}
+.architect .blueprint-scene{display:none}
+.architect .blueprint-sheet-toggle{display:block;position:sticky;bottom:0;z-index:4;width:100%;border:0;border-top:1px solid #e4dfd8;background:#fffcf8;padding:12px 16px calc(12px + env(safe-area-inset-bottom));font-weight:550}
+.architect .blueprint-rail{display:none}
+.architect .blueprint-column.sheet-open .blueprint-rail{display:block;max-height:70svh}
+.architect .blueprint-column.sheet-open .blueprint-scene{display:block;flex-basis:160px}
 }
 

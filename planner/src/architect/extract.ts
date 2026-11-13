@@ -1,3 +1,4 @@
+import { parseOwnerText, valueGroundedInText, type Precision } from './parse';
 import type { Fact, InterpreterIntent, InterpreterUpdate, NextQuestion, Scalar } from './types';
 
 const WORD_N: Record<string, number> = {
@@ -9,22 +10,6 @@ const CITIES = [
     'kingston', 'poughkeepsie', 'newburgh', 'middletown', 'albany', 'troy',
     'new paltz', 'beacon', 'hudson', 'catskill', 'new york'
 ];
-
-const HINT_WINS = new Set([
-    'mode', 'specialty', 'cityState', 'policy.rooms',
-    'teams.reception.count', 'teams.clinical.count', 'teams.administration.count',
-    'billing.performed_by', 'first.kind', 'first.team',
-    'busy.kind', 'busy.wait', 'after.kind',
-    'urgent.kind', 'urgent.team', 'urgent.coverage', 'urgent.scope', 'urgent.pending_route',
-    'hours.preset', 'hours.weekdays_start', 'hours.weekdays_end', 'hours.lunch', 'hours.weekdays_break_start', 'hours.weekdays_break_end',
-    'opening.construction',
-    'opening.date', 'opening.precision', 'opening.numbers', 'opening.pms',
-    'languages.decision', 'languages.spanish', 'policy.ring', 'followup',
-    'devices.reception.desk_count', 'devices.reception.sharing', 'devices.work_mobile',
-    'messages.owner', 'beforeOpening',
-    'continuity.backupRouting', 'current.monthly',
-    'current.contract', 'policy.notes', 'name'
-]);
 
 export function fold(value: string) {
     return value.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, ' ').trim();
@@ -58,7 +43,7 @@ export function specifiesUrgentScope(text: string): 'urgent_only' | 'all_calls' 
     const t = fold(text);
     if (/do not set up|have not figured|havent figured|any urgent path yet|not figured out on-call|leave on-call blank|leave urgent blank/.test(t))
         return '';
-    if (/not every call|not all (incoming )?calls/.test(t))
+    if (/not every call|not all (incoming )?calls|regular calls do not|i only mean emergencies|only true emergencies|emergencies can reach|regular (daytime )?calls stay/.test(t))
         return 'urgent_only';
     if (/every (incoming )?call|all (incoming )?calls/.test(t) && /doctor|clinician|on-call|dentist/.test(t) && !/robot|ai |only (urgent|emergenc)|not every/.test(t))
         return 'all_calls';
@@ -91,8 +76,8 @@ function parseN(raw: string) {
     return null;
 }
 
-function make(field_id: string, value: Scalar, evidence: string): InterpreterUpdate {
-    return { field_id, operation: 'set', value, evidence, needs_confirmation: false };
+function make(field_id: string, value: Scalar, evidence: string, precision: Precision = 'heuristic'): InterpreterUpdate {
+    return { field_id, operation: 'set', value, evidence, needs_confirmation: false, precision };
 }
 
 export function updatesFromOwnerText(text: string, question: NextQuestion | null, facts: Record<string, Fact> = {}): InterpreterUpdate[] {
@@ -100,26 +85,37 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
     const t = fold(text);
     const correcting = isCorrection(text);
     const updates: InterpreterUpdate[] = [];
-    const add = (field_id: string, value: Scalar) => {
+    const add = (field_id: string, value: Scalar, precision: Precision = 'heuristic') => {
         if (value == null || value === '')
             return;
         if (updates.some(u => u.field_id === field_id))
             return;
         const status = facts[field_id]?.status;
-        if (status === 'conflicting' && !correcting)
+        if (status === 'conflicting' && !correcting && precision !== 'exact')
             return;
-        if (status === 'confirmed' && !correcting)
+        if (status === 'confirmed' && !correcting && (precision !== 'exact' || sameFieldValue(facts[field_id]?.value, value)))
             return;
-        updates.push(make(field_id, value, evidence));
+        updates.push(make(field_id, value, evidence, precision));
     };
+    for (const hint of parseOwnerText(text, facts)) {
+        if (hint.operation === 'skip') {
+            if (!updates.some(u => u.field_id === hint.field_id))
+                updates.push({ field_id: hint.field_id, operation: 'skip', value: null, evidence: hint.span, needs_confirmation: false, precision: hint.precision });
+            continue;
+        }
+        add(hint.field_id, hint.value, hint.precision);
+    }
 
     if (question) {
         for (const option of question.options) {
             if (option.operation !== 'set' || option.value == null)
                 continue;
             const label = fold(option.label);
-            if (label.length > 4 && t.includes(label))
+            if (label.length > 4 && t.includes(label)) {
+                if (option.field_id === 'first.kind' && option.value === 'assistant' && /later|not at launch|when we (are |get )?bigger|next year|might add ai/.test(t) && !/\bat launch\b/.test(t))
+                    continue;
                 add(option.field_id, option.value);
+            }
         }
     }
 
@@ -129,9 +125,9 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
         add('specialty', 'Eye care');
 
     const notSecond = /not a second|the only office|scratch the old|kingston was a mistake/.test(t);
-    if (/\b(adding|second (office|location)|another (office|location)|ninth office|opening a ninth|opening another|already have (one|a|\d+) .{0,40}office|two dental offices|keep everything under one roof|eight offices already)\b/.test(t) && !notSecond)
+    if (/\b(adding|second (office|location)|another (office|location)|ninth office|opening a ninth|opening another|already have (one|a|\d+) .{0,40}office|two dental offices|keep everything under one roof|eight offices already)\b/.test(t) && !notSecond && !/another new (office|location)/.test(t))
         add('mode', 'adding');
-    else if (/\b(thirty years|had this .{0,24}office|weve had this|for (twenty|\d+|many) years|existing (office|setup|phones|dental)|bought an older|phones are just terrible|just fix (them|the phones)|moving across town|i bought|relocating)\b/.test(t) && !notSecond)
+    else if (/\b(thirty years|had this .{0,24}office|weve had this|for (twenty|\d+|many) years|existing (office|setup|phones|dental)|bought an older|phones are just terrible|just fix (them|the phones)|moving across town|moving (our existing |the dental office )?across|i bought|relocating|same practice|same office continuing)\b/.test(t))
         add('mode', 'improving');
     else if (/\b(existing .{0,24}office|this office is already open|office i already have|same office continuing)\b/.test(t) && !notSecond)
         add('mode', 'improving');
@@ -140,16 +136,22 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
 
     const expandingCity = /another office|second location|overflow|ninth office|already have|adding /.test(t) && !notSecond;
     const picked = pickCities(t);
-    if (picked.primary) {
-        const prior = String(facts.cityState?.value || '').toLowerCase();
-        if (expandingCity && facts.cityState?.status === 'confirmed' && prior && !prior.startsWith(picked.primary.toLowerCase()))
-            add('policy.notes', [picked.primary, ...picked.also].join('; '));
-        else {
-            add('cityState', picked.primary);
-            if (picked.also.length)
-                add('policy.notes', picked.also.join('; '));
+    if (!updates.some(u => u.field_id === 'cityState')) {
+        if (picked.primary) {
+            const prior = String(facts.cityState?.value || '').toLowerCase();
+            if (expandingCity && facts.cityState?.status === 'confirmed' && prior && !prior.startsWith(picked.primary.toLowerCase()))
+                add('policy.notes', [picked.primary, ...picked.also].join('; '));
+            else {
+                add('cityState', picked.primary, 'heuristic');
+                if (picked.also.length)
+                    add('policy.notes', picked.also.join('; '));
+            }
         }
     }
+    else if (picked.also.length)
+        add('policy.notes', picked.also.join('; '));
+    if (picked.primary && picked.also.length && !updates.some(u => u.field_id === 'policy.notes'))
+        add('policy.notes', picked.also.join('; '));
 
     const rooms = t.match(/(\d+|one|two|three|four|five|six|seven|eight) (?:treatment |exam |dental )?(rooms?|chairs?|operatories|operatory)/);
     if (rooms) {
@@ -160,14 +162,16 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
 
     const openDay = t.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/);
     const openMonth = t.match(/actually (january|february|march|april|may|june|july|august|september|october|november|december)/)
-        || t.match(/(?:open(?:ing)?(?: until| in)?|aiming for|opening in) (january|february|march|april|may|june|july|august|september|october|november|december)/)
+        || t.match(/(?:do not open until|open until) (january|february|march|april|may|june|july|august|september|october|november|december)/)
+        || (/march is the opening/.test(t) ? ['march', 'march'] as unknown as RegExpMatchArray : null)
+        || t.match(/(?:aiming for|opening in|opens in) (january|february|march|april|may|june|july|august|september|october|november|december)/)
         || t.match(/until (january|february|march|april|may|june|july|august|september|october|november|december)/)
         || (correcting ? t.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/) : null);
     if (openDay && /open/.test(t)) {
         add('opening.date', openDay[1] + ' ' + openDay[2] + (openDay[3] ? ' ' + openDay[3] : ''));
         add('opening.precision', 'day');
     }
-    else if (openMonth) {
+    else if (openMonth && !/already open in|pretend.{0,40}open in/.test(t)) {
         add('opening.date', openMonth[1]);
         add('opening.precision', 'month');
     }
@@ -188,20 +192,24 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
         add('name', named[1].trim());
 
     extractStaff(t, facts, correcting, add, (id) => {
-        if (updates.some(u => u.field_id === id))
-            return;
+        const i = updates.findIndex(u => u.field_id === id);
+        if (i >= 0)
+            updates.splice(i, 1);
         updates.push({ field_id: id, operation: 'skip', value: null, evidence, needs_confirmation: false });
     });
-    extractRouting(t, facts, add);
-    extractHours(t, add);
+    extractRouting(t, facts, add, id => updates.some(u => u.field_id === id));
+    if (!updates.some(u => /^hours\.(Monday|Tuesday|Wednesday|Thursday|Friday)\.(start|end)$/.test(u.field_id)))
+        extractHours(t, add);
     extractDevices(t, add);
 
-    if (/speak spanish|spanish-speaking|patients speak spanish|maria .{0,40}spanish/.test(t))
+    if (/speak spanish|spanish-speaking|patients speak spanish|maria .{0,40}spanish/.test(t) && !/do not need spanish|english is enough|english only/.test(t))
         add('languages.spanish', true);
     else if (/\benglish is enough|do not need spanish|english only\b/.test(t) && facts['languages.spanish']?.status !== 'confirmed')
         add('languages.decision', 'none');
 
-    if (/no texts|no texting|phone messages only|no text follow-up|no text follow up/.test(t))
+    if (/yes, include text follow-up|include text follow-up|text follow-up so/.test(t))
+        add('followup', 'yes');
+    else if (/no texts|no texting|phone messages only|no text follow-up|no text follow up|no text reminders|no extra texting|no text program/.test(t))
         add('followup', 'skip');
     if (/three[- ]year|36 month|thirty[- ]six month/.test(t))
         add('current.contract', 'three years');
@@ -359,7 +367,7 @@ function extractStaff(t: string, facts: Record<string, Fact>, correcting: boolea
         add('teams.administration.count', 1);
 
     const clinicians = t.match(/so (\d+|one|two|three|four|five)(?: clinicians)?/) || t.match(/all (\d+|four) of us are clinical/) || t.match(/clinical count is (\d+|one|two|three|four)/) || t.match(/(\d+|one|two|three|four|five) clinicians/);
-    const dentists = t.match(/(\d+|one|two|three|four|five|a) dentists?/);
+    const dentists = t.match(/\b(\d+|one|two|three|four|five) dentists?\b/);
     const assistants = t.match(/(\d+|one|two|three|four|five) (?:dental )?assistants?/);
     const hygienists = t.match(/(\d+|one|two|three|four|five) hygienists?/) || (/me plus two hygienists/.test(t) ? ['two hygienists', 'two'] as const : null);
     if (clinicians && /clinical|hygienist|dentist|assistant/.test(t))
@@ -379,14 +387,18 @@ function extractStaff(t: string, facts: Record<string, Fact>, correcting: boolea
         add('teams.reception.count', 3);
 }
 
-function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string, value: Scalar) => void) {
+function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string, value: Scalar, precision?: Precision) => void, has: (id: string) => boolean) {
     const scope = specifiesUrgentScope(t);
     if (scope)
         add('urgent.scope', scope);
 
     if (/ai thing where patients call|ai receptionist at launch|puts them right on the schedule|receptionist answers only if the ai/.test(t) && !/when they'?re slammed|dont want a robot|ai .{0,50}later/.test(t))
         add('first.kind', 'assistant');
-    else if (/regular calls go to reception|reception first|front desk (answers|first|handles)|the girls at the front|one main receptionist|the receptionist answers|receptionist answers|person picking up|none of that press one|staff should answer|i don'?t want a robot picking up every call|just answer the phone|ring immediately|she answers/.test(t)) {
+    else if (/calls go to the doctor/.test(t) && /every call|while the office is open/.test(t) && !/she does not answer first|receptionist is not the first/.test(t)) {
+        add('first.kind', 'human');
+        add('first.team', 'clinical');
+    }
+    else if (/regular calls go to reception|reception first|front desk (answers|first|handles)|front desk person answers|receptionist(?:s)? (?:should )?answer first|\bperson first\b|whoever is at the front|someone answers all|a person at the front|a person answers|the girls at the front|one main receptionist|the receptionist answers(?! only if)|person picking up|none of that press one|staff should answer|i don'?t want a robot picking up every call|just answer the phone|answers the phone|ring immediately|she answers|will answer the calls|keep a person answering|albany should answer first/.test(t) && !/who answers first|not deciding who answers|receptionist is not the first|she does not answer first/.test(t)) {
         add('first.kind', 'human');
         add('first.team', 'reception');
     }
@@ -405,7 +417,7 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
     if (/live answering service/.test(t))
         add('after.kind', 'service');
 
-    if (/take a message|leave (a message|their information)|leave a (message|voicemail)|voicemail is fine|just voicemail|then voicemail|\bvoicemail\b/.test(t) && !/never want a voicemail/.test(t)) {
+    if (/take a message|leave (a message|their information)|leave a (message|voicemail)|voicemail is fine|just voicemail|then voicemail|\bvoicemail\b/.test(t) && !/never want a voicemail|no after-?hours voicemail/.test(t)) {
         if (/then (take a )?voicemail/.test(t) && (/wait|minute|second/.test(t))) {
             add('busy.kind', 'queue');
             add('busy.exit', 'message');
@@ -415,7 +427,7 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
         const askingAfter = /what.?s best|do i need (ai|an answering)|dont know whether|which is better/.test(t) && /after hours/.test(t);
         if ((/after (hours|five|5|closing|we close)|when they call after|just voicemail/.test(t)) && !/live answering service/.test(t) && !askingAfter)
             add('after.kind', 'message');
-        const openHoursUnanswered = /if she is already|if nobody|nobody answers|when she'?s busy|if she is busy|already on a call|with a patient|people hang up|just rings/.test(t);
+        const openHoursUnanswered = /if she is already|if nobody|nobody answers|when she'?s busy|if she is busy|already on a call|with a patient|people hang up|just rings|if she misses|misses the call|busy time is voicemail/.test(t);
         const afterHoursOnly = /after (hours|five|5|closing|we close)|when they call after/.test(t) && !openHoursUnanswered && !askingAfter;
         const beforeOpenTalk = /before (the office |we )?open|before opening|not open yet/.test(t) && !afterHoursOnly;
         if (openHoursUnanswered || (/take a message|take a voicemail/.test(t) && !afterHoursOnly && !askingAfter && !beforeOpenTalk))
@@ -438,7 +450,7 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
     if (wait != null)
         add('busy.wait', wait);
 
-    if (/leave it for the receptionist|receptionist checks|girls check|front desk checks|the girls (listen|check)/.test(t)) {
+    if (/leave it for the receptionist|receptionist checks|girls check|front desk checks|the girls (listen|check)|she listens|voicemail for her|voicemail for the receptionist|voicemail for that receptionist|same front desk owns|belongs to the front desk|receptionist owns both/.test(t)) {
         add('busy.owner', 'reception');
         add('after.owner', 'reception');
         add('messages.owner', 'reception');
@@ -448,15 +460,19 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
         add('busy.owner', 'clinical');
         add('after.owner', 'clinical');
     }
-    if (/before (the office |we )?open|before opening day|not open yet|while were building/.test(t) || /advertis/.test(t) && /number/.test(t)) {
-        if (/recording|announcement|say we are not open/.test(t))
-            add('beforeOpening', 'information');
-        else if (/take a message|callback|leave (a message|their information)/.test(t))
-            add('beforeOpening', 'message');
+    if (!has('beforeOpening') && (/before (the office |we )?open|before opening day|not open yet|while were building/.test(t) || /advertis/.test(t) && /number/.test(t))) {
+        if (/callback|call back|take a message|leave (a message|their information)/.test(t))
+            add('beforeOpening', 'message', 'exact');
+        else if (/recording|announcement|say we are not open/.test(t))
+            add('beforeOpening', 'information', 'heuristic');
     }
     if (/internet is not in|internet is not ready|no internet yet/.test(t))
         add('opening.internet', 'unknown');
-    if (/site survey|needs a survey|network .{0,20}survey/.test(t))
+    else if (/internet is already|internet is in the suite/.test(t))
+        add('opening.internet', 'known');
+    else if (/survey the site.{0,40}internet|promises the internet will work/.test(t))
+        add('opening.internet', 'survey');
+    if (/site survey for the network|network .{0,20}survey/.test(t))
         add('opening.network', 'survey');
     if (/drywall|build-out|build out|wiring is not done|still building|construction site|we are not open|not open yet/.test(t))
         add('opening.construction', 'build-out');
@@ -484,7 +500,7 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
 }
 
 function extractHours(t: string, add: (id: string, value: Scalar) => void) {
-    if (/do not guess|not saying nine to five|not answering hours|do not mash the hours|do not merge those hours|hours are different|leave hours blank|do not use one schedule|do not invent one weekday/.test(t))
+    if (/do not guess|not saying nine to five|not answering hours|do not mash the hours|do not merge those hours|hours are different|leave hours blank|do not use one schedule|do not invent (one weekday|nine to five)|do not write one (shared |closing )?|skip hours/.test(t))
         return;
     const ranges = (t.match(/\b(eight|nine|ten|\d+) to (one|two|three|four|five|six|seven|\d+)/g) || [])
         .filter(r => !(/lunch/.test(t) && /^(12|1|one) to (1|2|one|two)$/.test(r)));
@@ -516,24 +532,21 @@ function extractHours(t: string, add: (id: string, value: Scalar) => void) {
     }
     if (/closes at four instead of six|closes at 4/.test(t))
         add('hours.weekdays_end', '16:00');
-    const lunchTimes = t.match(/(?:lunch|noon).{0,24}(\d+|twelve|noon|one|1)\s*(?:to|-|until)\s*(\d+|one|two|1|2)/)
-        || t.match(/(\d+|twelve|noon)\s*(?:to|-|until)\s*(\d+|one|1).{0,12}lunch/);
-    if (/cover(s|ed)? (the )?phones during lunch|stay open (at|during) lunch|someone stays .{0,20}(desk|phones) .{0,12}lunch|stagger(ed)? lunch|front desk covers .{0,20}lunch/.test(t))
-        add('hours.lunch', 'covered');
-    else if (/close(d|s)? (the )?(phones? )?(for|at) lunch|phones? (are |go )?closed (for |at )?lunch|closed for lunch|lunch (we |phones )?(close|voicemail)|no one .{0,12}lunch/.test(t)) {
-        add('hours.lunch', 'closed');
-        if (lunchTimes) {
-            const start = lunchTimes[1] === 'noon' || lunchTimes[1] === 'twelve' || lunchTimes[1] === '12' ? '12:00' : lunchTimes[1] === '1' || lunchTimes[1] === 'one' ? '13:00' : null;
-            const end = lunchTimes[2] === 'one' || lunchTimes[2] === '1' ? '13:00' : lunchTimes[2] === 'two' || lunchTimes[2] === '2' ? '14:00' : null;
-            if (start)
-                add('hours.weekdays_break_start', start);
-            if (end)
-                add('hours.weekdays_break_end', end);
-        }
-    }
 }
 
 function extractDevices(t: string, add: (id: string, value: Scalar) => void) {
+    const oneFront = t.match(/one desk phone(?: at the front(?: desk)?)?/);
+    const threeFront = t.match(/three desk phones at the front/);
+    if (threeFront)
+        add('devices.reception.desk_count', 3);
+    else if (oneFront && !/need another/.test(t))
+        add('devices.reception.desk_count', 1);
+    const twoFrontPhones = t.match(/two desk phones at the front/);
+    const fourFrontPhones = t.match(/four desk phones/);
+    if (twoFrontPhones)
+        add('devices.reception.desk_count', 2);
+    if (fourFrontPhones)
+        add('devices.reception.desk_count', 4);
     if (/one desk phone already, need another|need another/.test(t) && /desk phone/.test(t))
         add('devices.reception.desk_count', 2);
     if (/three phones that all ring|three independently/.test(t))
@@ -546,6 +559,8 @@ function extractDevices(t: string, add: (id: string, value: Scalar) => void) {
 
 function waitSeconds(t: string) {
     if (/\ba minute\b|one minute/.test(t))
+        return 60;
+    if (/\bsixty seconds?\b|sixty-second/.test(t))
         return 60;
     const named: Record<string, number> = {
         'fifteen second': 15,
@@ -562,6 +577,41 @@ function waitSeconds(t: string) {
     return m ? Number(m[1]) : null;
 }
 
+function productLawKeeps(u: InterpreterUpdate, extra: InterpreterUpdate[], folded: string, text: string, facts: Record<string, Fact>) {
+    if (u.operation === 'skip' && !/\b(skip|not sure|dont know|do not know|not now|leave (that|it) blank)\b/.test(folded))
+        return false;
+    if (clinicianRouteAmbiguous(text, facts)) {
+        if (u.field_id === 'urgent.kind' || u.field_id === 'first.kind' || u.field_id === 'first.team')
+            return false;
+    }
+    if (u.field_id === 'teams.administration.count' && !extra.some(h => h.field_id === 'teams.administration.count')) {
+        const mentionedAdmin = /office manager|administrat|pay the bills|manage the practice|run the (place|office|practice)|handles insurance|does the books/.test(folded);
+        if (!mentionedAdmin)
+            return false;
+    }
+    if (u.field_id === 'after.kind' && extra.some(h => h.field_id === 'beforeOpening') && /before (we |the office )?open|not open yet|advertis/.test(folded) && !/after hours|when (we |the office )?clos/.test(folded))
+        return false;
+    if ((u.field_id === 'after.kind' || u.field_id === 'first.kind' || u.field_id === 'busy.kind') && u.value === 'assistant') {
+        const launchNow = /at launch|from day one|answers first|ai receptionist at launch/.test(folded);
+        const asking = /what.?s best|do i need ai|dont know whether|later|when we (are |get )?bigger|not at launch|not now/.test(folded);
+        if (asking && !launchNow)
+            return false;
+    }
+    if (u.field_id === 'busy.kind' && /after (hours|five|5|closing|we close)/.test(folded) && !/if nobody|nobody answers|when she'?s busy|already on a call|\bbusy\b/.test(folded) && !extra.some(h => h.field_id === 'busy.kind'))
+        return false;
+    if (u.field_id === 'teams.reception.count' && extra.some(h => h.field_id === 'teams.reception.count' && h.operation === 'skip'))
+        return false;
+    return true;
+}
+
+function sameFieldValue(a: Scalar, b: Scalar) {
+    if (a == null && b == null)
+        return true;
+    if (typeof a === 'string' && typeof b === 'string')
+        return fold(a) === fold(b) || fold(a).startsWith(fold(b)) || fold(b).startsWith(fold(a));
+    return a === b || String(a) === String(b);
+}
+
 export function mergeInterpreterUpdates(
     groqUpdates: InterpreterUpdate[],
     hinted: InterpreterUpdate[],
@@ -571,64 +621,33 @@ export function mergeInterpreterUpdates(
     const extra = [...hinted];
     const folded = fold(text);
     if (clinicianRouteAmbiguous(text, facts) && !extra.some(u => u.field_id === 'urgent.pending_route' || u.field_id === 'urgent.scope'))
-        extra.push(make('urgent.pending_route', true, text.slice(0, 180)));
-    const hintedIds = new Set(extra.map(u => u.field_id));
-    const groq = groqUpdates.filter(u => {
-        if (u.operation === 'skip' && !/\b(skip|not sure|dont know|do not know|not now|leave (that|it) blank)\b/.test(folded))
+        extra.push(make('urgent.pending_route', true, text.slice(0, 180), 'heuristic'));
+    const groundedGroq = groqUpdates.filter(u => {
+        if (!productLawKeeps(u, extra, folded, text, facts))
             return false;
-        if (hintedIds.has(u.field_id) && HINT_WINS.has(u.field_id))
-            return false;
-        if (clinicianRouteAmbiguous(text, facts)) {
-            if (u.field_id === 'urgent.kind' || u.field_id === 'first.kind' || u.field_id === 'first.team')
-                return false;
-        }
-        if (u.field_id === 'teams.administration.count' && !extra.some(h => h.field_id === 'teams.administration.count')) {
-            const mentionedAdmin = /office manager|administrat|pay the bills|manage the practice|run the (place|office|practice)|handles insurance/.test(folded);
-            if (!mentionedAdmin)
-                return false;
-        }
-        if (u.field_id === 'teams.administration.count' && extra.some(h => h.field_id === 'billing.performed_by' && h.value === 'reception')) {
-            const n = Number(u.value);
-            const hintedAdmin = extra.find(h => h.field_id === 'teams.administration.count');
-            if (!hintedAdmin && n > 1)
-                return false;
-        }
-        if (u.field_id === 'after.kind' && extra.some(h => h.field_id === 'beforeOpening'))
-            return false;
-        if ((u.field_id === 'messages.owner' || u.field_id === 'busy.owner' || u.field_id === 'after.owner') && !extra.some(h => h.field_id === u.field_id || h.field_id === 'messages.owner')) {
-            if (!/check|listen|mailbox|voicemail box|girls check|i check/.test(folded))
-                return false;
-        }
-        if (u.field_id === 'devices.reception.sharing' && !extra.some(h => h.field_id === 'devices.reception.sharing')) {
-            if (!/share|pick up at once|separate (line|phone|extension)|one (desk )?phone|one line|both can pick/.test(folded))
-                return false;
-        }
-        if (u.field_id === 'devices.work_mobile' && !extra.some(h => h.field_id === 'devices.work_mobile')) {
-            if (!/work (cell|mobile|app)|ring my cell|personal (cell|number)|follow me/.test(folded))
-                return false;
-        }
-        if (u.field_id === 'beforeOpening' && !extra.some(h => h.field_id === 'beforeOpening')) {
-            if (!/before (we |the office )?open|not open yet|advertis/.test(folded))
-                return false;
-        }
-        if (u.field_id === 'busy.kind' && /after (hours|five|5|closing|we close)/.test(folded) && !/if nobody|nobody answers|when she'?s busy|already on a call|\bbusy\b/.test(folded) && !extra.some(h => h.field_id === 'busy.kind'))
-            return false;
-        if ((u.field_id === 'after.kind' || u.field_id === 'first.kind' || u.field_id === 'busy.kind') && u.value === 'assistant') {
-            const launchNow = /at launch|from day one|answers first|ai receptionist at launch/.test(folded);
-            const asking = /what.?s best|do i need ai|dont know whether|later|when we (are |get )?bigger|not at launch|not now/.test(folded);
-            if (asking && !launchNow)
-                return false;
-        }
-        if (u.field_id.startsWith('hours.') && extra.some(h => h.field_id === u.field_id))
-            return false;
-        if (/^hours\.(preset|weekdays_start|weekdays_end)$/.test(u.field_id)) {
-            const mentionedHours = /\b(hours|o'?clock|\d+\s*(am|pm)|nine to five|eight to five|8 to 5|9 to 5|weekday|monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunch)\b/.test(folded);
-            if (!mentionedHours && !extra.some(h => /^hours\.(preset|weekdays_start|weekdays_end)$/.test(h.field_id)))
-                return false;
-        }
-        if (u.field_id === 'teams.reception.count' && extra.some(h => h.field_id === 'teams.reception.count' && h.operation === 'skip'))
-            return false;
-        return true;
+        if (u.operation !== 'set')
+            return true;
+        return valueGroundedInText(u.value, text, u.evidence);
     });
-    return [...groq, ...extra];
+    const localBy = new Map(extra.map(u => [u.field_id, u]));
+    const groqBy = new Map<string, InterpreterUpdate>();
+    for (const u of groundedGroq)
+        groqBy.set(u.field_id, u);
+    const ids = new Set([...localBy.keys(), ...groqBy.keys()]);
+    const out: InterpreterUpdate[] = [];
+    for (const id of ids) {
+        const local = localBy.get(id);
+        const groq = groqBy.get(id);
+        if (local && groq) {
+            if (sameFieldValue(local.value, groq.value) || local.operation !== 'set' || groq.operation !== 'set')
+                out.push(local.precision === 'exact' ? local : groq);
+            else if ((local.precision || 'heuristic') === 'exact')
+                out.push({ ...local, needs_confirmation: true, evidence: (local.evidence || '') + ' vs ' + (groq.evidence || '') });
+            else
+                out.push(groq);
+        }
+        else
+            out.push((local || groq)!);
+    }
+    return out;
 }

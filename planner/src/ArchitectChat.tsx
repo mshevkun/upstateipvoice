@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Review } from './Review';
 import { Scene } from './ScenePanel';
 import { Note } from './components';
-import { read, commit, initial, key, scenarios, simulate, type Plan } from './config';
-import { chapterIndex, chapters, help } from './flow';
+import { buySummary, identity, purchaseBands } from './advisor';
+import { read, commit, initial, key, scenarios, simulate, valid, type Plan } from './config';
+import { chapterIndex, chapters, formatOpening, help, hoursSummary } from './flow';
+import { stillOpen } from './readiness';
+import { PRIVACY_COPY } from './privacy';
 import {
-    callerHear, canPreviewHear, chapterForQuestion, chipTurn, clearConversation, createRemoteSession, emptyFacts, headerChapter, interpretRemote, interpretTurn, nextQuestion, questionById, updatesFromOwnerText,
-    persistRemotePlan, readConversation, recordRemoteTurn, saveConversation, sceneFromPlan
+    callerHear, canPreviewHear, chapterForQuestion, chipTurn, clearConversation, createRemoteSession, emptyFacts, headerChapter, interpretRemote, interpretTurn, lockRemoteSession, nextQuestion, questionById, updatesFromOwnerText,
+    persistRemotePlan, readConversation, readRemoteSession, recordRemoteTurn, saveConversation, sceneFromPlan, scrubAckNotice, scrubPii
 } from './architect/index';
 import type { Chip, ConversationRecord, Fact, InterpreterResponse, NextQuestion } from './architect/index';
 
@@ -37,6 +40,68 @@ type HearRow = ReturnType<typeof callerHear>[number];
 
 function isHearDump(message: ChatMessage) {
     return message.role === 'assistant' && message.content.startsWith('What a caller hears');
+}
+
+function labMode() {
+    return typeof location !== 'undefined' && new URLSearchParams(location.search).has('lab');
+}
+
+function sessionParam() {
+    return typeof location !== 'undefined' ? new URLSearchParams(location.search).get('s') : '';
+}
+
+function BlueprintRail({
+    p, sessionId, locked, hear, pdfBusy, onPdf, onBook, onCopy, onLock
+}: {
+    p: Plan;
+    sessionId: string;
+    locked: boolean;
+    hear: HearRow[];
+    pdfBusy: boolean;
+    onPdf: (kind: 'owner' | 'engineer') => void;
+    onBook: () => void;
+    onCopy: () => void;
+    onLock: () => void;
+}) {
+    const id = identity(p);
+    const bands = purchaseBands(p);
+    const buy = buySummary(p);
+    const order = [
+        buy.desk.qty ? buy.desk.qty + ' desk' : '',
+        buy.mobile.qty ? buy.mobile.qty + ' work mobile' : '',
+        buy.computer.qty ? buy.computer.qty + ' answering computer' : '',
+        ...[...bands.required, ...bands.alsoRequired].map(r => r.qty + ' ' + r.item)
+    ].filter(Boolean).slice(0, 6);
+    const open = stillOpen(p);
+    const hours = hoursSummary(p);
+    return <aside className="blueprint-rail" aria-label="Blueprint">
+        <p className="blueprint-kicker">Blueprint</p>
+        <h2 className="blueprint-name">{p.name.trim() || 'Your practice'}</h2>
+        <p className="blueprint-meta">{[p.policy.cityState, formatOpening(p)].filter(Boolean).join(' · ') || 'City and opening still open'}</p>
+        <p className="blueprint-id">{locked ? 'LOCKED' : 'Draft'} {id.planId} · r{id.revision} · {id.checksum}</p>
+        {hours && <p className="blueprint-hours">{hours}</p>}
+        {order.length > 0 && <div className="blueprint-order">
+            <p className="blueprint-label">What to order</p>
+            <p>{order.join(' · ')}</p>
+            <p className="blueprint-hint">Do not order a phone per room.</p>
+        </div>}
+        {hear.some(row => row.kind !== 'note') && <div className="blueprint-hear">
+            <p className="blueprint-label">When someone calls</p>
+            <ol>{hear.filter(row => row.kind !== 'note').map(row => <li key={row.when}><strong>{row.when}</strong> {row.hear}</li>)}</ol>
+        </div>}
+        {open.length > 0 && <div className="blueprint-open">
+            <p className="blueprint-label">Still open — handled at install</p>
+            <ul>{open.map(item => <li key={item}>{item}</li>)}</ul>
+        </div>}
+        <div className="blueprint-actions">
+            <button type="button" className="primary" disabled={pdfBusy} onClick={() => onPdf('owner')}>{pdfBusy ? 'Creating…' : 'Download owner blueprint'}</button>
+            <button type="button" className="secondary" onClick={onBook}>Book a time with Upstate</button>
+            <button type="button" className="text-button" disabled={pdfBusy} onClick={() => onPdf('engineer')}>For your installer: technical spec</button>
+            {sessionId && <button type="button" className="text-button" onClick={onCopy}>Copy my plan link</button>}
+            {labMode() && sessionId && !locked && <button type="button" className="text-button" onClick={onLock}>Lock this revision</button>}
+        </div>
+        <p className="blueprint-privacy">{PRIVACY_COPY}</p>
+    </aside>;
 }
 
 function HearPanel({ rows }: { rows: HearRow[] }) {
@@ -144,6 +209,9 @@ export function Architect() {
     const [error, setError] = useState('');
     const [warning, setWarning] = useState(loaded.current.warning);
     const [reviewing, setReviewing] = useState(false);
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [locked, setLocked] = useState(false);
+    const [conflictRemote, setConflictRemote] = useState<{ planId: string; revision: number; checksum: string } | null>(null);
     const [restarting, setRestarting] = useState(false);
     const [correcting, setCorrecting] = useState<ChatMessage | null>(null);
     const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -198,6 +266,48 @@ export function Architect() {
             return p;
         }
     }
+
+    useEffect(() => {
+        const sid = sessionParam();
+        if (!sid)
+            return;
+        let cancelled = false;
+        readRemoteSession(sid).then(remote => {
+            if (cancelled || !remote.plan || !valid(remote.plan))
+                return;
+            const remotePlan = remote.plan as Plan;
+            const localId = identity(p);
+            const remoteId = identity(remotePlan);
+            if (p.revision > 0 && localId.checksum && localId.checksum !== remoteId.checksum) {
+                setConflictRemote({ planId: remoteId.planId, revision: remoteId.revision, checksum: remoteId.checksum });
+                return;
+            }
+            writePlan(remotePlan);
+            if (remote.facts)
+                setFacts(remote.facts);
+            if (Array.isArray(remote.messages) && remote.messages.length)
+                setMessages(remote.messages);
+            if (Array.isArray(remote.futureConsiderations))
+                setFuture(remote.futureConsiderations);
+            sessionIdRef.current = remote.id;
+            remoteRevRef.current = remote.revision;
+            setSessionId(remote.id);
+            setRemoteRevision(remote.revision);
+            setLocked(!!remote.lockedRevision && remote.lockedRevision === remote.revision);
+            persistLocal({
+                plan: remotePlan,
+                facts: remote.facts,
+                future: remote.futureConsiderations,
+                messages: remote.messages,
+                sessionId: remote.id,
+                revision: remote.revision
+            });
+        }).catch(() => {
+            if (!cancelled)
+                setError('That private plan link could not be opened.');
+        });
+        return () => { cancelled = true; };
+    }, []);
 
     useEffect(() => {
         if (skipAutoScroll.current) {
@@ -273,7 +383,10 @@ export function Architect() {
 
     function goChapter(chapter: number) {
         if (chapter === 5) {
-            setReviewing(true);
+            if (labMode())
+                setReviewing(true);
+            else
+                setSheetOpen(true);
             setCorrecting(null);
             return;
         }
@@ -389,8 +502,11 @@ export function Architect() {
             persistLocal({ plan, facts: nextFacts, future: nextFuture, sessionId: sid, revision: savedRemote.revision });
         }
         catch (err) {
-            if ((err as Error).message === 'conflict')
-                setError('Could not sync this draft to the server. Your answers are still saved on this device.');
+            const code = (err as Error).message;
+            if (code === 'conflict')
+                setError('This plan was updated elsewhere. Reload the private link, or keep this device copy.');
+            else
+                setError('Could not sync this draft to the server. Your answers are still saved here. ' + PRIVACY_COPY);
         }
     }
 
@@ -412,7 +528,7 @@ export function Architect() {
             persistLocal({ facts: turned.facts, future: turned.future, messages: nextMessages, questionId: turned.follow?.id || null });
             return nextMessages;
         });
-        if (turned.intent === 'generate_draft')
+        if (turned.intent === 'generate_draft' && labMode())
             setReviewing(true);
         if (interpreter.explanation_topic && help[interpreter.explanation_topic])
             setNotice(help[interpreter.explanation_topic]);
@@ -425,7 +541,9 @@ export function Architect() {
             return;
         const token = epoch.current;
         const targetQuestion = correctingQuestion || question;
-        const userMsg: ChatMessage = { id: newId(), role: 'user', content: trimmed, questionId: targetQuestion?.id || null };
+        const scrubbed = scrubPii(trimmed);
+        const outbound = scrubbed.text || trimmed;
+        const userMsg: ChatMessage = { id: newId(), role: 'user', content: outbound, questionId: targetQuestion?.id || null };
         setHeldQuestion(targetQuestion);
         skipAutoScroll.current = false;
         setInput('');
@@ -448,7 +566,7 @@ export function Architect() {
             const result = await interpretRemote({
                 sessionId: remote.id,
                 clientMessageId: newId(),
-                text: trimmed,
+                text: outbound,
                 currentQuestionId: targetQuestion?.id || null,
                 currentQuestion: targetQuestion,
                 confirmedState: confirmedState(facts),
@@ -460,25 +578,27 @@ export function Architect() {
                 return;
             if (typeof result.revision === 'number')
                 remoteRevRef.current = result.revision;
-            const applied = applyInterpreter(p, facts, result.interpreter, trimmed, { question: targetQuestion, correcting: !!correcting });
+            if (scrubbed.removed)
+                result.interpreter = { ...result.interpreter, acknowledgement: [scrubAckNotice(scrubbed.kinds), result.interpreter.acknowledgement].filter(Boolean).join(' ') };
+            const applied = applyInterpreter(p, facts, result.interpreter, outbound, { question: targetQuestion, correcting: !!correcting });
             await syncPlan(applied.plan, applied.facts, applied.future, remote.id, remoteRevRef.current);
         }
         catch (err) {
             if (epoch.current !== token)
                 return;
             if (trimmed === EXAMPLE) {
-                applyInterpreter(p, facts, EXAMPLE_INTERPRETER, trimmed, { question: targetQuestion, correcting: !!correcting });
+                applyInterpreter(p, facts, EXAMPLE_INTERPRETER, outbound, { question: targetQuestion, correcting: !!correcting });
                 return;
             }
-            const hinted = updatesFromOwnerText(trimmed, targetQuestion, facts);
+            const hinted = updatesFromOwnerText(outbound, targetQuestion, facts);
             if (hinted.length) {
                 applyInterpreter(p, facts, {
-                    acknowledgement: '',
+                    acknowledgement: scrubbed.removed ? scrubAckNotice(scrubbed.kinds) : '',
                     intent: correcting ? 'correct_information' : 'provide_information',
                     updates: hinted,
                     unmapped_facts: [],
                     explanation_topic: null
-                }, trimmed, { question: targetQuestion, correcting: !!correcting });
+                }, outbound, { question: targetQuestion, correcting: !!correcting });
                 return;
             }
             const code = (err as Error).message;
@@ -563,7 +683,7 @@ export function Architect() {
                 await mod.downloadBothPDF(snapshot);
             else
                 await mod.downloadPDF(snapshot);
-            setNotice((kind === 'engineer' ? 'Implementation spec' : 'Owner blueprint') + ' downloaded. It stays on this device.');
+            setNotice((kind === 'engineer' ? 'Implementation spec' : 'Owner blueprint') + ' downloaded. ' + PRIVACY_COPY);
         }
         catch {
             setNotice('PDF export failed. Your plan is preserved.');
@@ -633,7 +753,7 @@ export function Architect() {
         </header>
         <main className="layout">
             <section className={'conversation architect-chat' + (welcome ? ' welcome' : '')} aria-label="Practice architect">
-                {reviewing ? <div className="form-scroll architect-review">
+                {reviewing && labMode() ? <div className="form-scroll architect-review">
                     <button type="button" className="review-back" onClick={() => setReviewing(false)}>Back to conversation</button>
                     <Review p={p} pdfBusy={pdfBusy} notice={notice} onNotice={setNotice} onPdf={k => pdf(k)} onJump={id => goChapter(chapterIndex(id))} run={run} trace={trace} shown={shown} paused={paused} setPaused={setPaused} scenario={scenario} setScenario={setScenario} testPreset={testPreset} setTestPreset={setTestPreset} customDate={customDate} setCustomDate={setCustomDate} customTime={customTime} setCustomTime={setCustomTime} callerReason={callerReason} setCallerReason={setCallerReason} callerLanguage={callerLanguage} setCallerLanguage={setCallerLanguage} assistantRequest={assistantRequest} setAssistantRequest={setAssistantRequest} humanRequest={humanRequest} setHumanRequest={setHumanRequest}/>
                 </div> : <>
@@ -661,6 +781,9 @@ export function Architect() {
                             <span>Try an example</span>
                             <p>{EXAMPLE}</p>
                         </button>}
+                        {conflictRemote && <Note tone="warning">This device has {identity(p).planId} · r{identity(p).revision} · {identity(p).checksum}. The private link has {conflictRemote.planId} · r{conflictRemote.revision} · {conflictRemote.checksum}. Pick one — they were not merged.
+                            <button type="button" className="text-button" onClick={() => { setConflictRemote(null); }}>Keep this device</button>
+                        </Note>}
                         {error && <Note tone="warning">{error}</Note>}
                         {warning && <Note tone="warning">{warning}</Note>}
                         {notice && <p className="notice" role="status">{notice}</p>}
@@ -689,12 +812,17 @@ export function Architect() {
                         })()}
                         {draftReady && <div className="chat-prompt-block chat-prompt-draft">
                             <p className="chat-question-kicker">Your blueprint</p>
-                            <h2 className="chat-question-text">A draft is ready from what we have.</h2>
-                            <p className="chat-question-detail">You can still change answers. The implementation spec stays a planning document until an installer verifies it.</p>
+                            <h2 className="chat-question-text">That's everything I need to draw both files.</h2>
+                            <p className="chat-question-detail">{PRIVACY_COPY} The implementation spec stays a planning document until an installer verifies it.{stillOpen(p).length ? ' Still open at install: ' + stillOpen(p).join('; ') + '.' : ''}</p>
                             {showHear && <HearPanel rows={hear}/>}
                             <div className="chat-choices">
                                 <div className="chat-chips stack">
-                                    <button type="button" className="chat-chip" onClick={() => setReviewing(true)}>Review blueprint</button>
+                                    <button type="button" className="chat-chip" disabled={pdfBusy} onClick={() => pdf('owner')}>Download owner blueprint</button>
+                                    <button type="button" className="chat-chip quiet" onClick={() => {
+                                        const book = 'https://upstateipvoice.com/review/?plan=' + encodeURIComponent(p.planId) + (sessionId ? '&s=' + encodeURIComponent(sessionId) : '');
+                                        window.open(book, '_blank', 'noopener');
+                                    }}>Book a time with Upstate</button>
+                                    {labMode() && <button type="button" className="chat-chip quiet" onClick={() => setReviewing(true)}>Open call simulator</button>}
                                 </div>
                             </div>
                         </div>}
@@ -719,7 +847,43 @@ export function Architect() {
                     </div>
                 </>}
             </section>
-            <Scene p={p} simulation={simulation} mode={view.mode} chapter={view.chapter} badge={view.badge} indexLabel={view.indexLabel} sceneClass={view.sceneClass} showTeamLegend={p.teams.some(t => t.status === 'known')} showSpecialtyCaption={!!p.specialty && view.chapter === 1} showEarlyFacts={view.chapter < 2}/>
+            <div className={'scene-panel blueprint-column' + (sheetOpen ? ' sheet-open' : '')}>
+                <p className="scene-illustration-caption">Illustration — rooms are not phones</p>
+                <div className="blueprint-scene">
+                    <Scene p={p} simulation={simulation} mode={view.mode} chapter={view.chapter} badge={view.badge} indexLabel={view.indexLabel} sceneClass={view.sceneClass} showTeamLegend={p.teams.some(t => t.status === 'known')} showSpecialtyCaption={!!p.specialty && view.chapter === 1} showEarlyFacts={view.chapter < 2}/>
+                </div>
+                <BlueprintRail
+                    p={p}
+                    sessionId={sessionId}
+                    locked={locked || p.confirmed.includes('locked')}
+                    hear={hear}
+                    pdfBusy={pdfBusy}
+                    onPdf={kind => pdf(kind)}
+                    onBook={() => {
+                        const book = 'https://upstateipvoice.com/review/?plan=' + encodeURIComponent(p.planId) + (sessionId ? '&s=' + encodeURIComponent(sessionId) : '');
+                        window.open(book, '_blank', 'noopener');
+                    }}
+                    onCopy={() => {
+                        const url = location.origin + '/planner/?s=' + encodeURIComponent(sessionId);
+                        navigator.clipboard?.writeText(url);
+                        setNotice('Private plan link copied.');
+                    }}
+                    onLock={async () => {
+                        try {
+                            const id = identity(p);
+                            await lockRemoteSession(sessionId, p.revision, id.checksum);
+                            const next = { ...p, confirmed: [...new Set([...p.confirmed, 'locked'])] };
+                            writePlan(next);
+                            setLocked(true);
+                            setNotice('Locked ' + id.planId + ' · r' + id.revision + ' · ' + id.checksum);
+                        }
+                        catch {
+                            setError('Could not lock this revision. The checksum did not match the server copy.');
+                        }
+                    }}
+                />
+                <button type="button" className="blueprint-sheet-toggle" onClick={() => setSheetOpen(v => !v)}>Blueprint{stillOpen(p).length ? ' · ' + stillOpen(p).length : ''}</button>
+            </div>
         </main>
     </div>;
 }

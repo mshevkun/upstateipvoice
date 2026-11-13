@@ -24,6 +24,7 @@ export type InterpreterUpdate = {
     value: Scalar;
     evidence: string;
     needs_confirmation: boolean;
+    precision?: 'exact' | 'heuristic';
 };
 
 export type InterpreterResponse = {

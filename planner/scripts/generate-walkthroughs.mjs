@@ -15,12 +15,13 @@ const outDir = path.join(root, 'planner/walkthroughs');
 const fontPath = path.join(root, 'planner/public/assets/InstrumentSans.ttf');
 
 fs.mkdirSync(buildDir, { recursive: true });
-for (const name of ['config', 'policy', 'routing', 'locations', 'fusion', 'plan-content', 'pdf', 'provisioning', 'status', 'readiness', 'bom', 'opening', 'advisor', 'flow']) {
+fs.mkdirSync(path.join(buildDir, 'architect'), { recursive: true });
+for (const name of ['config', 'policy', 'routing', 'locations', 'fusion', 'plan-content', 'pdf', 'provisioning', 'status', 'readiness', 'privacy', 'bom', 'opening', 'advisor', 'owner-brief', 'engineer-brief', 'flow', 'team-state', 'architect/hear']) {
   let out = ts.transpile(fs.readFileSync(path.join(srcDir, name + '.ts'), 'utf8'), {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext
   });
-  out = out.replace(/from ['"](\.\/[^'"]+)['"]/g, "from '$1.mjs'");
+  out = out.replace(/from ['"](\.\.?\/[^'"]+)['"]/g, "from '$1.mjs'");
   if (name === 'pdf') {
     out = out.replace(
       "import fontkit from '@pdf-lib/fontkit';",

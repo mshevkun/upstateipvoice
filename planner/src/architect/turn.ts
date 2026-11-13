@@ -3,6 +3,7 @@ import { composeAcknowledgement } from './ack';
 import { detectIntent, isCorrection, mergeInterpreterUpdates, updatesFromOwnerText } from './extract';
 import { applyUpdates } from './merge';
 import { nextQuestion } from './questions';
+import { scrubAckNotice, scrubPii } from './scrub';
 import type { Chip, Fact, InterpreterIntent, InterpreterResponse, NextQuestion } from './types';
 
 export function interpretTurn(opts: {
@@ -14,12 +15,14 @@ export function interpretTurn(opts: {
     future?: string[];
     correcting?: boolean;
 }) {
-    const hinted = updatesFromOwnerText(opts.userText, opts.question, opts.facts);
-    const intent: InterpreterIntent = opts.correcting ? 'correct_information' : detectIntent(opts.userText, opts.interpreter.intent);
+    const cleaned = scrubPii(opts.userText);
+    const userText = cleaned.text || opts.userText;
+    const hinted = updatesFromOwnerText(userText, opts.question, opts.facts);
+    const intent: InterpreterIntent = opts.correcting ? 'correct_information' : detectIntent(userText, opts.interpreter.intent);
     const groqUpdates = opts.interpreter.updates.filter(u => u.operation !== 'set' || u.value != null);
-    const updates = mergeInterpreterUpdates(groqUpdates, hinted, opts.userText, opts.facts);
-    const unmapped = [...(opts.interpreter.unmapped_facts || [])];
-    const folded = opts.userText.toLowerCase();
+    const updates = mergeInterpreterUpdates(groqUpdates, hinted, userText, opts.facts);
+    const unmapped = [...(opts.interpreter.unmapped_facts || [])].map(s => scrubPii(s).text).filter(Boolean);
+    const folded = userText.toLowerCase();
     if (/appointment/.test(folded))
         unmapped.push('appointment calls');
     if (/prescription/.test(folded))
@@ -37,15 +40,20 @@ export function interpretTurn(opts: {
     const merged = applyUpdates(opts.plan, opts.facts, updates, intent, unmapped, { correcting: isCorrection(opts.userText) || !!opts.correcting });
     const nextPlan = merged.changed ? merged.plan : opts.plan;
     const follow = nextQuestion(nextPlan, merged.facts);
-    const ack = composeAcknowledgement({
+    let ack = composeAcknowledgement({
         groqAck: opts.interpreter.acknowledgement,
         accepted: merged.accepted,
         plan: nextPlan,
         facts: merged.facts,
         next: follow,
-        unmapped: opts.interpreter.unmapped_facts,
-        userText: opts.userText
+        unmapped,
+        userText
     });
+    if (cleaned.removed) {
+        const notice = scrubAckNotice(cleaned.kinds);
+        if (notice && !ack.includes(notice))
+            ack = notice + ' ' + ack;
+    }
     const future = [...new Set([...(opts.future || []), ...merged.futureConsiderations])];
     return { ...merged, plan: nextPlan, follow, ack, intent, future, unmapped };
 }

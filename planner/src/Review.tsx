@@ -1,81 +1,39 @@
 import { useEffect, useState } from 'react';
 import { engineerSections, ownerSections } from './plan-content';
-import { identity, ownerActions } from './advisor';
+import { buySummary, identity, reviewOpenActions, type BuyLine } from './advisor';
 import { Field } from './components';
 import { hoursSummary, openingLabel } from './flow';
-import { roleState } from './team-state';
 import { DatePicker, TimePicker } from './pickers';
 import { readiness } from './readiness';
-import { decisions, graph, journeySeconds, simulate, teamName, type Plan } from './config';
+import { decisions, graph, journeySeconds, simulate, type Plan } from './config';
+import { PRIVACY_COPY } from './privacy';
 
 const meeting = 'https://upstateipvoice.com/review/';
 
-function heardFacts(p: Plan) {
-    const rec = roleState(p, 'reception');
-    const clin = roleState(p, 'clinical');
-    const adm = roleState(p, 'administration');
+function reviewLine(p: Plan) {
     const bits: string[] = [];
     if (p.policy.cityState)
         bits.push(p.policy.cityState);
-    if (rec.status === 'known')
-        bits.push(rec.count + (rec.count === 1 ? ' at the front desk' : ' at the front desk'));
-    if (clin.status === 'known')
-        bits.push(clin.count + (clin.count === 1 ? ' clinician' : ' clinicians'));
-    if (adm.status === 'known')
-        bits.push(adm.count === 0 ? 'No separate administrator' : adm.count + ' administration');
     if (p.first.kind === 'human')
-        bits.push('Person first' + (p.first.team ? ' · ' + teamName(p, p.first.team) : ''));
-    if (p.busy.kind === 'message')
-        bits.push('Voicemail if nobody answers' + (p.busy.owner ? ' · ' + teamName(p, p.busy.owner) : ''));
-    else if (p.busy.kind === 'queue')
-        bits.push('A short wait if staff are busy');
+        bits.push('Front desk answers first');
+    else if (p.first.kind === 'menu')
+        bits.push('Menu first');
+    else if (p.first.kind === 'assistant')
+        bits.push('Virtual receptionist first');
+    const hours = hoursSummary(p);
+    if (hours && (p.confirmed.includes('hours') || p.hours.days.some(d => d.breakStart)))
+        bits.push(hours);
     if (p.after.kind === 'message')
-        bits.push('Voicemail after hours' + (p.after.owner ? ' · ' + teamName(p, p.after.owner) : ''));
+        bits.push('Voicemail after hours');
     else if (p.after.kind === 'service')
         bits.push('Answering service after hours');
-    const hours = hoursSummary(p);
-    if (hours && p.confirmed.includes('hours'))
-        bits.push(hours);
-    else if (p.hours.days.some(d => d.breakStart && d.breakEnd))
-        bits.push('Lunch close ' + p.hours.days.find(d => d.breakStart)?.breakStart + '–' + p.hours.days.find(d => d.breakEnd)?.breakEnd);
-    if (p.languages.some(l => l.name === 'Spanish') || (p.policy.languageDecision === 'selected' && p.languages.length))
-        bits.push(p.languages.some(l => l.name === 'Spanish') ? 'Spanish coverage' : 'Additional language');
-    else if (p.policy.languageDecision === 'none')
-        bits.push('English only');
-    if (p.policy.opening.numbers === 'new')
-        bits.push('New number');
-    else if (p.policy.opening.numbers === 'porting')
-        bits.push('Keep the existing number');
-    if (p.policy.roomsSpecified && p.policy.rooms)
-        bits.push(p.policy.rooms + ' rooms, not a phone order');
-    const sharing = p.policy.placements.find(x => x.team === 'reception' && x.sharing !== 'undecided')?.sharing;
-    if (sharing === 'separate')
-        bits.push('Two front-desk lines can pick up at once');
-    else if (sharing === 'shared' && rec.count > 1)
-        bits.push('Front desk shares one line');
-    if (/work mobile answering|work app \/ follow me/i.test(p.policy.notes + ' ' + p.policy.continuity.notes))
-        bits.push('Work mobile can ring');
-    if (p.mode === 'opening' && p.policy.beforeOpening === 'information')
-        bits.push('Not-open-yet recording before day one');
-    else if (p.mode === 'opening' && p.policy.beforeOpening === 'message')
-        bits.push('Callback messages before day one');
-    else if (p.mode === 'opening' && p.policy.beforeOpening === 'undecided')
-        bits.push('Before-opening path not decided');
-    if (p.policy.urgentScope === 'urgent_only')
-        bits.push('On-call only for urgent calls');
-    else if (p.policy.urgentScope === 'all_calls')
-        bits.push('Clinician for every incoming call');
-    else if (p.policy.urgentKind === 'none')
-        bits.push('No live on-call');
-    else if (p.policy.urgentKind === 'undecided')
-        bits.push('On-call not decided');
-    else if (p.policy.urgentKind === 'connect')
-        bits.push('Proposed on-call path');
-    return bits;
+    else if (p.after.kind === 'assistant')
+        bits.push('After-hours virtual receptionist');
+    return bits.slice(0, 4).join(' · ');
 }
 
-function metric(undecided: boolean, value: number, open: string, set: string) {
-    return { value: undecided ? '—' : String(value), label: undecided ? open : set };
+function qty(line: BuyLine) {
+    return line.qty == null ? '—' : String(line.qty);
 }
 
 export function Review({ p, pdfBusy, notice, onNotice, onPdf, run, trace, shown, scenario: _scenario, setScenario, testPreset, setTestPreset, customDate, setCustomDate, customTime, setCustomTime, callerReason, setCallerReason, callerLanguage, setCallerLanguage, assistantRequest, setAssistantRequest, humanRequest, setHumanRequest }: {
@@ -107,15 +65,11 @@ export function Review({ p, pdfBusy, notice, onNotice, onPdf, run, trace, shown,
     humanRequest: boolean;
     setHumanRequest: (v: boolean) => void;
 }) {
-    const pending = decisions(p), ready = readiness(p), actions = ownerActions(p).slice(0, 5);
-    const facts = heardFacts(p);
+    const pending = decisions(p), ready = readiness(p), buy = buySummary(p), open = reviewOpenActions(p);
+    const line = reviewLine(p);
     const [panel, setPanel] = useState<'none' | 'test' | 'tech'>('none');
     const unanswered = journeySeconds(p, { id: 'unanswered', label: 'Open · nobody answers', open: true, answered: false });
-    const metrics = [
-        metric(p.endpoints.undecided, p.endpoints.desk, 'Desk phones', 'Reception phones'),
-        metric(p.endpoints.undecided, p.endpoints.computer, 'Computers', 'Computer positions'),
-        metric(p.endpoints.undecided, p.endpoints.mobile, 'Mobiles', 'Mobile endpoints')
-    ];
+    const kit: BuyLine[] = [buy.desk, buy.computer, buy.mobile];
     const usesAssistant = [p.first.kind, p.busy.kind, p.after.kind].includes('assistant');
 
     function toggle(next: 'test' | 'tech') {
@@ -136,19 +90,23 @@ export function Review({ p, pdfBusy, notice, onNotice, onPdf, run, trace, shown,
             <h2 className="blueprint-name">{p.name.trim() || openingLabel(p).split(' · ')[0] || 'Your practice'}</h2>
             <p className="blueprint-dek">{p.name.trim() && openingLabel(p) ? openingLabel(p) : 'A plan for how patients reach you.'}</p>
             <p className="blueprint-status">{ready.label}. Nothing is installed yet.</p>
-            {facts.length > 0 && <ul className="blueprint-facts">{facts.map(fact => <li key={fact}>{fact}</li>)}</ul>}
+            {line && <p className="blueprint-line">{line}</p>}
         </header>
 
-        <section className="blueprint-metrics" aria-label="Phone positions">
-            {metrics.map(item => <div key={item.label}><strong>{item.value}</strong><span>{item.label}</span></div>)}
+        <section className="blueprint-buy" aria-label="What to order">
+            <p className="decision-kicker">What to order</p>
+            <div className="blueprint-metrics">
+                {kit.map(item => <div key={item.label} className={item.qty != null ? 'is-known' : ''}><strong>{qty(item)}</strong><span>{item.label}</span><small>{item.note}</small></div>)}
+            </div>
+            {buy.roomsNote && <p className="blueprint-buy-note">{buy.roomsNote}</p>}
         </section>
 
         <div className="blueprint-actions">
+            <a className="blueprint-book" href={meeting} target="_blank" rel="noopener noreferrer" onClick={() => onNotice('Scheduling opened in a new tab. ' + PRIVACY_COPY)}>Book a time</a>
             <button type="button" className="blueprint-download" disabled={pdfBusy} onClick={() => onPdf('owner')}>{pdfBusy ? 'Creating your PDF…' : (pending.length ? 'Download draft blueprint' : 'Download owner blueprint')}</button>
             <div className="blueprint-aside">
                 <button type="button" className={panel === 'test' ? 'is-open' : ''} aria-pressed={panel === 'test'} onClick={() => toggle('test')}>Walk a call</button>
                 <button type="button" className={panel === 'tech' ? 'is-open' : ''} aria-pressed={panel === 'tech'} onClick={() => toggle('tech')}>Technical spec</button>
-                <a href={meeting} target="_blank" rel="noopener noreferrer" onClick={() => onNotice('Scheduling opened in a new tab. Your plan stays on this device until you choose to share it.')}>Book a time</a>
             </div>
         </div>
 
@@ -179,12 +137,14 @@ export function Review({ p, pdfBusy, notice, onNotice, onPdf, run, trace, shown,
             <details className="blueprint-fold"><summary>Routing graph</summary><ol className="graph-list">{Object.values(graph(p).nodes).map(n => <li key={n.id}><strong>{n.label}</strong><small>{n.detail}</small></li>)}</ol></details>
         </section>}
 
-        {actions.length > 0 && <section className="blueprint-open">
-            <p className="decision-kicker">Still open</p>
-            <h3>Resolve these before installing</h3>
-            <ul className="decision-list">{actions.map(a => <li key={a.id}><strong>{a.label}</strong>{a.detail && <small>{a.detail}</small>}</li>)}</ul>
-            {pending.length > 5 && <p className="blueprint-more">{pending.length - 5} more stay in the download.</p>}
-        </section>}
+        {open.total > 0 && <details className="blueprint-open">
+            <summary>
+                <p className="decision-kicker">Still open</p>
+                <h3>{open.total} {open.total === 1 ? 'decision' : 'decisions'} to confirm later</h3>
+            </summary>
+            <ul className="decision-list">{open.items.map(a => <li key={a.id}><strong>{a.label}</strong></li>)}</ul>
+            {open.more > 0 && <p className="blueprint-more">{open.more} more stay in the download.</p>}
+        </details>}
 
         {notice && <p className="notice" role="status">{notice}</p>}
     </div>;

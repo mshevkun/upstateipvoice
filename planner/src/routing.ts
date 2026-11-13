@@ -6,6 +6,8 @@ import { inSchedule, publicInstructions, canRing } from './policy';
 export function urgentMechanism(p: Plan): 'staff' | 'menu-digit' | 'assistant' | 'none' {
     if (!p.urgent.enabled || p.policy.urgentKind === 'none' || p.policy.urgentKind === 'undecided')
         return 'none';
+    if (p.policy.urgentKind === 'connect' && (p.policy.urgentCoverage === 'closed' || p.policy.urgentCoverage === 'always' || p.policy.urgentCoverage === 'selected'))
+        return 'menu-digit';
     if (p.first.kind === 'human')
         return 'staff';
     if (p.first.kind === 'menu')
@@ -30,7 +32,7 @@ export function menuDigits(p: Plan): MenuDigit[] {
         team: r.team === '@main' ? p.first.team : r.team,
         kind: 'reason'
     }));
-    if (urgentMechanism(p) === 'menu-digit')
+    if (p.first.kind === 'menu' && urgentMechanism(p) === 'menu-digit')
         digits.push({ digit: '9', label: 'an urgent practice matter', team: p.urgent.team, kind: 'urgent' });
     return digits;
 }
@@ -146,7 +148,7 @@ export function graph(p: Plan): Graph {
     const language = add('language', 'Language coverage', 'Language is selected or asked, never inferred from ringing. Availability uses the configured local schedule.', 'decision', [...languageEdges, edge(reason, 'otherwise')]);
     const mechanism = urgentMechanism(p);
     let intent = language;
-    if (mechanism === 'staff')
+    if (p.first.kind === 'human')
         intent = add('intent', 'Staff identifies an urgent request', 'A person who already answered can classify urgency. A published number cannot.', 'decision', [edge(urgent, 'urgent'), edge(language, 'otherwise')]);
     else if (mechanism === 'assistant')
         intent = add('intent', 'Virtual receptionist classifies urgency', 'Proposed until a vendor verifies it on a live call. The simulator is not proof.', 'decision', [edge(urgent, 'urgent'), edge(language, 'otherwise')]);
@@ -295,7 +297,7 @@ export function scenarios(p:Plan):Scenario[]{return [
  {id:'closed',label:'Closed hours',open:false},
  ...(p.hours.holidays.length?[{id:'holiday',label:'Configured holiday · '+(p.hours.holidayPolicy==='closed'?'closed profile':'regular hours'),open:p.hours.holidayPolicy==='regular'}]:[]),
  ...p.languages.flatMap(l=>[{id:'language-'+l.name,label:l.name+' · coverage unavailable',open:true,language:l.name,languageAvailable:false},{id:'language-available-'+l.name,label:l.name+' · during selected coverage',open:true,language:l.name,languageAvailable:true},...(['service','assistant'].includes(p.after.kind)?[{id:'closed-language-'+l.name,label:l.name+' · closed-hours coverage unavailable',open:false,language:l.name,languageAvailable:false}]:[])]),
- ...(p.urgent.enabled?[{id:'urgent',label:'On-call · nobody accepts',open:false,urgent:true,onCallAvailable:true,onCallAnswered:false,backupAnswered:false},{id:'urgent-unavailable',label:'Outside on-call coverage',open:false,urgent:true,onCallAvailable:false},...(urgentMechanism(p)==='menu-digit'?[{id:'open-urgent',label:'Open hours · urgent menu option',open:true,urgent:true,onCallAvailable:p.policy.urgentCoverage==='always'||p.policy.urgentCoverage==='open',onCallAnswered:false,backupAnswered:false}]:[])]:[]),
+ ...(p.urgent.enabled?[{id:'urgent',label:'On-call · nobody accepts',open:false,urgent:true,onCallAvailable:true,onCallAnswered:false,backupAnswered:false},{id:'urgent-unavailable',label:'Outside on-call coverage',open:false,urgent:true,onCallAvailable:false},...(urgentMechanism(p)==='menu-digit'&&p.first.kind==='menu'?[{id:'open-urgent',label:'Open hours · urgent menu option',open:true,urgent:true,onCallAvailable:p.policy.urgentCoverage==='always'||p.policy.urgentCoverage==='open',onCallAnswered:false,backupAnswered:false}]:[])]:[]),
  ...(p.first.kind==='menu'||p.locations.length>1&&p.policy.locationEntry==='menu'?[{id:'invalid',label:'Menu · repeated invalid input',open:true,invalid:true},{id:'no-input',label:'Menu · repeated no input',open:true,noInput:true}]:[]),
  ...(p.first.kind==='assistant'?[{id:'assistant-entry-failed',label:'First-answer virtual receptionist unavailable',open:true,assistantFailed:true}]:[]),
  ...(p.busy.kind==='assistant'||p.busy.kind==='queue'&&p.policy.queueExit==='assistant'?[{id:'assistant-overflow-failed',label:'Overflow virtual receptionist unavailable',open:true,busy:true,answered:false,assistantFailed:true}]:[]),

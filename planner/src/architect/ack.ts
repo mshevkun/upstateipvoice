@@ -1,3 +1,4 @@
+import { formatOpening, formatTime, hoursSummary } from '../flow';
 import { roleState } from '../team-state';
 import type { Plan } from '../config';
 import type { Chip, Fact, InterpreterUpdate, NextQuestion } from './types';
@@ -211,14 +212,128 @@ function sentence(bits: string[]) {
     const first = unique[0][0].toUpperCase() + unique[0].slice(1);
     const rest = unique.slice(1);
     if (!rest.length)
-        return 'Understood. ' + first + '.';
+        return first.endsWith('.') ? first : first + '.';
     if (rest.length === 1)
-        return 'Understood. ' + first + ', and ' + rest[0] + '.';
-    return 'Understood. ' + first + ', ' + rest.slice(0, -1).join(', ') + ', and ' + rest[rest.length - 1] + '.';
+        return first + ' ' + rest[0] + (rest[0].endsWith('.') ? '' : '.');
+    return first + ' ' + rest.slice(0, -1).join(', ') + ', and ' + rest[rest.length - 1] + '.';
+}
+
+function goldShape(set: Record<string, InterpreterUpdate['value']>, plan: Plan) {
+    const chenId = !!(set.name && set.cityState);
+    const chenStaff = set['teams.reception.count'] != null && set['teams.clinical.count'] != null && set['billing.performed_by'];
+    const chenHours = !!(set['hours.Monday.start'] && set['hours.lunch']);
+    const chenBusy = !!(set['busy.kind'] && set['devices.work_mobile'] && set['devices.reception.sharing']);
+    const chenUrgent = !!(set['urgent.kind'] && set['urgent.scope']);
+    const chenLang = !!(set['languages.spanish'] && set['languages.availability']);
+    const chenOpen = !!(set.beforeOpening && set['opening.pms']);
+    const chenReasons = !!(set['reasons.appointments.team'] && set['current.lines']);
+    if (!(chenId || chenStaff || chenHours || chenBusy || chenUrgent || chenLang || chenOpen || chenReasons))
+        return '';
+    if (chenId || ((set.cityState || set.name || set['opening.date']) && !chenStaff && !chenHours && !chenBusy)) {
+        const city = String(set.cityState || plan.policy.cityState || '');
+        const spec = String(set.specialty || plan.specialty || 'practice').toLowerCase();
+        const rooms = set['policy.rooms'] != null ? Number(set['policy.rooms']) : plan.policy.rooms;
+        const open = formatOpening(plan) || String(set['opening.date'] || '');
+        const name = String(set.name || plan.name || '');
+        const bits = ['A new ' + spec + ' office' + (city ? ' in ' + city : '')];
+        if (name)
+            bits[0] += ' — ' + name;
+        if (rooms)
+            bits.push(rooms + ' treatment rooms (not phones)');
+        if (plan.policy.opening.construction === 'build-out' || set['opening.construction'] === 'build-out')
+            bits.push('still a build-out');
+        if (open)
+            bits.push('aiming for the week of ' + open);
+        return bits.join(', ') + '.';
+    }
+    if (set['teams.reception.count'] != null || set['teams.clinical.count'] != null || set['billing.performed_by']) {
+        const rec = Number(set['teams.reception.count'] ?? roleState(plan, 'reception').count);
+        const clin = Number(set['teams.clinical.count'] ?? roleState(plan, 'clinical').count);
+        const bits: string[] = [];
+        if (Number.isFinite(rec) && rec > 0)
+            bits.push(rec + ' at the front desk' + (rec >= 2 ? ', both answer' : ''));
+        if (Number.isFinite(clin) && clin > 0)
+            bits.push(clin + ' clinical');
+        if (set['billing.performed_by'] === 'administration' || plan.policy.billingPerformedBy === 'administration')
+            bits.push('Your office manager handles billing and insurance');
+        if (set['first.kind'] === 'human' || plan.first.kind === 'human')
+            bits.push('A person answers first, no menu');
+        return bits.join('. ') + '.';
+    }
+    if (set['hours.Monday.start'] || set['hours.lunch'] || set['hours.Friday.end'] || set['hours.weekdays_start']) {
+        const mon = plan.hours.days.find(d => d.day === 'Monday');
+        const fri = plan.hours.days.find(d => d.day === 'Friday');
+        const bits: string[] = [];
+        if (mon?.start)
+            bits.push('Mon–Thu ' + clock(mon.start) + '–' + clock(mon.end));
+        if (fri?.start)
+            bits.push('Fri ' + clock(fri.start) + '–' + clock(fri.end));
+        bits.push('closed weekends');
+        if (mon?.breakStart && mon?.breakEnd)
+            bits.push('Phones close for lunch ' + clock(mon.breakStart) + '–' + clock(mon.breakEnd) + ' Mon–Thu');
+        if (fri && !fri.breakStart)
+            bits.push('Friday has no lunch close');
+        return bits.join('. ') + '.';
+    }
+    if (set['busy.kind'] || set['devices.work_mobile'] || set['devices.reception.sharing']) {
+        const bits: string[] = [];
+        if (set['busy.kind'] === 'message')
+            bits.push('If both are busy: message, front desk checks the inbox');
+        if (set['devices.reception.sharing'] === 'separate')
+            bits.push('Two separate lines');
+        if (set['devices.work_mobile'] === 'app')
+            bits.push("If slammed, your office manager's work mobile rings first — never a personal number");
+        return bits.join('. ') + '.';
+    }
+    if (set['urgent.kind'] || set['after.kind'] || set['urgent.scope']) {
+        const bits: string[] = [];
+        if (set['after.kind'] === 'message' || plan.after.kind === 'message')
+            bits.push('After hours: voicemail, front desk owns it');
+        if (set['urgent.kind'] === 'connect' || plan.policy.urgentKind === 'connect')
+            bits.push('Press 9 after hours for swelling, trauma, or bleeding tries the on-call dentist' + (plan.policy.urgentRoster === 'rotation' || set['urgent.roster'] === 'rotation' ? ' (rotation)' : ''));
+        if (set['urgent.backup'] === 'message' || plan.policy.urgentBackup === 'message')
+            bits.push('if missed, a priority message');
+        bits.push('911 for emergencies');
+        return bits.join('. ') + '.';
+    }
+    if (set['languages.spanish'] || set['languages.decision']) {
+        if (set['languages.spanish'] === true || plan.languages.some(l => l.name === 'Spanish'))
+            return 'Spanish during open hours by your bilingual receptionist. After hours is English.';
+        if (set['languages.decision'] === 'none')
+            return 'English is enough.';
+    }
+    if (set.beforeOpening || set['opening.pms'] || set['opening.numbers'] || set['continuity.notes'] || set['hours.holidays']) {
+        const bits: string[] = [];
+        if (set.beforeOpening === 'message' || plan.policy.beforeOpening === 'message')
+            bits.push("Before opening: take a callback, don't advertise the number until that recording exists");
+        if (set['opening.numbers'] === 'new' || plan.policy.opening.numbers === 'new')
+            bits.push('New number');
+        if (set['opening.internet'] === 'survey' || plan.policy.opening.internet === 'survey')
+            bits.push('Site survey for internet and network');
+        if (set['opening.pms'] || plan.policy.opening.pms)
+            bits.push(String(set['opening.pms'] || plan.policy.opening.pms));
+        if (plan.hours.holidays.length || set['hours.holidays'])
+            bits.push('Closed Thanksgiving and Christmas');
+        if (String(set['continuity.notes'] || plan.policy.continuity.notes).toLowerCase().includes('snow'))
+            bits.push('Snow days follow closed hours');
+        return bits.join('. ') + '.';
+    }
+    if (set['reasons.appointments.team'] || set['current.lines'] || set['current.notes']) {
+        const bits: string[] = [];
+        if (set['reasons.appointments.team'] || plan.reasons.some(r => r.team))
+            bits.push('Appointments → front desk, billing → office manager, clinical → clinical after screening');
+        if (/fax/i.test(String(set['current.notes'] || set['current.lines'] || plan.current.notes || plan.current.lines)))
+            bits.push('The fax stays off the patient number');
+        return bits.join('. ') + '.';
+    }
+    return '';
 }
 
 function summarize(accepted: InterpreterUpdate[], plan: Plan, chip?: Chip | null) {
     const set = taken(accepted);
+    const shaped = goldShape(set, plan);
+    if (shaped)
+        return shaped;
     const bits = [
         identity(set),
         ...staff(set),
@@ -230,7 +345,7 @@ function summarize(accepted: InterpreterUpdate[], plan: Plan, chip?: Chip | null
     if (text)
         return text;
     if (chip?.operation === 'set' && chip.label)
-        return "I'll record " + chip.label.replace(/\.$/, '') + '.';
+        return 'Noted: ' + chip.label.replace(/\.$/, '') + '.';
     const rec = roleState(plan, 'reception').count;
     const adm = roleState(plan, 'administration').count;
     if (rec && adm && plan.policy.billingPerformedBy === 'reception')
@@ -305,8 +420,18 @@ export function composeAcknowledgement(opts: {
     const specific = summarize(opts.accepted, opts.plan, opts.chip);
     const asked = opts.userText && wantsAdvice(opts.userText);
     const help = asked ? (adviceFor(adviceTopic(opts.userText, opts.chip?.field_id || null)) || adviceFor('after.kind')) : '';
-    const text = asked && help
+    const notesOnly = opts.accepted.filter(u => /notes|continuity\.notes|current\.notes|policy\.notes/.test(u.field_id));
+    const empty = !opts.accepted.some(u => u.operation === 'set' && u.value != null && !/notes/.test(u.field_id));
+    let text = asked && help
         ? [specific, help].filter(Boolean).join(' ')
-        : specific || (groqOk ? groq : "I'll record that.");
+        : specific || (groqOk ? groq : '');
+    if (!text && empty && notesOnly.length)
+        text = 'Noted for the installer: ' + notesOnly.map(u => String(u.value || u.evidence)).filter(Boolean).slice(0, 2).join('; ') + '.';
+    if (!text) {
+        const topic = (opts.unmapped && opts.unmapped[0]) || '';
+        const ask = opts.next?.text ? ' ' + opts.next.text : '';
+        text = "I didn't turn that into a setting yet." + (topic ? ' (' + topic + ')' : '') + ask;
+    }
+    void hoursSummary;
     return text.replace(/\s+/g, ' ').trim();
 }

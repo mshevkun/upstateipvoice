@@ -1,0 +1,73 @@
+# Chen Family Dental — walkthrough
+planId=UP-mwen3jdp-j1onra revision=10 checksum=6126a047
+
+## Conversation
+### 1
+Owner: I'm Dr. Maya Chen. I'm opening my own family dental practice in Kingston, New York — Chen Family Dental. I've been an associate in Poughkeepsie for fourteen years. We take possession of a Broadway build-out and I want to be seeing patients the week of March 15, 2027. Six operatories. Those are treatment rooms, not phones.
+Architect: A new dental office in Kingston, NY — Chen Family Dental, 6 treatment rooms (not phones), still a build-out, aiming for the week of March 15, 2027.
+
+### 2
+Owner: Two receptionists at the front, already hired. My husband is the office manager — billing, insurance, payroll. Clinical side is me, an associate dentist joining in April, two hygienists, and two assistants. Patients should reach a person at the front desk first, not a menu.
+Architect: 2 at the front desk, both answer. 6 clinical. Your office manager handles billing and insurance. A person answers first, no menu.
+
+### 3
+Owner: Phones: Monday through Thursday 8 AM to 5 PM. Friday 8 AM to 2 PM. Closed Saturday and Sunday. Lunch is 12:30 to 1:30 Monday through Thursday — the desk is empty, phones should close, not keep ringing. Friday is a short day, no lunch close.
+Architect: Mon–Thu 8 AM–5 PM. Fri 8 AM–2 PM. closed weekends. Phones close for lunch 12:30 PM–1:30 PM Mon–Thu. Friday has no lunch close.
+
+### 4
+Owner: If both receptionists are with patients, take a message. They check the inbox first thing in the morning. They need two separate lines so they can take two callers at once. If the front is slammed, ring my husband's work mobile — a work phone, not his personal cell, and never put a personal number in a recording.
+Architect: If both are busy: message, front desk checks the inbox. Two separate lines. If slammed, your office manager's work mobile rings first — never a personal number.
+
+### 5
+Owner: After hours, next-business-day voicemail. Front desk owns those messages. If someone has swelling, trauma, or uncontrolled bleeding, try to reach the on-call dentist. That's only those urgent cases, not every call. If we miss it, still take a priority message. For a true emergency they should hang up and call 911. We rotate on-call between me and the associate. Do not put my cell in the greeting.
+Architect: After hours: voicemail, front desk owns it. Press 9 after hours for swelling, trauma, or bleeding tries the on-call dentist (rotation). if missed, a priority message. 911 for emergencies.
+
+### 6
+Owner: One of the receptionists is bilingual. Spanish during open hours is enough — we cannot cover Spanish at 9 PM. English is the after-hours recording.
+Architect: Spanish during open hours by your bilingual receptionist. After hours is English.
+
+### 7
+Owner: Before we open, if someone finds the number, take a callback message. Do not advertise the number until that recording exists. New number, not porting. Internet and network still need a survey. We'll run Open Dental. Thanksgiving and Christmas we're closed. Snow days should follow the closed-hours recording — never forward the published number to a personal phone.
+Architect: Before opening: take a callback, don't advertise the number until that recording exists. New number. Site survey for internet and network. Open Dental. Closed Thanksgiving and Christmas. Snow days follow closed hours.
+
+### 8
+Owner: Appointments stay with the front desk. Billing and insurance go to the office manager. Clinical questions can go to the clinical team after reception screens them. We still have two analog lines and a fax for insurance; keep the fax, don't mix it with the patient number.
+Architect: Appointments → front desk, billing → office manager, clinical → clinical after screening. The fax stays off the patient number.
+
+### 9
+Owner: Computer
+Architect: Noted: Computer.
+
+### 10
+Owner: One internal computer
+Architect: Noted: One internal computer.
+
+## Glance
+Chen Family Dental
+6-room dental practice · target opening March 15, 2027.
+3 · Independent answering positions
+0 · Owner decisions remaining
+25 · Modeled unanswered wait
+
+## Insights
+NOTE Before-opening destination is recorded — Callback owner: Reception.
+CRITICAL Confirm your urgent-call handoff — After hours, callers press 9 to try the on-call dentist. During open hours, the front desk spots urgent calls after they answer. An on-call transfer is proposed but has not been tested on a real phone.
+NOTE A work mobile can ring — Use a work app or Follow Me. A personal cell number is not stored and must not be spoken in any recording.
+NOTE Lunch is a scheduled close — Phones follow the closed-hours path 12:30–13:30. That is not overnight voicemail, even if the recording is similar.
+HIGH 6 clinical rooms do not automatically need 6 phones — Ask whether each room needs a direct line, intercom, emergency communication, or nothing. Do not order from room count.
+
+## What a caller hears
+During phone hours, if nobody answers: Thank you for calling Chen Family Dental. We are not able to take your call right now. Please leave your name, number, and reason for calling, and we will call you back.
+After hours: You have reached Chen Family Dental after hours. If this is swelling, trauma, or uncontrolled bleeding, press 9 and we will try the on-call dentist. To leave a message, press 1 or wait. We return ordinary messages the next business day. If this is a life-threatening emergency, hang up and dial 911.
+At lunch (12:30 PM–1:30 PM): Thank you for calling Chen Family Dental. We are closed for lunch and will return at 1:30 PM. Please leave your name, number, and reason for calling, and we will call you back this afternoon.
+Before opening day: Thank you for calling Chen Family Dental. We are not yet open. Please leave your name, number, and a good time to reach you. We will call you back.
+Press 9 after hours: Press 9 is part of your plan. It turns on once you give us a work on-call phone — not your personal cell.
+If the desk is slammed: A work mobile can ring. We will not put a personal number in a recording.
+
+## Buy (no invented prices)
+required ×1 Administration — 1 mobile.
+required ×1 Administration — 1 computer position.
+required ×1 Clinical — 1 computer position.
+required ×2 Front-desk lines so both can pick up — Required. Separate identities, models not chosen yet. Not a phone per room.
+required ×1 After-hours coverage as specified — Owned voicemail — quote the method you chose, not a generic auto attendant.
+not-yet ×0 selected Clinical-room phones — 6 rooms to evaluate. Do not treat room count as a shopping quantity.

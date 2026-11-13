@@ -134,7 +134,8 @@ export function applyUpdates(
         const prior = nextFacts[update.field_id];
         const currentValue = field.read(working);
         const conflict = prior?.status === 'confirmed' && update.operation === 'set' && !sameValue(prior.value, update.value) && !correcting;
-        if (conflict || (update.needs_confirmation && prior?.status === 'confirmed')) {
+        const exactOverride = conflict && (update.precision || 'heuristic') === 'exact';
+        if ((conflict && !exactOverride) || (update.needs_confirmation && prior?.status === 'confirmed' && !exactOverride)) {
             confirmationNeeded.push(update);
             nextFacts[update.field_id] = {
                 field_id: update.field_id,

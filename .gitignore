@@ -2,8 +2,11 @@
 .env.*
 node_modules/
 dist/
+test-results/
+playwright-report/
 planner/.test-build/
 planner/.eval-build/
+planner/.debug-build/
 planner/eval/results/
 planner/walkthroughs/
 planner/walkthrough-screenshots/

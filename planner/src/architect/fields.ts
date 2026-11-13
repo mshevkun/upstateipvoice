@@ -313,6 +313,36 @@ const dayFields: FieldDef[] = days.flatMap(day => [
             const end = normalizeTime(value);
             return end ? setDay(p, day, { end, open: true }) : p;
         }
+    },
+    {
+        id: 'hours.' + day + '.break_start',
+        type: 'string' as const,
+        description: 'Lunch/break start on ' + day + ' as HH:MM. Empty clears the break.',
+        confirmStep: 'hours',
+        read: (p: Plan) => p.hours.days.find(d => d.day === day)?.breakStart || '',
+        apply(p: Plan, operation: FieldOperation, value: Scalar) {
+            if (operation !== 'set')
+                return p;
+            if (asString(value) === '')
+                return setDay(p, day, { breakStart: '', breakEnd: p.hours.days.find(d => d.day === day)?.breakEnd ? '' : '' });
+            const start = normalizeTime(value);
+            return start ? setDay(p, day, { breakStart: start }) : p;
+        }
+    },
+    {
+        id: 'hours.' + day + '.break_end',
+        type: 'string' as const,
+        description: 'Lunch/break end on ' + day + ' as HH:MM.',
+        confirmStep: 'hours',
+        read: (p: Plan) => p.hours.days.find(d => d.day === day)?.breakEnd || '',
+        apply(p: Plan, operation: FieldOperation, value: Scalar) {
+            if (operation !== 'set')
+                return p;
+            if (asString(value) === '')
+                return setDay(p, day, { breakStart: '', breakEnd: '' });
+            const end = normalizeTime(value);
+            return end ? setDay(p, day, { breakEnd: end }) : p;
+        }
     }
 ]);
 
@@ -535,6 +565,271 @@ export const fields: FieldDef[] = [
             return { ...p, policy: { ...p.policy, urgentCoverage: coverage as Plan['policy']['urgentCoverage'] } };
         }
     },
+    enumField('urgent.roster', ['fixed', 'rotation', 'undecided'], 'On-call roster. rotation means the practice takes turns. Recording this is not a verified live route.', p => p.policy.urgentRoster, (p, value) => policy(p, { urgentRoster: value as Plan['policy']['urgentRoster'] }), 'urgent'),
+    enumField('urgent.backup', ['team', 'message', 'instructions'], 'What happens if the on-call attempt is missed.', p => p.policy.urgentBackup, (p, value) => {
+        const backup = value as Plan['policy']['urgentBackup'];
+        return { ...p, urgent: { ...p.urgent, backup: backup === 'team' ? p.urgent.backup : backup }, policy: { ...p.policy, urgentBackup: backup } };
+    }, 'urgent'),
+    {
+        id: 'urgent.instructions',
+        type: 'string',
+        description: 'Approved urgent-call cues and 911 wording. Recording cues is not a verified live route.',
+        confirmStep: 'urgent',
+        read: p => p.urgent.instructions || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const text = asString(value).slice(0, 400);
+            if (!text)
+                return p;
+            const instructions = p.urgent.instructions && !p.urgent.instructions.includes(text)
+                ? p.urgent.instructions + '; ' + text
+                : (p.urgent.instructions || text);
+            return { ...p, urgent: { ...p.urgent, instructions, enabled: true } };
+        }
+    },
+    {
+        id: 'urgent.owner',
+        type: 'string',
+        description: 'Who owns missed urgent messages. Map dentist/clinician to clinical.',
+        confirmStep: 'urgent',
+        read: p => p.urgent.owner || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const team = resolveTeam(p, asString(value)) || guessTeam(asString(value));
+            return team ? { ...p, urgent: { ...p.urgent, owner: team } } : p;
+        }
+    },
+    {
+        id: 'reasons.appointments.team',
+        type: 'string',
+        description: 'Team that handles appointment and scheduling calls.',
+        confirmStep: 'reasons',
+        read: p => p.reasons.find(r => r.id === 'appointments')?.team || null,
+        apply: (p, operation, value) => setReasonTeam(p, 'appointments', operation, value)
+    },
+    {
+        id: 'reasons.billing.team',
+        type: 'string',
+        description: 'Team that handles billing and insurance questions.',
+        confirmStep: 'reasons',
+        read: p => p.reasons.find(r => r.id === 'billing')?.team || null,
+        apply: (p, operation, value) => setReasonTeam(p, 'billing', operation, value)
+    },
+    {
+        id: 'reasons.clinical-question.team',
+        type: 'string',
+        description: 'Team that handles clinical questions after screening.',
+        confirmStep: 'reasons',
+        read: p => p.reasons.find(r => r.id === 'clinical-question')?.team || null,
+        apply: (p, operation, value) => setReasonTeam(p, 'clinical-question', operation, value)
+    },
+    {
+        id: 'current.lines',
+        type: 'string',
+        description: 'Stated existing phone lines, analog trunks, or fax. Do not invent inventory.',
+        read: p => p.current.lines || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            return { ...p, current: { ...p.current, lines: asString(value).slice(0, 120) } };
+        }
+    },
+    {
+        id: 'current.provider',
+        type: 'string',
+        description: 'Stated current phone or internet provider. Do not invent a vendor.',
+        read: p => p.current.provider || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            return { ...p, current: { ...p.current, provider: asString(value).slice(0, 80) } };
+        }
+    },
+    {
+        id: 'current.notes',
+        type: 'string',
+        description: 'Notes about existing lines, such as keeping fax off the patient number.',
+        read: p => p.current.notes || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const note = asString(value).slice(0, 200);
+            if (!note)
+                return p;
+            const notes = p.current.notes && !p.current.notes.includes(note) ? p.current.notes + ' ' + note : (p.current.notes || note);
+            return { ...p, current: { ...p.current, notes } };
+        }
+    },
+    {
+        id: 'continuity.notes',
+        type: 'string',
+        description: 'Installer-facing continuity laws such as snow-day routing. Append.',
+        read: p => p.policy.continuity.notes || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const note = asString(value).slice(0, 240);
+            if (!note)
+                return p;
+            const notes = p.policy.continuity.notes && !p.policy.continuity.notes.includes(note.slice(0, 24))
+                ? p.policy.continuity.notes + ' ' + note
+                : (p.policy.continuity.notes || note);
+            return policy(p, { continuity: { ...p.policy.continuity, notes } });
+        }
+    },
+    {
+        id: 'hours.holidays',
+        type: 'string',
+        description: 'ISO holiday date YYYY-MM-DD. Each set appends. Do not invent dates.',
+        confirmStep: 'hours',
+        read: p => p.hours.holidays.join(',') || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const dates = asString(value).split(/[,\s]+/).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+            if (!dates.length)
+                return p;
+            const holidays = [...p.hours.holidays];
+            for (const date of dates)
+                if (!holidays.includes(date))
+                    holidays.push(date);
+            return { ...p, hours: { ...p.hours, holidays } };
+        }
+    },
+    {
+        id: 'languages.name',
+        type: 'string',
+        description: 'Named language besides English. Spanish also sets languages.spanish.',
+        confirmStep: 'languages',
+        read: p => p.languages.find(l => l.name !== 'Spanish')?.name || p.languages[0]?.name || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const name = asString(value).replace(/^\w/, c => c.toUpperCase()).slice(0, 40);
+            if (!name)
+                return p;
+            if (p.languages.some(l => l.name === name))
+                return { ...p, policy: { ...p.policy, languageDecision: 'selected' } };
+            return {
+                ...p,
+                languages: [...p.languages, { name, mechanism: 'staff', team: 'reception', availability: 'open', note: '', fallback: 'reception' }],
+                policy: { ...p.policy, languageDecision: 'selected' }
+            };
+        }
+    },
+    enumField('languages.mechanism', ['staff', 'menu', 'assistant', 'undecided'], 'How a non-English language is identified.', p => p.languages[0]?.mechanism || null, (p, value) => patchLanguages(p, { mechanism: value as Plan['languages'][number]['mechanism'] }), 'languages'),
+    {
+        id: 'languages.team',
+        type: 'string',
+        description: 'Team that covers the named language during available hours.',
+        confirmStep: 'languages',
+        read: p => p.languages[0]?.team || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const team = resolveTeam(p, asString(value));
+            return team ? patchLanguages(p, { team }) : p;
+        }
+    },
+    enumField('languages.availability', ['open', 'always', 'limited'], 'When the named language is available. open means posted hours only.', p => p.languages[0]?.availability || null, (p, value) => patchLanguages(p, { availability: value as Plan['languages'][number]['availability'] }), 'languages'),
+    {
+        id: 'devices.work_mobile.team',
+        type: 'string',
+        description: 'Which team’s work mobile rings. Never stores a personal number.',
+        confirmStep: 'positions',
+        read: p => p.policy.placements.find(x => x.device === 'mobile')?.team || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const team = resolveTeam(p, asString(value));
+            return team ? setPlacement(p, team, 'mobile', 1, 'outside') : p;
+        }
+    },
+    {
+        id: 'devices.administration.place',
+        type: 'enum',
+        enum: ['computer', 'desk', 'mobile', 'none'],
+        description: 'Where the office manager answers. computer is an answering softphone, not a clinical room phone.',
+        confirmStep: 'positions',
+        read: p => p.policy.placements.find(x => x.team === 'admin')?.device || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const v = asString(value);
+            if (v === 'none')
+                return p;
+            if (v === 'computer' || v === 'desk' || v === 'mobile')
+                return setPlacement(p, 'admin', v, 1, 'outside');
+            return p;
+        }
+    },
+    {
+        id: 'devices.clinical.area',
+        type: 'enum',
+        enum: ['none', 'internal_computer', 'desk', 'per_room'],
+        description: 'Clinical-area phone. Default none. per_room is not a phone-per-chair order.',
+        confirmStep: 'positions',
+        read: p => {
+            const row = p.policy.placements.find(x => x.team === 'clinical');
+            if (!row || row.device === 'none')
+                return 'none';
+            if (row.device === 'computer' && row.access === 'internal')
+                return 'internal_computer';
+            return row.device;
+        },
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const v = asString(value);
+            if (v === 'none' || v === 'per_room')
+                return policy(p, { notes: v === 'per_room' ? ((p.policy.notes ? p.policy.notes + '; ' : '') + 'Clinical area: not a phone per room.') : p.policy.notes });
+            if (v === 'internal_computer')
+                return setPlacement(p, 'clinical', 'computer', 1, 'internal');
+            if (v === 'desk')
+                return setPlacement(p, 'clinical', 'desk', 1, 'internal');
+            return p;
+        }
+    },
+    {
+        id: 'hours.lunch.time',
+        type: 'enum',
+        enum: ['12-1', '12:30-13:30', '13-14', 'other'],
+        description: 'Lunch close window when the owner said phones close at lunch without a time.',
+        confirmStep: 'hours',
+        read: p => {
+            const d = p.hours.days.find(x => x.breakStart && x.breakEnd);
+            if (!d)
+                return null;
+            if (d.breakStart === '12:00' && d.breakEnd === '13:00')
+                return '12-1';
+            if (d.breakStart === '12:30' && d.breakEnd === '13:30')
+                return '12:30-13:30';
+            if (d.breakStart === '13:00' && d.breakEnd === '14:00')
+                return '13-14';
+            return 'other';
+        },
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const map: Record<string, [string, string]> = {
+                '12-1': ['12:00', '13:00'],
+                '12:30-13:30': ['12:30', '13:30'],
+                '13-14': ['13:00', '14:00']
+            };
+            const pair = map[asString(value)];
+            if (!pair)
+                return p;
+            return {
+                ...p,
+                hours: {
+                    ...p.hours,
+                    days: p.hours.days.map((d, i) => i < 5 && d.open && !d.breakStart ? { ...d, breakStart: pair[0], breakEnd: pair[1] } : d)
+                }
+            };
+        }
+    },
     enumField('hours.preset', ['weekdays', 'always', 'custom', 'undecided'], 'Phone-hour preset. weekdays is Monday–Friday 9–5. skip must be undecided, not weekdays.', p => p.policy.hoursPreset, (p, value) => {
         const preset = value as Plan['policy']['hoursPreset'];
         return { ...p, hours: { ...p.hours, days: applyHoursPreset(p.hours.days, preset) }, policy: { ...p.policy, hoursPreset: preset } };
@@ -632,22 +927,24 @@ export const fields: FieldDef[] = [
             };
         }
     },
-    enumField('hours.lunch', ['closed', 'covered', 'undecided'], 'Lunch-hour phones. closed is a scheduled break, not after-hours voicemail. covered means someone stays on the desk.', p => {
-        const day = p.hours.days[0];
-        if (day?.breakStart && day?.breakEnd)
+    enumField('hours.lunch', ['closed', 'covered', 'undecided'], 'Lunch-hour phones. closed is a scheduled break, not after-hours voicemail. covered means someone stays on the desk. Do not invent 12:00–13:00 when no time was said.', p => {
+        if (p.hours.days.some(d => d.breakStart && d.breakEnd))
+            return 'closed';
+        if (/\blunch phones covered\b/i.test(p.policy.notes))
+            return 'covered';
+        if (/\blunch phones closed\b/i.test(p.policy.notes))
             return 'closed';
         return 'undecided';
     }, (p, value) => {
+        const without = p.policy.notes.replace(/;?\s*lunch phones (closed|covered)\.?/gi, '').replace(/^; |; $/g, '').trim();
         if (value === 'covered')
-            return { ...p, hours: { ...p.hours, days: p.hours.days.map((d, i) => i < 5 ? { ...d, breakStart: '', breakEnd: '' } : d) } };
-        if (value === 'closed')
             return {
                 ...p,
-                hours: {
-                    ...p.hours,
-                    days: p.hours.days.map((d, i) => i < 5 && d.open ? { ...d, breakStart: d.breakStart || '12:00', breakEnd: d.breakEnd || '13:00' } : d)
-                }
+                hours: { ...p.hours, days: p.hours.days.map((d, i) => i < 5 ? { ...d, breakStart: '', breakEnd: '' } : d) },
+                policy: { ...p.policy, notes: without ? without + '; lunch phones covered' : 'lunch phones covered' }
             };
+        if (value === 'closed')
+            return policy(p, { notes: without ? without + '; lunch phones closed' : 'lunch phones closed' });
         return p;
     }, 'hours'),
     ...dayFields,
@@ -671,7 +968,14 @@ export const fields: FieldDef[] = [
                 return { ...p, policy: { ...p.policy, languageDecision: 'selected' } };
             return {
                 ...p,
-                languages: [...p.languages, { name: 'Spanish', mechanism: p.first.kind === 'menu' ? 'menu' : p.first.kind === 'assistant' ? 'assistant' : 'staff', team: '', availability: 'open', note: '', fallback: '' }],
+                languages: [...p.languages, {
+                    name: 'Spanish',
+                    mechanism: p.first.kind === 'menu' ? 'menu' : p.first.kind === 'assistant' ? 'assistant' : 'staff',
+                    team: 'reception',
+                    availability: 'open',
+                    note: '',
+                    fallback: 'reception'
+                }],
                 policy: { ...p.policy, languageDecision: 'selected' }
             };
         }
@@ -947,33 +1251,53 @@ function setReceptionSharing(p: Plan, sharing: 'shared' | 'separate'): Plan {
     const rec = p.policy.placements.filter(x => x.team === 'reception');
     if (rec.length)
         return policy(p, { placements: p.policy.placements.map(x => x.team === 'reception' ? { ...x, sharing } : x) });
-    return policy(p, { placements: [...p.policy.placements, {
-        id: 'reception-sharing',
-        team: 'reception',
-        label: 'Front desk',
-        device: 'undecided',
-        count: 0,
-        sharing,
-        access: 'outside',
-        extension: ''
-    }] });
+    return policy(p, {
+        placements: [...p.policy.placements, {
+            id: 'reception-share',
+            team: 'reception',
+            label: 'Front desk',
+            device: 'undecided',
+            count: 0,
+            access: 'outside' as const,
+            sharing,
+            extension: ''
+        }]
+    });
 }
 
-function setPlacement(p: Plan, team: string, device: 'desk' | 'computer' | 'mobile', count: number): Plan {
-    const sharing = keptSharing(p, team) || (count > 1 ? 'separate' as const : 'shared' as const);
+function setPlacement(p: Plan, team: string, device: 'desk' | 'computer' | 'mobile', count: number, access: 'outside' | 'internal' = 'outside', sharingOverride?: 'shared' | 'separate'): Plan {
+    const sharing = sharingOverride || keptSharing(p, team) || (count > 1 ? 'separate' as const : 'shared' as const);
     const existing = p.policy.placements.filter(x => !(x.team === team && (x.device === device || x.device === 'undecided' && x.count === 0)));
     const row = p.policy.placements.find(x => x.team === team && x.device === device);
     const next = [...existing, {
         id: row?.id || team + '-' + device,
         team,
-        label: team === 'reception' ? 'Front desk' : team,
+        label: team === 'reception' ? 'Front desk' : team === 'admin' ? 'Administration' : team === 'clinical' ? 'Clinical' : team,
         device,
         count,
         sharing,
-        access: 'outside' as const,
+        access,
         extension: row?.extension || ''
     }];
     return policy(p, { placements: next });
+}
+
+function setReasonTeam(p: Plan, id: string, operation: FieldOperation, value: Scalar): Plan {
+    if (operation !== 'set')
+        return p;
+    const team = resolveTeam(p, asString(value)) || asString(value);
+    if (!team)
+        return p;
+    const mapped = team === 'administration' ? 'admin' : team;
+    if (!p.reasons.some(r => r.id === id))
+        return p;
+    return { ...p, reasons: p.reasons.map(r => r.id === id ? { ...r, team: mapped } : r) };
+}
+
+function patchLanguages(p: Plan, patch: Partial<Plan['languages'][number]>): Plan {
+    if (!p.languages.length)
+        return p;
+    return { ...p, languages: p.languages.map((l, i) => i === 0 || l.name === 'Spanish' ? { ...l, ...patch } : l) };
 }
 
 export function readConfirmed(p: Plan, facts: Record<string, { status: string; value: Scalar }>) {

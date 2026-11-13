@@ -10,12 +10,14 @@ const srcDir = path.join(__dirname, '../planner/src');
 const outDir = path.join(__dirname, '../planner/.test-build');
 fs.mkdirSync(outDir, { recursive: true });
 
-for (const name of ['config', 'policy', 'routing', 'locations', 'fusion', 'plan-content', 'provisioning', 'status', 'readiness', 'bom', 'opening', 'advisor', 'flow']) {
+fs.mkdirSync(path.join(outDir, 'architect'), { recursive: true });
+for (const name of ['config', 'policy', 'routing', 'locations', 'fusion', 'plan-content', 'provisioning', 'status', 'readiness', 'bom', 'opening', 'advisor', 'flow', 'team-state', 'architect/questions']) {
   let out = ts.transpile(fs.readFileSync(path.join(srcDir, name + '.ts'), 'utf8'), {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext
   });
-  out = out.replace(/from ['"](\.\/[^'"]+)['"]/g, "from '$1.mjs'");
+  out = out.replace(/from ['"](\.\.?\/[^'"]+)['"]/g, "from '$1.mjs'");
+  fs.mkdirSync(path.dirname(path.join(outDir, name + '.mjs')), { recursive: true });
   fs.writeFileSync(path.join(outDir, name + '.mjs'), out);
 }
 
@@ -350,6 +352,21 @@ test('opening-day announcement is a Destination flip, not a Time Condition', asy
   assert(b.recordings.some(r => r.filename === 'before-opening.wav'));
   assert(scenarios(p).some(s => s.id === 'before-opening'));
   assert.equal(simulate(p, scenarios(p).find(s => s.id === 'before-opening')).trace.at(-1).kind, 'end');
+});
+
+test('lunch is its own recording, not overnight IVR or on-call', async () => {
+  const { initial } = await load();
+  const { fusionBuild } = await import(path.join(outDir, 'fusion.mjs'));
+  const p = complete(initial());
+  p.hours.days[0].breakStart = '12:00';
+  p.hours.days[0].breakEnd = '13:00';
+  const b = fusionBuild(p);
+  const lunch = b.recordings.find(r => r.filename === 'lunch-closed.wav');
+  assert(lunch);
+  assert.match(lunch.script, /this afternoon/i);
+  assert.doesNotMatch(lunch.script, /next business day/i);
+  const tc = b.objects.find(o => o.kind === 'time_condition');
+  assert(tc.setup.some(s => /Lunch groups/.test(s) && /not the overnight/i.test(s)));
 });
 
 test('breaks become two minute-of-day groups with exclusive close', async () => {

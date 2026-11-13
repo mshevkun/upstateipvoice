@@ -102,7 +102,14 @@ export function applyHoursPreset(days: Plan['hours']['days'], preset: 'weekdays'
     if (preset === 'always')
         return days.map(d => ({ ...d, open: true, start: '00:00', end: '24:00', breakStart: '', breakEnd: '' }));
     if (preset === 'weekdays' || preset === 'undecided')
-        return days.map((d, i) => ({ ...d, open: i < 5, start: '09:00', end: '17:00', breakStart: '', breakEnd: '' }));
+        return days.map((d, i) => ({
+            ...d,
+            open: i < 5,
+            start: '09:00',
+            end: '17:00',
+            breakStart: i < 5 ? d.breakStart : '',
+            breakEnd: i < 5 ? d.breakEnd : ''
+        }));
     return days;
 }
 
@@ -117,8 +124,11 @@ export function hoursSummary(p: Plan) {
     if (same && open.length === 5 && p.hours.days.filter((d, i) => d.open === (i < 5)).every(Boolean))
         return 'Mon–Fri · ' + formatTime(open[0].start) + '–' + formatTime(open[0].end) + (open[0].breakStart && open[0].breakEnd ? ' · lunch ' + formatTime(open[0].breakStart) + '–' + formatTime(open[0].breakEnd) : '');
     if (same)
-        return open.map(d => d.day.slice(0, 3)).join(', ') + ' · ' + formatTime(open[0].start) + '–' + formatTime(open[0].end) + (closed ? ' · Closed ' + closed : '');
-    return open.map(d => d.day.slice(0, 3) + ' ' + formatTime(d.start) + '–' + formatTime(d.end)).join(' · ');
+        return open.map(d => d.day.slice(0, 3)).join(', ') + ' · ' + formatTime(open[0].start) + '–' + formatTime(open[0].end) + (open[0].breakStart && open[0].breakEnd ? ' · lunch ' + formatTime(open[0].breakStart) + '–' + formatTime(open[0].breakEnd) : '') + (closed ? ' · Closed ' + closed : '');
+    return open.map(d => {
+        const lunch = d.breakStart && d.breakEnd ? ' lunch ' + formatTime(d.breakStart) + '–' + formatTime(d.breakEnd) : '';
+        return d.day.slice(0, 3) + ' ' + formatTime(d.start) + '–' + formatTime(d.end) + lunch;
+    }).join(' · ') + (closed ? ' · Closed ' + closed : '');
 }
 
 export function formatTime(value: string) {
@@ -160,7 +170,10 @@ export function parseTime(text: string) {
 export function suggestedGreeting(p: Plan) {
     const name = p.name.trim() || 'the practice';
     const when = formatOpening(p);
-    return 'Thank you for calling ' + name + '. ' + (when ? 'We open ' + when + '. ' : '') + 'For a true emergency, hang up and dial 911.';
+    const openBit = when
+        ? 'We are not open yet. We open ' + when + '. '
+        : 'We are not open yet. Please check back after we open. ';
+    return 'Thank you for calling ' + name + '. ' + openBit + 'For a true emergency, hang up and dial 911.';
 }
 
 export function formatOpening(p: Plan) {

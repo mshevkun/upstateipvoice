@@ -11,6 +11,7 @@ import { ChipSelect, DatePicker, HolidayEditor, HoursEditor } from './pickers';
 import { choices, type SceneMode } from './state';
 import { suggestPlacements } from './policy';
 import { teamSummary } from './team-state';
+import { PRIVACY_COPY } from './privacy';
 
 export function Wizard() {
     const loaded = useRef(read());
@@ -60,7 +61,7 @@ export function Wizard() {
             await mod.downloadBothPDF(snapshot);
         else
             await mod.downloadPDF(snapshot);
-        setNotice((kind === 'engineer' ? 'Implementation spec' : 'Owner blueprint') + ' downloaded. It stays on this device.');
+        setNotice((kind === 'engineer' ? 'Implementation spec' : 'Owner blueprint') + ' downloaded. ' + PRIVACY_COPY);
     }
     catch {
         setNotice('PDF export failed. Your plan is preserved. Retry, or copy the owner plan as text from technical requirements.');

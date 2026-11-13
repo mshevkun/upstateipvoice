@@ -1,4 +1,5 @@
-import { decisions, type Plan } from './config';
+import { ownerQuestions } from './architect/questions';
+import type { Plan } from './config';
 import { unapprovedTerminals } from './status';
 
 export type Readiness = {
@@ -11,8 +12,36 @@ export type Readiness = {
     label: string;
 };
 
+export function stillOpen(p: Plan): string[] {
+    const q = p.policy;
+    const items: string[] = [];
+    if (p.urgent.enabled && q.urgentKind === 'connect')
+        items.push('on-call work identity (Follow Me)');
+    if (!q.e911Confirmed)
+        items.push('E911 address on install');
+    if (q.opening.internet === 'survey' || q.opening.network === 'survey' || q.opening.internet === 'undecided' || q.continuity.internet === 'survey' || q.continuity.power === 'undecided' || q.continuity.power === 'survey')
+        items.push('internet & power site survey');
+    return items;
+}
+
+/** Inferred from other answers — never asked again as a chat question. */
+export function derived(p: Plan): string[] {
+    const items: string[] = [];
+    if (p.first.kind === 'human' && p.first.team)
+        items.push('Assign an outside-call answering position to the first-answer team');
+    if (p.policy.placements.some(x => x.team === 'clinical' && x.count > 0) || p.policy.roomsSpecified)
+        items.push('Choose devices for Clinical team');
+    if (p.busy.owner || p.after.owner)
+        items.push('Message notification follows the inbox owner');
+    return items;
+}
+
+export function ownerQuestionCount(p: Plan) {
+    return ownerQuestions(p).length;
+}
+
 export function readiness(p: Plan): Readiness {
-    const questionnaire = decisions(p);
+    const questionnaire = ownerQuestions(p).map(q => q.text);
     const q = p.policy;
     const owner: string[] = [];
     const provider: string[] = [];

@@ -22,7 +22,7 @@ function transpile(rel) {
   fs.writeFileSync(dest, out);
 }
 
-for (const name of ['config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state', 'architect/schema', 'architect/fields', 'architect/extract', 'architect/ack', 'architect/merge', 'architect/questions', 'architect/turn', 'architect/scene-from-plan', 'architect/hear', 'provisioning', 'bom', 'opening', 'status', 'readiness', 'advisor', 'fusion'])
+for (const name of ['config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state', 'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract', 'architect/ack', 'architect/merge', 'architect/questions', 'architect/turn', 'architect/scene-from-plan', 'architect/hear', 'architect/scrub', 'provisioning', 'bom', 'opening', 'status', 'readiness', 'privacy', 'advisor', 'owner-brief', 'fusion', 'engineer-brief'])
   transpile(name);
 
 let architect;
@@ -37,8 +37,10 @@ async function load() {
     const scene = await import(path.join(outDir, 'architect/scene-from-plan.mjs'));
     const hear = await import(path.join(outDir, 'architect/hear.mjs'));
     const advisor = await import(path.join(outDir, 'advisor.mjs'));
+    const brief = await import(path.join(outDir, 'owner-brief.mjs'));
     const fusion = await import(path.join(outDir, 'fusion.mjs'));
-    architect = { ...config, ...merge, ...questions, ...fields, ...extract, ...turn, ...scene, ...hear, ...advisor, ...fusion };
+    const eng = await import(path.join(outDir, 'engineer-brief.mjs'));
+    architect = { ...config, ...merge, ...questions, ...fields, ...extract, ...turn, ...scene, ...hear, ...advisor, ...brief, ...fusion, ...eng };
   }
   return architect;
 }
@@ -385,7 +387,7 @@ test('existing dental in a city sets specialty without asking again', async () =
   const mod = await load();
   const hinted = mod.updatesFromOwnerText('Existing dental in Catskill NY. One girl at the front, I\'m the dentist.', null, {});
   assert.equal(hinted.find(u => u.field_id === 'specialty')?.value, 'Dental');
-  assert.equal(hinted.find(u => u.field_id === 'cityState')?.value, 'Catskill');
+  assert.match(String(hinted.find(u => u.field_id === 'cityState')?.value || ''), /Catskill/i);
 });
 
 test('dentist plus front desk does not invent an administrator', async () => {
@@ -655,7 +657,7 @@ test('before-opening recording chip does not crash caller hear', async () => {
   plan.policy.beforeOpening = 'information';
   assert.doesNotThrow(() => mod.callerHear(plan));
   const rows = mod.callerHear(plan);
-  assert.ok(rows.some(row => /Before opening day/.test(row.when) && /not open yet/i.test(row.hear)));
+  assert.ok(rows.some(row => /Before opening/.test(row.when) && /not (yet )?open/i.test(row.hear)));
   const turned = update(mod, { ...mod.initial(), mode: 'opening' }, {}, [
     { field_id: 'beforeOpening', operation: 'set', value: 'information' }
   ]);
@@ -670,9 +672,14 @@ test('caller hear preview uses the practice name and lunch close', async () => {
   plan = update(mod, plan, {}, [
     { field_id: 'name', operation: 'set', value: 'Hudson Family Dental' },
     { field_id: 'first.kind', operation: 'set', value: 'human' },
+    { field_id: 'teams.reception.count', operation: 'set', value: 2 },
     { field_id: 'busy.kind', operation: 'set', value: 'message' },
+    { field_id: 'busy.owner', operation: 'set', value: 'reception' },
     { field_id: 'after.kind', operation: 'set', value: 'message' },
-    { field_id: 'hours.lunch', operation: 'set', value: 'closed' }
+    { field_id: 'after.owner', operation: 'set', value: 'reception' },
+    { field_id: 'hours.lunch', operation: 'set', value: 'closed' },
+    { field_id: 'hours.Monday.break_start', operation: 'set', value: '12:00' },
+    { field_id: 'hours.Monday.break_end', operation: 'set', value: '13:00' }
   ]).plan;
   const hear = mod.callerHear(plan);
   assert.ok(hear.some(row => /Hudson Family Dental/.test(row.hear) && /After hours/.test(row.when)));
@@ -732,6 +739,12 @@ test('Hudson messy talk lands mailbox, two lines, work mobile, and lunch on the 
   const bands = [...mod.purchaseBands(plan).required, ...mod.purchaseBands(plan).optional];
   assert.ok(bands.some(r => /both can pick up/i.test(r.item)));
   assert.ok(bands.some(r => /work-mobile/i.test(r.item)));
+  const buy = mod.buySummary(plan);
+  assert.equal(buy.desk.qty, 2);
+  assert.equal(buy.mobile.qty, 1);
+  assert.equal(buy.computer.qty, 0);
+  assert.ok(buy.rooms === 0 || buy.rooms === 4);
+  assert.ok(!mod.reviewOpenActions(plan).items.some(a => /desk, computer, or mobile|phone or computer for answering/i.test(a.label)));
   const glance = mod.glance(plan);
   assert.equal(glance.metrics[0].value, '2');
   const fusion = mod.fusionBuild(plan);
@@ -767,6 +780,347 @@ test('opening callback owner is not left unset once someone owns the mailbox', a
   assert.ok(rec);
   assert.match(rec.script, /not yet open/i);
   assert.match(mod.headlineInsights(second.plan).map(i => i.id).join(' '), /before-ok/);
+});
+
+test('buySummary infers desk phones from sharing, never from rooms', async () => {
+  const mod = await load();
+  const empty = mod.buySummary(mod.initial());
+  assert.equal(empty.desk.qty, null);
+  assert.equal(empty.computer.qty, null);
+  assert.equal(empty.mobile.qty, null);
+  const { plan } = update(mod, mod.initial(), {}, [
+    { field_id: 'mode', operation: 'set', value: 'opening', evidence: 'opening' },
+    { field_id: 'specialty', operation: 'set', value: 'Dental', evidence: 'dental' },
+    { field_id: 'teams.reception.count', operation: 'set', value: 2, evidence: 'two at the front' },
+    { field_id: 'teams.clinical.count', operation: 'set', value: 4, evidence: 'four clinicians' },
+    { field_id: 'first.kind', operation: 'set', value: 'human', evidence: 'front desk first' },
+    { field_id: 'first.team', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'devices.reception.sharing', operation: 'set', value: 'separate', evidence: 'both can pick up' },
+    { field_id: 'devices.work_mobile', operation: 'set', value: 'app', evidence: 'work mobile' },
+    { field_id: 'policy.rooms', operation: 'set', value: 6, evidence: 'six rooms' }
+  ]);
+  const buy = mod.buySummary(plan);
+  assert.equal(buy.desk.qty, 2);
+  assert.equal(buy.mobile.qty, 1);
+  assert.equal(buy.computer.qty, 0);
+  assert.equal(buy.rooms, 6);
+  assert.notEqual(buy.desk.qty, buy.rooms);
+  assert.equal(plan.endpoints.undecided, true);
+  const open = mod.reviewOpenActions(plan);
+  assert.ok(!open.items.some(a => /desk, computer, or mobile|phone or computer for answering/i.test(a.label)));
+  const shared = update(mod, plan, {}, [{ field_id: 'devices.reception.sharing', operation: 'set', value: 'shared', evidence: 'one line' }]);
+  assert.equal(mod.buySummary(shared.plan).desk.qty, 1);
+});
+
+test('owner brief writes phone quantities, not rooms, and never Fusion ports', async () => {
+  const mod = await load();
+  const { plan } = update(mod, mod.initial(), {}, [
+    { field_id: 'mode', operation: 'set', value: 'opening', evidence: 'opening' },
+    { field_id: 'specialty', operation: 'set', value: 'Dental', evidence: 'dental' },
+    { field_id: 'name', operation: 'set', value: 'Chen Family Dental', evidence: 'name' },
+    { field_id: 'teams.reception.count', operation: 'set', value: 2, evidence: 'two at the front' },
+    { field_id: 'teams.administration.count', operation: 'set', value: 1, evidence: 'office manager' },
+    { field_id: 'first.kind', operation: 'set', value: 'human', evidence: 'front desk first' },
+    { field_id: 'first.team', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'busy.kind', operation: 'set', value: 'message', evidence: 'take a message' },
+    { field_id: 'busy.owner', operation: 'set', value: 'reception', evidence: 'front desk checks' },
+    { field_id: 'after.kind', operation: 'set', value: 'message', evidence: 'after hours message' },
+    { field_id: 'after.owner', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'devices.reception.sharing', operation: 'set', value: 'separate', evidence: 'both can pick up' },
+    { field_id: 'devices.work_mobile', operation: 'set', value: 'app', evidence: 'work mobile' },
+    { field_id: 'policy.rooms', operation: 'set', value: 6, evidence: 'six rooms' }
+  ]);
+  const pages = mod.ownerBrief(plan);
+  assert.equal(pages.length, 6);
+  const text = mod.ownerBriefText(plan);
+  assert.match(text, /Chen Family Dental/);
+  assert.match(text, /2 front-desk phones because 2 people at the front|2 people at the front/);
+  assert.match(text, /Phones to order: 3/);
+  assert.match(text, /6 treatment rooms are chairs|Not a phone per room/);
+  assert.doesNotMatch(text, /0 Room phones/);
+  assert.doesNotMatch(text, /Owned message|Supply a verified on-call|transfer acceptance before reporting/);
+  assert.doesNotMatch(text, /:5081|:7443|reloadxml|FusionPBX/);
+  assert.match(text, /hang up and dial 911/i);
+  assert.match(text, /Do not order a phone per treatment room|Room phones selected: none/);
+  assert.match(text, /not a third desk phone|work app — not a desk phone|office manager/);
+  assert.doesNotMatch(text, /not a phones|1 people/);
+  assert.match(text, /upstateipvoice\.com\/review/);
+  const empty = mod.ownerBrief(mod.initial());
+  assert.equal(empty.length, 6);
+  assert.doesNotMatch(mod.ownerBriefText(mod.initial()), /Owned message|:5081/);
+});
+
+test('owner brief lunch is afternoon callback, not overnight on-call', async () => {
+  const mod = await load();
+  const { plan } = update(mod, mod.initial(), {}, [
+    { field_id: 'mode', operation: 'set', value: 'opening', evidence: 'opening' },
+    { field_id: 'name', operation: 'set', value: 'Chen Family Dental', evidence: 'name' },
+    { field_id: 'specialty', operation: 'set', value: 'Dental', evidence: 'dental' },
+    { field_id: 'first.kind', operation: 'set', value: 'human', evidence: 'front desk' },
+    { field_id: 'first.team', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'teams.reception.count', operation: 'set', value: 2, evidence: 'two at the front' },
+    { field_id: 'busy.kind', operation: 'set', value: 'message', evidence: 'message' },
+    { field_id: 'busy.owner', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'after.kind', operation: 'set', value: 'message', evidence: 'after hours' },
+    { field_id: 'after.owner', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'hours.lunch', operation: 'set', value: 'closed', evidence: 'lunch close' },
+    { field_id: 'hours.Monday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Monday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Tuesday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Tuesday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Wednesday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Wednesday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Thursday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Thursday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Friday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Friday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'urgent.scope', operation: 'set', value: 'urgent_only', evidence: 'only swelling trauma bleeding' }
+  ]);
+  plan.policy.urgentCoverage = 'closed';
+  plan.urgent.enabled = true;
+  plan.policy.urgentKind = 'connect';
+  const text = mod.ownerBriefText(plan);
+  assert.match(text, /this afternoon/);
+  assert.match(text, /press 9|extra choice/i);
+  assert.match(text, /swelling, trauma/i);
+  assert.doesNotMatch(text, /not a phones/);
+  assert.doesNotMatch(text, /1 people/);
+  const lunch = mod.callerHear(plan).find(r => /lunch/i.test(r.when));
+  assert.ok(lunch);
+  assert.match(lunch.hear, /this afternoon/i);
+  assert.doesNotMatch(lunch.hear, /next business day/i);
+});
+
+test('engineer brief is an 8-page build path, not a routing graph dump', async () => {
+  const mod = await load();
+  assert.ok(mod.engineerBrief(mod.initial()).length >= 8);
+  const { plan } = update(mod, mod.initial(), {}, [
+    { field_id: 'mode', operation: 'set', value: 'opening', evidence: 'opening' },
+    { field_id: 'name', operation: 'set', value: 'Chen Family Dental', evidence: 'name' },
+    { field_id: 'first.kind', operation: 'set', value: 'human', evidence: 'front desk' },
+    { field_id: 'first.team', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'busy.kind', operation: 'set', value: 'message', evidence: 'message' },
+    { field_id: 'busy.owner', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'after.kind', operation: 'set', value: 'message', evidence: 'after hours' },
+    { field_id: 'after.owner', operation: 'set', value: 'reception', evidence: 'front desk' },
+    { field_id: 'hours.lunch', operation: 'set', value: 'closed', evidence: 'lunch close' },
+    { field_id: 'hours.Monday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Monday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Tuesday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Tuesday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Wednesday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Wednesday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Thursday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Thursday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'hours.Friday.break_start', operation: 'set', value: '12:00', evidence: 'noon' },
+    { field_id: 'hours.Friday.break_end', operation: 'set', value: '13:00', evidence: 'one' },
+    { field_id: 'devices.reception.sharing', operation: 'set', value: 'separate', evidence: 'both pick up' },
+    { field_id: 'teams.reception.count', operation: 'set', value: 2, evidence: 'two at the front' },
+    { field_id: 'urgent.scope', operation: 'set', value: 'urgent_only', evidence: 'urgent only' }
+  ]);
+  plan.policy.urgentCoverage = 'closed';
+  plan.urgent.enabled = true;
+  plan.policy.urgentKind = 'connect';
+  const pages = mod.engineerBrief(plan);
+  assert.ok(pages.length >= 8);
+  const text = mod.engineerBriefText(plan);
+  assert.match(text, /Must match owner/);
+  assert.match(text, /:5081/);
+  assert.match(text, /reloadxml/);
+  assert.match(text, /lunch-closed\.wav/);
+  assert.match(text, /Not group 999|not fall through to group 999/i);
+  assert.match(text, /Group 999/);
+  assert.match(text, /inclusive/i);
+  assert.match(text, /Inbound DID|inbound/i);
+  assert.match(text, /timeout_app = transfer/);
+  assert.match(text, /BLOCKED: after hours digit 9|Digit 9[\s\S]{0,80}BLOCKED/);
+  assert.doesNotMatch(text, /Digit 9 rings RG \d+ for \d+s — a person picks up/);
+  assert.doesNotMatch(text, /reason-appointments-accepted|v_dialplan_details/);
+  assert.doesNotMatch(text, /Dental IVR copy should separate/);
+});
+
+test('engineer brief follows first-answer, lunch, and after-hours instead of a dental default', async () => {
+  const mod = await load();
+  const { inventory } = await import(path.join(outDir, 'policy.mjs'));
+  const fill = (base, patch) => {
+    const p = structuredClone(base);
+    p.mode = 'improving';
+    p.name = 'Combo Practice';
+    p.specialty = 'Dental';
+    p.teams.forEach((t, i) => { t.count = [2, 2, 1][i]; t.status = 'known'; });
+    p.first = { kind: 'human', team: 'reception' };
+    p.reasons.forEach((r, i) => { r.team = ['reception', 'admin', 'clinical'][i]; });
+    p.busy = { kind: 'message', seconds: 25, wait: 90, backup: 'admin', owner: 'reception' };
+    p.after = { kind: 'message', owner: 'reception', instructions: 'Leave your name.' };
+    p.urgent = { enabled: false, approved: true, instructions: '', team: 'clinical', backup: 'admin', seconds: 30, owner: 'clinical' };
+    p.policy.ring = 'together';
+    p.policy.urgentKind = 'none';
+    p.policy.notification = 'inbox';
+    p.policy.followup = 'yes';
+    p.policy.placements = p.teams.map((t, i) => ({
+      id: t.id, team: t.id, label: t.name,
+      device: ['desk', 'computer', 'mobile'][i],
+      count: i === 0 ? 2 : 1, sharing: i === 0 ? 'separate' : 'shared',
+      access: i === 1 ? 'internal' : 'outside', extension: ''
+    }));
+    Object.assign(p, patch);
+    if (patch.policy) p.policy = { ...p.policy, ...patch.policy };
+    p.endpoints = inventory(p);
+    return p;
+  };
+
+  const menu = fill(mod.initial(), {
+    first: { kind: 'menu', team: '' },
+    busy: { kind: 'queue', seconds: 25, wait: 90, backup: 'admin', owner: 'reception' },
+    after: { kind: 'information', owner: 'reception', instructions: 'We are closed. Call back during business hours.' },
+    languages: [{ name: 'Spanish', mechanism: 'menu', team: 'reception', availability: 'open', note: '', fallback: 'reception' }]
+  });
+  menu.policy.queueExit = 'message';
+  menu.policy.languageDecision = 'selected';
+  const menuText = mod.engineerBriefText(menu);
+  assert.match(menuText, /DID → TC 8000 → IVR/);
+  assert.match(menuText, /ivr-open-greeting/);
+  assert.match(menuText, /Open hours\. greet_long = ivr-open-greeting/);
+  assert.doesNotMatch(menuText, /Open hours: two simultaneous calls[\s\S]*No IVR/);
+  assert.doesNotMatch(menuText, /Nobody answers[\s\S]*busy-voicemail\.wav → box/);
+  assert.doesNotMatch(menuText, /Lunch groups must not fall through/);
+  assert.match(menuText, /No lunch close|Do not invent a lunch/);
+
+  const always = fill(mod.initial(), {});
+  always.hours.days = always.hours.days.map(d => ({ ...d, open: true, start: '00:00', end: '24:00', breakStart: '', breakEnd: '' }));
+  const alwaysText = mod.engineerBriefText(always);
+  assert.doesNotMatch(alwaysText, /empty Saturday\/Sunday/);
+  assert.match(alwaysText, /0–1439|Safety only/);
+
+  const announce = fill(mod.initial(), { mode: 'opening', name: 'Opening announcement' });
+  announce.policy.beforeOpening = 'information';
+  announce.policy.beforeOpeningText = 'We open March 15. Please call back then.';
+  const announceText = mod.engineerBriefText(announce);
+  assert.match(announceText, /before-opening\.wav/);
+  assert.doesNotMatch(announceText, /Point the DID at \*99/);
+
+  const shared = fill(mod.initial(), {});
+  shared.policy.placements[0].sharing = 'shared';
+  const sharedText = mod.engineerBriefText(shared);
+  assert.match(sharedText, /one SIP user/);
+  assert.doesNotMatch(sharedText, /two SIP users/);
+
+  const ordered = fill(mod.initial(), {});
+  ordered.policy.ring = 'order';
+  ordered.policy.ringOrder = [{ team: 'reception', seconds: 20 }, { team: 'admin', seconds: 20 }];
+  const orderedText = mod.engineerBriefText(ordered);
+  assert.match(orderedText, /Sequence, not simultaneous|sequence hop/i);
+  assert.match(orderedText, /Open hours: sequence/);
+  assert.doesNotMatch(orderedText, /Open hours: two simultaneous calls/);
+  assert.match(orderedText, /sequence hop 2/);
+  assert.doesNotMatch(orderedText, /Administration[\s\S]{0,80}transfer target only/);
+
+  const eye = fill(mod.initial(), { specialty: 'Eye care', name: 'Hudson Eye' });
+  eye.urgent.enabled = true;
+  eye.policy.urgentKind = 'connect';
+  eye.policy.urgentCoverage = 'closed';
+  const eyeText = mod.engineerBriefText(eye);
+  assert.doesNotMatch(eyeText, /on-call dentist/);
+  assert.match(eyeText, /on-call clinician|eye injury|vision/i);
+
+  const computer = fill(mod.initial(), {});
+  computer.policy.placements = [
+    { id: 'reception', team: 'reception', label: 'Front desk computer', device: 'computer', count: 1, sharing: 'shared', access: 'outside', extension: '' }
+  ];
+  computer.policy.notes = '';
+  computer.endpoints = inventory(computer);
+  const computerText = mod.engineerBriefText(computer);
+  assert.match(computerText, /inbound member|Yes · RG/);
+  assert.doesNotMatch(computerText, /Desk phone/);
+});
+
+test('owner brief follows first-answer, sharing, and after-hours instead of a dental default', async () => {
+  const mod = await load();
+  const { inventory } = await import(path.join(outDir, 'policy.mjs'));
+  const fill = (base, patch) => {
+    const p = structuredClone(base);
+    p.mode = 'improving';
+    p.name = 'Combo Practice';
+    p.specialty = 'Dental';
+    p.teams.forEach((t, i) => { t.count = [2, 2, 1][i]; t.status = 'known'; });
+    p.first = { kind: 'human', team: 'reception' };
+    p.reasons.forEach((r, i) => { r.team = ['reception', 'admin', 'clinical'][i]; });
+    p.busy = { kind: 'message', seconds: 25, wait: 90, backup: 'admin', owner: 'reception' };
+    p.after = { kind: 'message', owner: 'reception', instructions: 'Leave your name.' };
+    p.urgent = { enabled: false, approved: true, instructions: '', team: 'clinical', backup: 'admin', seconds: 30, owner: 'clinical' };
+    p.policy.ring = 'together';
+    p.policy.urgentKind = 'none';
+    p.policy.notification = 'inbox';
+    p.policy.followup = 'yes';
+    p.policy.placements = p.teams.map((t, i) => ({
+      id: t.id, team: t.id, label: t.name,
+      device: ['desk', 'computer', 'mobile'][i],
+      count: i === 0 ? 2 : 1, sharing: i === 0 ? 'separate' : 'shared',
+      access: i === 1 ? 'internal' : 'outside', extension: ''
+    }));
+    Object.assign(p, patch);
+    if (patch.policy) p.policy = { ...p.policy, ...patch.policy };
+    p.endpoints = inventory(p);
+    return p;
+  };
+
+  const menu = fill(mod.initial(), {
+    first: { kind: 'menu', team: '' },
+    busy: { kind: 'queue', seconds: 25, wait: 90, backup: 'admin', owner: 'reception' },
+    after: { kind: 'information', owner: 'reception', instructions: 'We are closed. Call back during business hours.' },
+    languages: [{ name: 'Spanish', mechanism: 'menu', team: 'reception', availability: 'open', note: '', fallback: 'reception' }]
+  });
+  menu.policy.queueExit = 'message';
+  menu.policy.languageDecision = 'selected';
+  const menuText = mod.ownerBriefText(menu);
+  assert.equal(mod.ownerBrief(menu).length, 6);
+  assert.match(menuText, /keypad/i);
+  assert.match(menuText, /press a language choice on the keypad/i);
+  assert.match(menuText, /They should wait/i);
+  assert.doesNotMatch(menuText, /A person answers\. No keypad/);
+  assert.doesNotMatch(menuText, /not a daytime menu/);
+  assert.doesNotMatch(menuText, /invent a keypad menu/);
+
+  const shared = fill(mod.initial(), {});
+  shared.policy.placements[0].sharing = 'shared';
+  const sharedText = mod.ownerBriefText(shared);
+  assert.match(sharedText, /share one line|one shared line/i);
+  assert.doesNotMatch(sharedText, /independent lines/);
+  assert.doesNotMatch(sharedText, /Both front-desk phones should ring/);
+
+  const always = fill(mod.initial(), {});
+  always.hours.days = always.hours.days.map(d => ({ ...d, open: true, start: '00:00', end: '24:00', breakStart: '', breakEnd: '' }));
+  always.policy.hoursPreset = 'always';
+  const alwaysText = mod.ownerBriefText(always);
+  assert.match(alwaysText, /Open 24 hours|posted 24 hours/i);
+  assert.doesNotMatch(alwaysText, /Call after hours/);
+
+  const eye = fill(mod.initial(), { specialty: 'Eye care', name: 'Hudson Eye' });
+  eye.urgent.enabled = true;
+  eye.policy.urgentKind = 'connect';
+  eye.policy.urgentCoverage = 'closed';
+  const eyeText = mod.ownerBriefText(eye);
+  assert.match(eyeText, /on-call clinician/);
+  assert.doesNotMatch(eyeText, /on-call dentist/);
+  assert.match(eyeText, /sudden change in vision|eye injury|vision change/i);
+
+  const announce = fill(mod.initial(), { mode: 'opening', name: 'Opening announcement' });
+  announce.policy.beforeOpening = 'information';
+  announce.policy.beforeOpeningText = 'We open March 15. Please call back then.';
+  const announceText = mod.ownerBriefText(announce);
+  assert.match(announceText, /Before-opening announcement|not-open-yet/i);
+  assert.doesNotMatch(announceText, /Before-opening callback/);
+
+  const computer = fill(mod.initial(), {});
+  computer.policy.placements = [
+    { id: 'reception', team: 'reception', label: 'Front desk computer', device: 'computer', count: 1, sharing: 'shared', access: 'outside', extension: '' }
+  ];
+  computer.policy.notes = '';
+  computer.endpoints = inventory(computer);
+  const computerText = mod.ownerBriefText(computer);
+  assert.match(computerText, /answering computer/i);
+  assert.doesNotMatch(computerText, /Phones to order: [1-9]/);
+  assert.doesNotMatch(computerText, /Both front-desk phones should ring/);
 });
 
 

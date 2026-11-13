@@ -300,6 +300,88 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
                 chip('spanish', 'Spanish', 'languages.spanish', true),
                 skipChip('languages.decision')
             ]
+        },
+        {
+            id: 'hours.lunch.time',
+            text: 'When do phones close for lunch?',
+            detail: 'I will not assume noon to 1 unless you pick it.',
+            priority: 43,
+            skipAllowed: true,
+            affectedFields: ['hours.lunch.time'],
+            options: [
+                chip('12-1', '12–1', 'hours.lunch.time', '12-1'),
+                chip('12:30', '12:30–1:30', 'hours.lunch.time', '12:30-13:30'),
+                chip('1-2', '1–2', 'hours.lunch.time', '13-14'),
+                skipChip('hours.lunch.time')
+            ]
+        },
+        {
+            id: 'reasons.routing',
+            text: 'Where should appointments, billing, and clinical questions go?',
+            detail: 'With a person first these are handoffs, not a menu. You can change any row.',
+            priority: 55,
+            skipAllowed: true,
+            affectedFields: ['reasons.appointments.team', 'reasons.billing.team', 'reasons.clinical-question.team'],
+            options: [
+                chip('appt-front', 'Appointments stay at the front desk', 'reasons.appointments.team', 'reception'),
+                chip('bill-admin', 'Billing to the office manager', 'reasons.billing.team', 'admin'),
+                chip('clin-clinical', 'Clinical questions to the clinical team', 'reasons.clinical-question.team', 'clinical'),
+                skipChip('reasons.appointments.team')
+            ]
+        },
+        {
+            id: 'urgent.roster',
+            text: 'Who is on call when that path is used?',
+            detail: 'A rotation is a roster, not a verified transfer. We will not put a personal cell in the greeting.',
+            priority: 82,
+            skipAllowed: true,
+            affectedFields: ['urgent.roster'],
+            options: [
+                chip('rotation', 'We rotate', 'urgent.roster', 'rotation'),
+                chip('fixed', 'One person', 'urgent.roster', 'fixed'),
+                skipChip('urgent.roster')
+            ]
+        },
+        {
+            id: 'urgent.miss',
+            text: 'If the on-call attempt is missed, what should happen?',
+            detail: 'Live connect still needs a backup. A miss with nowhere to go is not a working path.',
+            priority: 84,
+            skipAllowed: true,
+            affectedFields: ['urgent.backup'],
+            options: [
+                chip('message', 'Take a priority message', 'urgent.backup', 'message'),
+                chip('instructions', 'Play instructions', 'urgent.backup', 'instructions'),
+                skipChip('urgent.backup')
+            ]
+        },
+        {
+            id: 'devices.administration.place',
+            text: 'Where does the office manager answer from?',
+            detail: 'A work computer or work mobile is fine. This is not a phone-per-room order.',
+            priority: 78,
+            skipAllowed: true,
+            affectedFields: ['devices.administration.place'],
+            options: [
+                chip('computer', 'Computer', 'devices.administration.place', 'computer'),
+                chip('desk', 'Desk phone', 'devices.administration.place', 'desk'),
+                chip('mobile', 'Work mobile only', 'devices.administration.place', 'mobile'),
+                skipChip('devices.administration.place')
+            ]
+        },
+        {
+            id: 'devices.clinical.area',
+            text: 'Do treatment rooms need a phone?',
+            detail: 'Default is none. Rooms are not phones. One internal computer is an answering position in the clinical area, not six room phones.',
+            priority: 79,
+            skipAllowed: true,
+            affectedFields: ['devices.clinical.area'],
+            options: [
+                chip('none', 'None — rooms are not phones', 'devices.clinical.area', 'none'),
+                chip('internal', 'One internal computer', 'devices.clinical.area', 'internal_computer'),
+                chip('desk', 'One desk in the clinical area', 'devices.clinical.area', 'desk'),
+                skipChip('devices.clinical.area')
+            ]
         }
     ];
 }
@@ -329,9 +411,13 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
     if (id === 'teams.administration.count')
         return roleState(p, 'clinical').status !== 'unanswered' && roleState(p, 'administration').status === 'unanswered' && !skipped(facts, 'teams.administration.count') && !confirmed(facts, 'billing.performed_by');
     if (id === 'hours.preset')
-        return !p.confirmed.includes('hours') && !skipped(facts, 'hours.preset') && !confirmed(facts, 'hours.preset');
+        return !p.confirmed.includes('hours') && !skipped(facts, 'hours.preset') && !confirmed(facts, 'hours.preset') && !p.hours.days.some(d => d.start && d.open);
     if (id === 'hours.lunch')
-        return (confirmed(facts, 'hours.preset') || confirmed(facts, 'hours.weekdays_start') || p.confirmed.includes('hours')) && !settled(facts, 'hours.lunch') && !skipped(facts, 'hours.preset');
+        return (confirmed(facts, 'hours.preset') || confirmed(facts, 'hours.weekdays_start') || p.confirmed.includes('hours'))
+            && !settled(facts, 'hours.lunch')
+            && !skipped(facts, 'hours.preset')
+            && !p.hours.days.some(d => d.breakStart && d.breakEnd)
+            && !/lunch phones (closed|covered)/i.test(p.policy.notes);
     if (id === 'first.kind')
         return p.first.kind === 'undecided' && !skipped(facts, 'first.kind') && !p.policy.pendingClinicianRoute;
     if (id === 'busy.kind')
@@ -344,9 +430,11 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
         return (needBusy || needAfter) && !skipped(facts, 'messages.owner');
     }
     if (id === 'devices.reception.sharing')
-        return roleState(p, 'reception').count >= 2 && p.first.kind === 'human' && !settled(facts, 'devices.reception.sharing');
+        return roleState(p, 'reception').count >= 2 && p.first.kind === 'human' && !settled(facts, 'devices.reception.sharing') && !p.policy.placements.some(x => x.team === 'reception' && x.sharing !== 'undecided');
     if (id === 'devices.work_mobile')
-        return p.first.kind !== 'undecided' && !settled(facts, 'devices.work_mobile');
+        return p.first.kind !== 'undecided' && !settled(facts, 'devices.work_mobile')
+            && !p.policy.placements.some(x => x.device === 'mobile' && x.count > 0)
+            && !/work mobile answering|work app \/ follow me/i.test((p.policy.notes || '') + ' ' + (p.policy.continuity.notes || ''));
     if (id === 'urgent.kind')
         return !p.policy.pendingClinicianRoute && p.policy.urgentKind === 'undecided' && !skipped(facts, 'urgent.kind') && !skipped(facts, 'urgent.scope') && !p.confirmed.includes('urgent');
     if (id === 'opening.date')
@@ -357,7 +445,29 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
         return !p.policy.roomsSpecified && !skipped(facts, 'policy.rooms');
     if (id === 'languages.decision')
         return p.policy.languageDecision === 'undecided' && !skipped(facts, 'languages.decision');
+    if (id === 'hours.lunch.time')
+        return (confirmed(facts, 'hours.lunch') || p.hours.days.some(d => d.breakStart === '' && /\blunch phones closed\b/i.test(p.policy.notes)))
+            && !p.hours.days.some(d => d.breakStart && d.breakEnd)
+            && !settled(facts, 'hours.lunch.time');
+    if (id === 'reasons.routing')
+        return p.first.kind !== 'undecided' && p.reasons.some(r => !r.team) && !skipped(facts, 'reasons.appointments.team');
+    if (id === 'urgent.roster')
+        return p.policy.urgentKind === 'connect' && p.policy.urgentRoster === 'undecided' && !skipped(facts, 'urgent.roster');
+    if (id === 'urgent.miss')
+        return p.policy.urgentKind === 'connect' && !p.urgent.backup && !skipped(facts, 'urgent.backup') && !confirmed(facts, 'urgent.backup');
+    if (id === 'devices.administration.place')
+        return roleState(p, 'administration').count > 0 && !p.policy.placements.some(x => x.team === 'admin' && x.device !== 'mobile' && x.device !== 'undecided' && x.count > 0) && !skipped(facts, 'devices.administration.place');
+    if (id === 'devices.clinical.area')
+        return roleState(p, 'clinical').count > 0 && !p.policy.placements.some(x => x.team === 'clinical' && x.count > 0) && !skipped(facts, 'devices.clinical.area');
     return false;
+}
+
+export function ownerQuestions(p: Plan, facts: Record<string, Fact> = {}) {
+    return questionCatalog(p, facts).filter(question => {
+        if (question.affectedFields.every(id => settled(facts, id)))
+            return false;
+        return ready(question.id, p, facts);
+    });
 }
 
 export function questionById(id: string, p: Plan, facts: Record<string, Fact>) {

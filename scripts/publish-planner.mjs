@@ -1,4 +1,14 @@
-import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+
+async function exists(dir) {
+  try {
+    await access(dir);
+    return true;
+  }
+  catch {
+    return false;
+  }
+}
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +23,14 @@ const publicAssets = path.join(root, 'planner', 'public', 'assets');
 const html = await readFile(htmlSrc, 'utf8');
 if (!html.includes('/planner/assets/')) {
   throw new Error('Planner build did not emit /planner/assets URLs. Check vite base.');
+}
+
+const plannerAssetNames = new Set(await readdir(publicAssets));
+if (await exists(staticDest)) {
+  const existing = await readdir(staticDest);
+  const foreign = existing.filter((name) => !plannerAssetNames.has(name) && name !== '.DS_Store');
+  if (foreign.length)
+    throw new Error('Refusing to rm /assets: contains non-planner files: ' + foreign.join(', '));
 }
 
 await rm(bundleDest, { recursive: true, force: true });

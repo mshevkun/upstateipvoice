@@ -46,6 +46,18 @@ export type FusionBuild = {
 const DOMAIN = '<tenant>.upstateipvoice.com';
 const XML = (ext: string) => `${ext} XML ${DOMAIN}`;
 const VM = (ext: string) => `*99${ext}`;
+
+function onCallLabel(p: Plan) {
+    return p.specialty === 'Dental' ? 'on-call dentist' : 'on-call clinician';
+}
+
+function urgentCue(p: Plan) {
+    if (p.specialty === 'Dental')
+        return 'swelling, trauma, or uncontrolled bleeding';
+    if (p.specialty === 'Eye care')
+        return 'a sudden change in vision or an eye injury';
+    return 'a practice-approved urgent matter';
+}
 const FS_WDAY: Record<string, number> = { Sunday: 1, Monday: 2, Tuesday: 3, Wednesday: 4, Thursday: 5, Friday: 6, Saturday: 7 };
 
 function slot(locIndex: number) {
@@ -275,8 +287,10 @@ function urgentAdvice(p: Plan) {
             lines.push(`Unanswered on-call goes straight to ${vmTarget(p, p.urgent.owner)}.`);
         if (p.after.kind === 'assistant')
             lines.push('Because after-hours is the virtual receptionist, prefer the Voice Receptionist escalate tool (originate PSTN to the on-call, then uuid_bridge) instead of a second “press 9” IVR in front of the AI. Keep one closed-hours experience.');
-        else if (urgentMechanism(p) === 'menu-digit')
+        else if (urgentMechanism(p) === 'menu-digit' && p.first.kind === 'menu')
             lines.push('Closed-hours entry is an IVR: ordinary after-hours path on timeout / digit 1, on-call ring group on digit 9. Open-hours reason IVR must also offer digit 9 → the on-call ring group. A keypad cannot classify spoken urgency — do not invent a hidden intent hop after the menu.');
+        else if (urgentMechanism(p) === 'menu-digit')
+            lines.push('Closed-hours entry is an IVR: ordinary after-hours path on timeout / digit 1, on-call ring group on digit 9. Open hours: staff identifies urgency after they answer; the DID does not jump to on-call automatically.');
         else if (urgentMechanism(p) === 'assistant')
             lines.push('Closed-hours entry follows the virtual receptionist. Urgent classification is proposed until verified. Do not treat the simulator as proof of detection.');
         else
@@ -438,8 +452,15 @@ function modeAdvice(p: Plan, locIndex: number) {
     return [];
 }
 
+export function onCallUnbuilt(p: Plan) {
+    return p.urgent.enabled && p.policy.urgentKind === 'connect' && p.after.kind !== 'assistant'
+        && ringMembers(p, p.urgent.team, true).length === 0;
+}
+
 function combinationWarnings(p: Plan) {
     const a: string[] = [];
+    if (onCallUnbuilt(p))
+        a.push('On-call RG has no outside member. Digit 9 is BLOCKED. Do not go live until Follow Me is populated.');
     if (p.locations.length > 1 && p.policy.locationEntry === 'shared' && p.first.kind !== 'human')
         a.push('Incompatible: shared reception + menu/AI first answer. Fusion cannot ask the location until a person is on the line.');
     if (p.first.kind === 'human' && p.languages.some(l => l.mechanism === 'menu'))
@@ -503,7 +524,14 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
             name: 'After-hours voicemail greeting',
             filename: 'greeting_1.wav',
             usedBy: `Voicemail box ${ownerExt(p, p.after.owner) || '(owner extension)'}`,
-            script: `You have reached ${name} after hours. Please leave your name, number, and reason for calling. ${publicInstructions(p.after.instructions) || 'We will return your call on the next business day.'}`
+            script: (() => {
+                const extra = publicInstructions(p.after.instructions);
+                if (extra && /^you have reached/i.test(extra))
+                    return extra;
+                if (extra)
+                    return `You have reached ${name} after hours. ${extra}`;
+                return `You have reached ${name} after hours. Please leave your name, number, and reason for calling. We will return your call on the next business day. If this is a life-threatening emergency, hang up and dial 911.`;
+            })()
         });
     if (p.busy.kind !== 'undecided' && hasTeam(p, p.busy.owner))
         add({
@@ -524,14 +552,26 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
             name: 'Closed-hours urgent option',
             filename: 'after-hours-urgent-option.wav',
             usedBy: `Closed IVR ${n.closedIvr} greet_long`,
-            script: `You have reached ${name} after hours. For a practice-approved urgent matter, press 9. ${p.after.kind === 'message' ? 'To leave a message, press 1 or wait.' : p.after.kind === 'information' ? 'Otherwise, please listen for our office information.' : 'Otherwise, please hold for assistance.'}`
+            script: p.after.kind === 'message'
+                ? `You have reached ${name} after hours. If this is ${urgentCue(p)}, press 9 and we will try the ${onCallLabel(p)}. To leave a message, press 1 or wait. We return ordinary messages the next business day. If this is a life-threatening emergency, hang up and dial 911.`
+                : `You have reached ${name} after hours. If this is ${urgentCue(p)}, press 9 and we will try the ${onCallLabel(p)}. ${p.after.kind === 'information' ? 'Otherwise, please listen for our office information.' : 'Otherwise, please hold for assistance.'}`
         });
-    if (p.mode === 'opening' && p.policy.beforeOpening === 'information' && p.policy.beforeOpeningText?.trim())
+    const lunch = p.hours.days.find(d => d.breakStart && d.breakEnd);
+    if (lunch && hasTeam(p, p.after.owner || p.busy.owner))
+        add({
+            name: 'Lunch voicemail greeting',
+            filename: 'lunch-closed.wav',
+            usedBy: 'Time Condition lunch groups → the front-desk mailbox, not the overnight IVR',
+            script: `Thank you for calling ${name}. We are closed for lunch and will return at ${clock(minute(lunch.breakEnd))}. Please leave your name, number, and reason for calling, and we will call you back this afternoon.`
+        });
+    if (p.mode === 'opening' && p.policy.beforeOpening === 'information')
         add({
             name: 'Before-opening announcement',
             filename: 'before-opening.wav',
             usedBy: 'Temporary Destination playback until opening day',
-            script: publicInstructions(p.policy.beforeOpeningText)
+            script: p.policy.beforeOpeningText?.trim()
+                ? publicInstructions(p.policy.beforeOpeningText)
+                : `Thank you for calling ${name}. We are not open yet. Please check back after we open.`
         });
     if (p.mode === 'opening' && p.policy.beforeOpening === 'message')
         add({
@@ -658,7 +698,9 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
         setup: [
             `Apps → Time Conditions (dialplan order 300, number ${tcExt}). Group rows in v_dialplan_details. FreeSWITCH wday Sunday=1 … Saturday=7. Use minute-of-day, not hour, so breaks and 5-minute opens are exact.`,
             `Open groups (one group per weekday window): ${openHoursSummary(p)}. Each open group action = transfer ${openTarget}.`,
-            'Breaks are a gap between two groups on the same wday — not a third “break destination” unless you explicitly want lunch IVR.',
+            p.hours.days.some(d => d.breakStart && d.breakEnd)
+                ? `Lunch groups (do not fall through to group 999): ${p.hours.days.filter(d => d.open && d.breakStart && d.breakEnd).map(d => `${d.day} minute-of-day ${minute(d.breakStart)}-${Math.max(minute(d.breakStart), minute(d.breakEnd) - 1)}`).join('; ')}. Action = the front-desk mailbox with lunch-closed.wav. Not the overnight IVR. Not on-call.`
+                : 'No lunch breaks. Do not invent a lunch destination.',
             `Group 999 (catch-all after hours) action = transfer ${closedTarget}. Closed weekend days simply fall through to 999; do not create empty Saturday groups.`,
             holidayGroups.length
                 ? `Date-only groups (mon + mday, no wday) for ${holidayGroups.join(', ')} transfer to the closed target. In Fusion these groups evaluate as closed, matching holidayPolicy=closed.`
@@ -839,7 +881,7 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
             setup: [
                 p.after.kind === 'information' && !(p.urgent.enabled && q.urgentKind === 'connect')
                     ? 'greet_long = after-hours-info.wav; exit = hangup. No options required.'
-                    : `greet_long = after-hours-urgent-option.wav. Digit 9 → ring group ${urgentRg}. Digit 1 / timeout → ${p.after.kind === 'message' ? vmTarget(p, p.after.owner) : p.after.kind === 'information' ? 'playback after-hours-info.wav then hangup' : closedTarget}.`,
+                    : `greet_long = after-hours-urgent-option.wav. Digit 9 → ring group ${urgentRg}${onCallUnbuilt(p) ? ' BLOCKED until Follow Me is populated. Do not go live' : ''}. Digit 1 / timeout → ${p.after.kind === 'message' ? vmTarget(p, p.after.owner) : p.after.kind === 'information' ? 'playback after-hours-info.wav then hangup' : closedTarget}.`,
                 `Weekend closed leaf can reuse this IVR (${weekendIvr} is only needed if weekend wording differs).`
             ]
         });
@@ -850,8 +892,10 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
             extension: urgentRg,
             name: `Ring group ${urgentRg} · on-call`,
             setup: [
-                `Members: ${teamLabel(p, p.urgent.team)} outside devices + Follow Me. Group and member timeout ${p.urgent.seconds}s — do not copy this timeout onto daytime ring groups.`,
-                `timeout_data: ${q.urgentBackup === 'team' ? 'backup on-call ring group, then ' : ''}${q.urgentBackup === 'instructions' ? 'playback urgent-instructions.wav' : vmTarget(p, p.urgent.owner)}.`,
+                onCallUnbuilt(p)
+                    ? `Members: none — BLOCKED. Do not go live until Follow Me on a dedicated on-call identity is populated. Not the internal computer. Group timeout ${p.urgent.seconds}s.`
+                    : `Members: ${teamLabel(p, p.urgent.team)} outside devices + Follow Me. Group and member timeout ${p.urgent.seconds}s — do not copy this timeout onto daytime ring groups.`,
+                `timeout_app = transfer; timeout_data = ${q.urgentBackup === 'team' ? 'backup on-call ring group, then ' : ''}${q.urgentBackup === 'instructions' ? 'playback urgent-instructions.wav' : vmTarget(p, p.urgent.owner)}.`,
                 q.urgentRoster === 'rotation' ? 'Update this group or the on-call extension’s Follow Me when the roster changes. Fusion will not rotate it.' : 'Fixed contact: keep membership stable.'
             ]
         });

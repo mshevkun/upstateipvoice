@@ -44,6 +44,11 @@
     phone: form.querySelector('[name="phone"]'),
   };
 
+  const plannerParams = (() => {
+    const q = new URLSearchParams(location.search);
+    return { planId: q.get("plan") || "", sessionId: q.get("s") || "" };
+  })();
+
   const state = {
     token: readToken(),
     lead: null,
@@ -359,6 +364,8 @@
     if (!state.token) {
       loadingEl.classList.add("is-hidden");
       page.classList.remove("is-hidden");
+      if (plannerParams.planId && fields.business_name && !fields.business_name.value)
+        fields.business_name.placeholder = plannerParams.planId;
       render();
       return;
     }
@@ -446,6 +453,8 @@
         meeting_date: state.meetingDate,
         meeting_time: state.meetingTime,
       };
+      if (plannerParams.planId) payload.plan_id = plannerParams.planId;
+      if (plannerParams.sessionId) payload.planner_session_id = plannerParams.sessionId;
       if (!state.lead) {
         payload.business_name = fields.business_name.value;
         payload.contact_name = fields.contact_name.value;

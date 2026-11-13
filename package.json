@@ -11,6 +11,8 @@
     "planner:build": "vite build && node scripts/publish-planner.mjs",
     "test": "node --test tests/**/*.test.js",
     "planner:eval": "node planner/eval/run.mjs",
+    "planner:sync-api": "node planner/scripts/sync-api.mjs",
+    "test:e2e": "npx playwright test",
     "verify:live": "node scripts/verify-live.js",
     "deploy": "node scripts/deploy.js",
     "slice:about": "node scripts/slice-about.js"
@@ -23,6 +25,7 @@
     "three": "0.180.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@types/three": "0.180.0",

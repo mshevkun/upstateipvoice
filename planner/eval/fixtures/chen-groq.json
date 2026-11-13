@@ -1,0 +1,101 @@
+{
+  "note": "Recorded Groq interpreter replies for the 8 Chen turns. Replay in CI. Values here are what a correct extract should ground in the owner text.",
+  "turns": [
+    {
+      "acknowledgement": "A new dental office in Kingston.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "mode", "operation": "set", "value": "opening", "evidence": "opening my own family dental practice", "needs_confirmation": false },
+        { "field_id": "specialty", "operation": "set", "value": "Dental", "evidence": "family dental practice", "needs_confirmation": false },
+        { "field_id": "cityState", "operation": "set", "value": "Kingston, NY", "evidence": "in Kingston, New York", "needs_confirmation": false },
+        { "field_id": "name", "operation": "set", "value": "Chen Family Dental", "evidence": "Chen Family Dental", "needs_confirmation": false },
+        { "field_id": "policy.rooms", "operation": "set", "value": 6, "evidence": "Six operatories", "needs_confirmation": false },
+        { "field_id": "opening.date", "operation": "set", "value": "March 15, 2027", "evidence": "week of March 15, 2027", "needs_confirmation": false },
+        { "field_id": "opening.precision", "operation": "set", "value": "day", "evidence": "March 15, 2027", "needs_confirmation": false },
+        { "field_id": "opening.construction", "operation": "set", "value": "build-out", "evidence": "Broadway build-out", "needs_confirmation": false }
+      ],
+      "unmapped_facts": ["associate in Poughkeepsie for fourteen years"],
+      "explanation_topic": null
+    },
+    {
+      "acknowledgement": "Two at the front and an office manager.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "teams.reception.count", "operation": "set", "value": 2, "evidence": "Two receptionists", "needs_confirmation": false },
+        { "field_id": "teams.administration.count", "operation": "set", "value": 1, "evidence": "husband is the office manager", "needs_confirmation": false },
+        { "field_id": "teams.clinical.count", "operation": "set", "value": 6, "evidence": "me, an associate dentist, two hygienists, and two assistants", "needs_confirmation": false },
+        { "field_id": "billing.performed_by", "operation": "set", "value": "administration", "evidence": "office manager — billing", "needs_confirmation": false },
+        { "field_id": "first.kind", "operation": "set", "value": "human", "evidence": "person at the front desk first, not a menu", "needs_confirmation": false },
+        { "field_id": "first.team", "operation": "set", "value": "reception", "evidence": "front desk first", "needs_confirmation": false }
+      ],
+      "unmapped_facts": [],
+      "explanation_topic": null
+    },
+    {
+      "acknowledgement": "Custom hours with a lunch close.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "hours.preset", "operation": "set", "value": "custom", "evidence": "Monday through Thursday 8 AM to 5 PM", "needs_confirmation": false },
+        { "field_id": "hours.lunch", "operation": "set", "value": "closed", "evidence": "phones should close", "needs_confirmation": false }
+      ],
+      "unmapped_facts": ["Lunch is 12:30 to 1:30 Monday through Thursday", "Friday 8 AM to 2 PM"],
+      "explanation_topic": null
+    },
+    {
+      "acknowledgement": "Message if busy, two lines, work mobile.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "busy.kind", "operation": "set", "value": "message", "evidence": "take a message", "needs_confirmation": false },
+        { "field_id": "messages.owner", "operation": "set", "value": "reception", "evidence": "They check the inbox", "needs_confirmation": false },
+        { "field_id": "devices.reception.sharing", "operation": "set", "value": "separate", "evidence": "two separate lines", "needs_confirmation": false },
+        { "field_id": "devices.work_mobile", "operation": "set", "value": "app", "evidence": "work mobile", "needs_confirmation": false }
+      ],
+      "unmapped_facts": [],
+      "explanation_topic": null
+    },
+    {
+      "acknowledgement": "After-hours voicemail and on-call for urgent cases.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "after.kind", "operation": "set", "value": "message", "evidence": "next-business-day voicemail", "needs_confirmation": false },
+        { "field_id": "urgent.kind", "operation": "set", "value": "connect", "evidence": "on-call dentist", "needs_confirmation": false },
+        { "field_id": "urgent.scope", "operation": "set", "value": "urgent_only", "evidence": "only those urgent cases", "needs_confirmation": false },
+        { "field_id": "urgent.coverage", "operation": "set", "value": "closed", "evidence": "After hours", "needs_confirmation": false },
+        { "field_id": "urgent.team", "operation": "set", "value": "clinical", "evidence": "on-call dentist", "needs_confirmation": false }
+      ],
+      "unmapped_facts": ["rotate on-call", "priority message if missed"],
+      "explanation_topic": null
+    },
+    {
+      "acknowledgement": "Spanish during open hours.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "languages.spanish", "operation": "set", "value": true, "evidence": "bilingual. Spanish during open hours", "needs_confirmation": false }
+      ],
+      "unmapped_facts": [],
+      "explanation_topic": null
+    },
+    {
+      "acknowledgement": "Callback before opening.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "beforeOpening", "operation": "set", "value": "message", "evidence": "take a callback message", "needs_confirmation": false },
+        { "field_id": "opening.numbers", "operation": "set", "value": "new", "evidence": "New number, not porting", "needs_confirmation": false },
+        { "field_id": "opening.pms", "operation": "set", "value": "Open Dental", "evidence": "We'll run Open Dental", "needs_confirmation": false }
+      ],
+      "unmapped_facts": ["Thanksgiving and Christmas we're closed"],
+      "explanation_topic": null
+    },
+    {
+      "acknowledgement": "Routing and fax.",
+      "intent": "provide_information",
+      "updates": [
+        { "field_id": "reasons.appointments.team", "operation": "set", "value": "reception", "evidence": "Appointments stay with the front desk", "needs_confirmation": false },
+        { "field_id": "reasons.billing.team", "operation": "set", "value": "admin", "evidence": "Billing and insurance go to the office manager", "needs_confirmation": false },
+        { "field_id": "reasons.clinical-question.team", "operation": "set", "value": "clinical", "evidence": "Clinical questions can go to the clinical team", "needs_confirmation": false }
+      ],
+      "unmapped_facts": ["two analog lines and a fax"],
+      "explanation_topic": null
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { provisioningMap, ringMembers } from './provisioning';
 import { unapprovedTerminals } from './status';
 import { billOfMaterials, scopeAgainstQuote } from './bom';
 import { openingChecklist } from './opening';
-import { readiness } from './readiness';
+import { ownerQuestionCount, readiness } from './readiness';
 
 export type Insight = {
     id: string;
@@ -47,6 +47,9 @@ export function workMobileNoted(p: Plan) {
 
 export function urgentMechanismNote(p: Plan) {
     const m = urgentMechanism(p);
+    const dentist = p.specialty === 'Dental' ? 'dentist' : 'clinician';
+    if (p.policy.urgentKind === 'connect' && (p.policy.urgentCoverage === 'closed' || p.policy.urgentCoverage === 'always' || m === 'menu-digit'))
+        return 'After hours, callers press 9 to try the on-call ' + dentist + '. During open hours, the front desk spots urgent calls after they answer.';
     if (m === 'staff')
         return 'A person who already answered can identify an urgent request. The published number does not route to on-call by itself.';
     if (m === 'menu-digit')
@@ -159,7 +162,7 @@ export function providerRequirements(p: Plan): Action[] {
         items.push({ id: 'ai', label: 'Verify virtual-receptionist tasks, languages, and handoff', detail: 'Appointment requests recorded here are not bookings until a vendor demonstrates writeback.' });
     if (p.after.kind === 'service')
         items.push({ id: 'svc', label: 'Confirm the answering-service contract and permitted actions', detail: 'A person after hours is not automatically authorized to book or give clinical advice.' });
-    if (p.urgent.enabled && q.urgentKind === 'connect' && urgentMechanism(p) === 'menu-digit')
+    if (p.urgent.enabled && q.urgentKind === 'connect' && urgentMechanism(p) === 'menu-digit' && p.first.kind === 'menu')
         items.push({ id: 'digit9', label: 'Program digit 9 on the open-hours menu for urgent calls', detail: urgentMechanismNote(p) });
     if (p.policy.notification !== 'undecided')
         items.push({ id: 'notify', label: 'Configure message notification delivery', detail: 'The planner records the requirement (' + p.policy.notification + '). Delivery is not implemented here.' });
@@ -290,6 +293,63 @@ export function purchaseBands(p: Plan) {
     return { required, optional, alsoRequired, notYet, entered, warnings: billOfMaterials(p).warnings, missing: p.policy.comparison ? scopeAgainstQuote(p) : [] };
 }
 
+export type BuyLine = {
+    qty: number | null;
+    label: string;
+    note: string;
+};
+
+/** Shopping quantities from answering policy. Rooms and staff are not phones. Models stay unset. */
+export function buySummary(p: Plan) {
+    const inv = inventory(p);
+    const recN = receptionCount(p);
+    const share = receptionSharing(p);
+    const mobileNoted = workMobileNoted(p);
+    const talked = share !== 'undecided' || inv.desk > 0 || inv.computer > 0 || inv.mobile > 0 || mobileNoted || p.first.kind === 'human';
+    let desk: number | null = inv.desk > 0 ? inv.desk : null;
+    let deskNote = 'Reception phones';
+    if (desk == null) {
+        if (share === 'separate' && recN > 1) {
+            desk = recN;
+            deskNote = 'Both can pick up';
+        }
+        else if (share === 'shared' && recN > 0) {
+            desk = 1;
+            deskNote = recN > 1 ? 'One shared line' : 'One answering position';
+        }
+        else if (p.first.kind === 'human' && recN === 1) {
+            desk = 1;
+            deskNote = 'One answering position';
+        }
+        else if (p.first.kind === 'human' && recN > 1) {
+            deskNote = 'Choose if both can pick up';
+        }
+        else
+            deskNote = 'Not chosen yet';
+    }
+    else if (share === 'separate' && recN > 1)
+        deskNote = recN + ' people at the front';
+    const computer = talked ? inv.computer : null;
+    const mobile = !talked ? null : inv.mobile > 0 ? inv.mobile : mobileNoted ? 1 : 0;
+    const rooms = p.policy.roomsSpecified ? p.policy.rooms : 0;
+    return {
+        desk: { qty: desk, label: desk === 1 ? 'Desk phone' : 'Desk phones', note: deskNote } satisfies BuyLine,
+        computer: { qty: computer, label: computer === 1 ? 'Computer' : 'Computers', note: computer ? 'Computer answering' : talked ? 'None yet' : 'Not chosen yet' } satisfies BuyLine,
+        mobile: { qty: mobile, label: mobile === 1 ? 'Mobile' : 'Mobiles', note: mobileNoted ? 'Work app' : mobile ? 'Mobile answering' : talked ? 'None yet' : 'Not chosen yet' } satisfies BuyLine,
+        rooms,
+        roomsNote: rooms
+            ? rooms + (rooms === 1 ? ' treatment room is a chair, not a phone' : ' treatment rooms are chairs, not a phone order')
+            : '',
+        deskKnown: desk != null && desk > 0
+    };
+}
+
+export function reviewOpenActions(p: Plan) {
+    const buy = buySummary(p);
+    const filtered = ownerActions(p).filter(a => !(buy.deskKnown && /desk, computer, or mobile|phone or computer for answering/i.test(a.label)));
+    return { items: filtered.slice(0, 3), more: Math.max(0, filtered.length - 3), total: filtered.length };
+}
+
 function deviceWord(d: string) {
     return d === 'desk' ? 'desk phone' : d === 'computer' ? 'computer position' : d === 'mobile' ? 'mobile' : d;
 }
@@ -329,7 +389,7 @@ export function glance(p: Plan) {
     const independent = map.groups.reduce((n, g) => n + g.concurrent, 0);
     const planned = receptionSharing(p) === 'separate' && receptionCount(p) > 1 ? receptionCount(p) : 0;
     const positions = independent || planned;
-    const remaining = ownerActions(p).length;
+    const remaining = ownerQuestionCount(p);
     const dek = p.mode === 'opening'
         ? `${rooms ? rooms + '-room ' : ''}${specialty} practice${pretty ? ' · target opening ' + pretty : ''}.`.replace(/^ /, '')
         : 'A vendor-neutral record of how this practice wants calls answered, transferred, and followed up.';

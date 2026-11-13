@@ -2659,7 +2659,9 @@ export const fullScenarios = [
             },
             unresolved: ['devices.reception.desk_count', 'teams.administration.count', 'billing.performed_by', 'future.ai_receptionist', 'urgent.team', 'urgent.scope', 'opening.date', 'policy.ring'],
             include: ['Albany', 'appointment'],
-            exclude: ['James Whitaker', 'June 2, 1978', '1978-06-02']
+            exclude: ['James Whitaker', 'June 2, 1978', '1978-06-02'],
+            noPhiStored: true,
+            rememberedMustNotContain: ['James Whitaker', 'June 2, 1978', '1978-06-02']
         })
     },
     {

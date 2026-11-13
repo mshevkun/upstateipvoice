@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import { shortScenarios } from './gold-short.mjs';
 import { fullScenarios } from './gold-full.mjs';
+import { dumpScenarios } from './gold-dump.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const srcDir = path.join(root, 'planner/src');
@@ -41,9 +42,9 @@ function transpile(rel) {
 
 for (const name of [
   'config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state',
-  'architect/schema', 'architect/fields', 'architect/extract', 'architect/ack',
+  'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract', 'architect/ack',
   'architect/merge', 'architect/questions', 'architect/turn', 'architect/scene-from-plan',
-  'architect/prompt', 'architect/hear', 'fusion', 'plan-content', 'advisor', 'opening', 'status',
+  'architect/prompt', 'architect/hear', 'architect/scrub', 'fusion', 'plan-content', 'privacy', 'advisor', 'owner-brief', 'engineer-brief', 'opening', 'status',
   'readiness', 'bom', 'provisioning', 'pdf'
 ])
   transpile(name);
@@ -51,7 +52,7 @@ for (const name of [
 const { initial } = await import(path.join(buildDir, 'config.mjs'));
 const { applyUpdates } = await import(path.join(buildDir, 'architect/merge.mjs'));
 const { interpretTurn } = await import(path.join(buildDir, 'architect/turn.mjs'));
-const { nextQuestion } = await import(path.join(buildDir, 'architect/questions.mjs'));
+const { nextQuestion, ownerQuestions } = await import(path.join(buildDir, 'architect/questions.mjs'));
 const { INTERPRETER_SYSTEM_PROMPT } = await import(path.join(buildDir, 'architect/prompt.mjs'));
 const { interpreterResponseSchema } = await import(path.join(buildDir, 'architect/schema.mjs'));
 const { ownerSections, engineerSections } = await import(path.join(buildDir, 'plan-content.mjs'));
@@ -171,18 +172,13 @@ function checkExpect(expect, ctx) {
     const { plan, facts, follow, ack, intent, future, unmapped, kind } = ctx;
     const failures = [];
     const fail = msg => failures.push(msg);
-    const missingOk = kind === 'full';
     for (const [id, value] of Object.entries(expect.facts || {})) {
         const got = factVal(facts, id);
-        if (got === undefined && missingOk)
-            continue;
         if (!same(got, value))
             fail(`${id} expected ${JSON.stringify(value)}, got ${JSON.stringify(got)}`);
     }
     for (const [id, values] of Object.entries(expect.factsAllow || {})) {
         const got = factVal(facts, id);
-        if (got === undefined && missingOk)
-            continue;
         const list = Array.isArray(values) ? values : [values];
         if (!list.some(v => same(got, v)))
             fail(`${id} expected one of ${JSON.stringify(list)}, got ${JSON.stringify(got)}`);
@@ -224,7 +220,7 @@ function checkExpect(expect, ctx) {
   }
   if (expect.devicesUndecided && plan.endpoints && !plan.endpoints.undecided && (plan.endpoints.desk + plan.endpoints.computer + plan.endpoints.mobile) > 0)
     fail('devices were decided without an owner phone count');
-  if (expect.roomsAreNotPhones && plan.policy.roomsSpecified && plan.policy.rooms > 0) {
+  if (expect.roomsAreNotPhones && plan.policy.roomsSpecified && plan.policy.rooms > 0 && factVal(facts, 'devices.reception.desk_count') == null) {
     const phones = plan.endpoints.desk + plan.endpoints.computer + plan.endpoints.mobile;
     if (phones === plan.policy.rooms)
       fail('room count was copied onto phones');
@@ -381,6 +377,9 @@ async function runScenario(scenario, kind) {
       await sleep(400);
   }
   failures.push(...checkExpect(scenario.expect, { plan, facts, follow, ack, intent, future, unmapped, kind }));
+  const remaining = ownerQuestions(plan, facts);
+  if ((follow == null) !== (remaining.length === 0))
+    failures.push(`nextQuestion ${follow?.id || 'null'} vs ownerQuestions ${remaining.length}`);
   if (scenario.expect?.generateDraft && intent !== 'generate_draft' && !turns.some(t => t.intent === 'generate_draft'))
     failures.push('expected generate_draft');
   if (scenario.expect?.intent && scenario.expect.intentAnyTurn && !turns.some(t => t.intent === scenario.expect.intent) && intent !== scenario.expect.intent)
@@ -434,6 +433,8 @@ if (suite !== 'full')
   selected.push(...shortScenarios.map(s => ({ ...s, kind: 'short' })));
 if (suite !== 'short')
   selected.push(...fullScenarios.map(s => ({ ...s, kind: 'full' })));
+if (suite !== 'short')
+  selected.push(...dumpScenarios.map(s => ({ ...s, kind: 'dump' })));
 const filtered = selected.filter(s => !idFilter || s.id === idFilter || s.id.startsWith(idFilter));
 const work = limitArg ? filtered.slice(0, limitArg) : filtered;
 
