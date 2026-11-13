@@ -1,5 +1,9 @@
-# Chen Family Dental — walkthrough
-planId=UP-mwen3jdp-j1onra revision=10 checksum=6126a047
+# Chen Family Dental — live walkthrough
+source=https://upstateipvoice.com/planner/
+session=c8e4a1ae-f393-4fea-aa29-5e1e38fae62d
+identity=Draft UP-mwendv85-ziz8l1 · r10 · 5c265276
+groq=live
+enrich=none
 
 ## Conversation
 ### 1
@@ -42,32 +46,10 @@ Architect: Noted: Computer.
 Owner: One internal computer
 Architect: Noted: One internal computer.
 
-## Glance
-Chen Family Dental
-6-room dental practice · target opening March 15, 2027.
-3 · Independent answering positions
-0 · Owner decisions remaining
-25 · Modeled unanswered wait
+## Stop
+That's everything I need to draw both files.
 
-## Insights
-NOTE Before-opening destination is recorded — Callback owner: Reception.
-CRITICAL Confirm your urgent-call handoff — After hours, callers press 9 to try the on-call dentist. During open hours, the front desk spots urgent calls after they answer. An on-call transfer is proposed but has not been tested on a real phone.
-NOTE A work mobile can ring — Use a work app or Follow Me. A personal cell number is not stored and must not be spoken in any recording.
-NOTE Lunch is a scheduled close — Phones follow the closed-hours path 12:30–13:30. That is not overnight voicemail, even if the recording is similar.
-HIGH 6 clinical rooms do not automatically need 6 phones — Ask whether each room needs a direct line, intercom, emergency communication, or nothing. Do not order from room count.
-
-## What a caller hears
-During phone hours, if nobody answers: Thank you for calling Chen Family Dental. We are not able to take your call right now. Please leave your name, number, and reason for calling, and we will call you back.
-After hours: You have reached Chen Family Dental after hours. If this is swelling, trauma, or uncontrolled bleeding, press 9 and we will try the on-call dentist. To leave a message, press 1 or wait. We return ordinary messages the next business day. If this is a life-threatening emergency, hang up and dial 911.
-At lunch (12:30 PM–1:30 PM): Thank you for calling Chen Family Dental. We are closed for lunch and will return at 1:30 PM. Please leave your name, number, and reason for calling, and we will call you back this afternoon.
-Before opening day: Thank you for calling Chen Family Dental. We are not yet open. Please leave your name, number, and a good time to reach you. We will call you back.
-Press 9 after hours: Press 9 is part of your plan. It turns on once you give us a work on-call phone — not your personal cell.
-If the desk is slammed: A work mobile can ring. We will not put a personal number in a recording.
-
-## Buy (no invented prices)
-required ×1 Administration — 1 mobile.
-required ×1 Administration — 1 computer position.
-required ×1 Clinical — 1 computer position.
-required ×2 Front-desk lines so both can pick up — Required. Separate identities, models not chosen yet. Not a phone per room.
-required ×1 After-hours coverage as specified — Owned voicemail — quote the method you chose, not a generic auto attendant.
-not-yet ×0 selected Clinical-room phones — 6 rooms to evaluate. Do not treat room count as a shopping quantity.
+## Still open at install
+- on-call work identity (Follow Me)
+- E911 address on install
+- internet & power site survey

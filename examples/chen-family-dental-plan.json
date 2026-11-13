@@ -1,0 +1,309 @@
+{
+  "profiles": {},
+  "policy": {
+    "languageDecision": "selected",
+    "languageProviders": {},
+    "queueExit": "message",
+    "notification": "undecided",
+    "version": 2,
+    "priorities": [],
+    "number": "undecided",
+    "locationEntry": "undecided",
+    "activeLocation": "location-1",
+    "rooms": 6,
+    "roomsSpecified": true,
+    "terminalApprovals": {},
+    "opening": {
+      "date": "2027-03-15",
+      "precision": "day",
+      "construction": "build-out",
+      "numbers": "new",
+      "internet": "survey",
+      "network": "survey",
+      "pms": "Open Dental"
+    },
+    "continuity": {
+      "internet": "undecided",
+      "power": "undecided",
+      "backupRouting": "undecided",
+      "notes": "Work mobile answering (app/Follow Me). Personal number not published. Snow days follow closed hours. Never forward the published number to a personal phone."
+    },
+    "handoffTested": false,
+    "onCallRouteVerified": false,
+    "e911Confirmed": false,
+    "baaAcknowledged": false,
+    "bomTier": "undecided",
+    "placements": [
+      {
+        "id": "reception-share",
+        "team": "reception",
+        "label": "Front desk",
+        "device": "undecided",
+        "count": 0,
+        "access": "outside",
+        "sharing": "separate",
+        "extension": ""
+      },
+      {
+        "id": "admin-mobile",
+        "team": "admin",
+        "label": "Administration",
+        "device": "mobile",
+        "count": 1,
+        "sharing": "shared",
+        "access": "outside",
+        "extension": ""
+      },
+      {
+        "id": "admin-computer",
+        "team": "admin",
+        "label": "Administration",
+        "device": "computer",
+        "count": 1,
+        "sharing": "shared",
+        "access": "outside",
+        "extension": ""
+      },
+      {
+        "id": "clinical-computer",
+        "team": "clinical",
+        "label": "Clinical",
+        "device": "computer",
+        "count": 1,
+        "sharing": "shared",
+        "access": "internal",
+        "extension": ""
+      }
+    ],
+    "ring": "together",
+    "ringOrder": [],
+    "recommendation": "",
+    "assistant": {
+      "tasks": [],
+      "humanWhen": "request",
+      "team": "",
+      "owner": "",
+      "status": "not-configured"
+    },
+    "languageSchedules": {},
+    "languageFallbacks": {},
+    "urgentKind": "connect",
+    "urgentCoverage": "closed",
+    "urgentDays": [],
+    "urgentRoster": "rotation",
+    "urgentBackup": "message",
+    "urgentAlert": "undecided",
+    "acceptance": false,
+    "followup": "skip",
+    "followupOwners": {},
+    "system": "",
+    "comparison": false,
+    "costIncludes": [],
+    "contract": "",
+    "portNumbers": false,
+    "beforeOpening": "message",
+    "menuRetries": 1,
+    "closures": [],
+    "hoursExceptionsConfirmed": false,
+    "teamFallbacks": {},
+    "teamAvailability": {},
+    "notes": "Kingston; lunch phones closed; Work mobile answering (app/Follow Me). Personal number not published.",
+    "extensionBase": 201,
+    "cityState": "Kingston, NY",
+    "hoursPreset": "custom",
+    "billingPerformedBy": "administration",
+    "urgentScope": "urgent_only",
+    "pendingClinicianRoute": false,
+    "beforeOpeningOwner": "reception"
+  },
+  "schema": 2,
+  "planId": "UP-mwendv85-ziz8l1",
+  "revision": 10,
+  "updatedAt": "2026-11-13T07:24:43.891Z",
+  "mode": "opening",
+  "name": "Chen Family Dental",
+  "specialty": "Dental",
+  "locations": [
+    {
+      "id": "location-1",
+      "name": "Main practice"
+    }
+  ],
+  "teams": [
+    {
+      "id": "reception",
+      "name": "Reception",
+      "role": "reception",
+      "count": 2,
+      "status": "known"
+    },
+    {
+      "id": "clinical",
+      "name": "Clinical team",
+      "role": "clinical",
+      "count": 6,
+      "status": "known"
+    },
+    {
+      "id": "admin",
+      "name": "Administration",
+      "role": "administration",
+      "count": 1,
+      "status": "known"
+    }
+  ],
+  "endpoints": {
+    "desk": 0,
+    "computer": 2,
+    "mobile": 1,
+    "shared": 0,
+    "undecided": true
+  },
+  "first": {
+    "kind": "human",
+    "team": "reception"
+  },
+  "reasons": [
+    {
+      "id": "appointments",
+      "label": "Appointments and scheduling",
+      "team": "reception"
+    },
+    {
+      "id": "billing",
+      "label": "Billing and insurance questions",
+      "team": "admin"
+    },
+    {
+      "id": "clinical-question",
+      "label": "Clinical questions",
+      "team": "clinical"
+    }
+  ],
+  "busy": {
+    "kind": "message",
+    "seconds": 25,
+    "wait": 90,
+    "backup": "",
+    "owner": "reception"
+  },
+  "menu": {
+    "invalid": "message",
+    "noInput": "message",
+    "team": ""
+  },
+  "languages": [
+    {
+      "name": "Spanish",
+      "mechanism": "staff",
+      "team": "reception",
+      "availability": "open",
+      "note": "",
+      "fallback": "reception"
+    }
+  ],
+  "hours": {
+    "timezone": "America/New_York",
+    "days": [
+      {
+        "day": "Monday",
+        "open": true,
+        "start": "08:00",
+        "end": "17:00",
+        "breakStart": "12:30",
+        "breakEnd": "13:30"
+      },
+      {
+        "day": "Tuesday",
+        "open": true,
+        "start": "08:00",
+        "end": "17:00",
+        "breakStart": "12:30",
+        "breakEnd": "13:30"
+      },
+      {
+        "day": "Wednesday",
+        "open": true,
+        "start": "08:00",
+        "end": "17:00",
+        "breakStart": "12:30",
+        "breakEnd": "13:30"
+      },
+      {
+        "day": "Thursday",
+        "open": true,
+        "start": "08:00",
+        "end": "17:00",
+        "breakStart": "12:30",
+        "breakEnd": "13:30"
+      },
+      {
+        "day": "Friday",
+        "open": true,
+        "start": "08:00",
+        "end": "14:00",
+        "breakStart": "",
+        "breakEnd": ""
+      },
+      {
+        "day": "Saturday",
+        "open": false,
+        "start": "09:00",
+        "end": "17:00",
+        "breakStart": "",
+        "breakEnd": ""
+      },
+      {
+        "day": "Sunday",
+        "open": false,
+        "start": "09:00",
+        "end": "17:00",
+        "breakStart": "",
+        "breakEnd": ""
+      }
+    ],
+    "holidays": [
+      "2027-11-25",
+      "2027-12-25"
+    ],
+    "holidayPolicy": "closed"
+  },
+  "after": {
+    "kind": "message",
+    "owner": "reception",
+    "instructions": ""
+  },
+  "urgent": {
+    "enabled": true,
+    "approved": false,
+    "instructions": "swelling, trauma, bleeding, 911",
+    "team": "clinical",
+    "backup": "message",
+    "seconds": 30,
+    "owner": "clinical"
+  },
+  "followup": {
+    "owner": "",
+    "target": "",
+    "channels": []
+  },
+  "current": {
+    "provider": "",
+    "monthly": "",
+    "lines": "2 analog + fax",
+    "notes": "Fax stays off the patient number."
+  },
+  "confirmed": [
+    "start",
+    "kind",
+    "practice",
+    "team",
+    "first",
+    "hours",
+    "busy",
+    "positions",
+    "after",
+    "urgent",
+    "languages"
+  ]
+}

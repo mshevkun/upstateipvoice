@@ -4,6 +4,15 @@ This folder is the gate that turns the engineer PDF from a document into a spec.
 
 Until signed, redacted scans are committed here, the engineer PDF is **not** proven on a live DID.
 
+Live Chen conversation (no `enrich()`), 13 Nov 2026, https://upstateipvoice.com/planner/ :
+
+- Identity: `Draft UP-mwendv85-ziz8l1 · r10 · 5c265276`
+- Session: `c8e4a1ae-f393-4fea-aa29-5e1e38fae62d`
+- Stop: “That's everything I need to draw both files.”
+- Still open at install: Follow Me, E911, site survey
+- Digit 9 is in the after-hours recording. Follow Me is empty, so press 9 **must fail** on the DID until a work on-call identity is installed.
+- PDFs print DRAFT until Cloud Run serves `POST /api/public/planner/sessions/:id/lock` (sms-portal PR https://github.com/carlostech3626/upstateipv/pull/1). Do not treat DRAFT as a build spec.
+
 ## Procedure
 
 1. Lock Chen r1 in the planner (`LOCKED` in the PDF footer).
