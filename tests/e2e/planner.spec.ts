@@ -24,11 +24,12 @@ test('Chen conversation downloads a 6-page owner PDF from the rail', async ({ pa
     await page.locator('.composer-send').click();
     const assistant = page.locator('.chat-turn.assistant').last();
     await expect(assistant).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.chat-bubble.assistant.typing')).toHaveCount(0, { timeout: 20_000 });
     const ack = ACK_NEEDLES[i];
     if (ack) {
       const bubble = page.locator('.chat-bubble.assistant').last();
       for (const needle of ack.must)
-        await expect(bubble).toContainText(new RegExp(needle, 'i'));
+        await expect(bubble).toContainText(new RegExp(needle, 'i'), { timeout: 20_000 });
       for (const forbidden of ack.mustNot)
         await expect(bubble).not.toContainText(forbidden);
     }
