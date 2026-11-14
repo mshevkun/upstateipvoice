@@ -55,13 +55,23 @@ export function specifiesUrgentScope(text: string): 'urgent_only' | 'all_calls' 
     return '';
 }
 
+/** Owner denied live on-call / clinician connect — "no on-call" must not count as naming a clinician destination. */
+export function deniesClinicianRoute(text: string) {
+    const t = fold(text);
+    return /\bno on-?call\b|\bnot on-?call\b|\bwithout on-?call\b|\bdont (want|need|have) (an? )?on-?call\b|\bdo not (want|need|have) (an? )?on-?call\b|\bnobody on call\b|\bno nighttime on-?call\b|\bnobody answering emergencies\b|\bjust take a message.{0,40}no on-?call\b|\bno on-?call.{0,40}(just )?take a message\b/.test(t);
+}
+
 export function mentionsClinicianRoute(text: string) {
     const t = fold(text);
-    return /clinician phone|doctors? phone|docro|on-?call|go to the (doctor|clinician|dentist)|calls go to the doctor|reach (a |the )?(doctor|clinician)|connect the on-call/.test(t);
+    if (deniesClinicianRoute(text))
+        return false;
+    return /clinician phone|doctors? phone|docro|\bon-?call\b|go to the (doctor|clinician|dentist)|calls go to the doctor|reach (a |the )?(doctor|clinician)|connect the on-call/.test(t);
 }
 
 export function clinicianRouteAmbiguous(text: string, facts: Record<string, Fact> = {}) {
     if (facts['urgent.scope']?.status === 'confirmed')
+        return false;
+    if (deniesClinicianRoute(text))
         return false;
     if (!mentionsClinicianRoute(text))
         return false;
@@ -134,13 +144,14 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
         add('specialty', 'Eye care');
 
     const notSecond = /not a second|the only office|scratch the old|kingston was a mistake/.test(t);
+    const improvingCue = /\b(thirty years|had this .{0,24}office|weve had|we have had|ive had|been open|already open|open for years|for years|for (twenty|thirty|forty|fifty|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|many) years|existing (office|setup|phones|dental|practice)|bought an older|phones are just terrible|just fix (them|the phones)|replacing (our |the )?(old )?phone|replace (our |the )?(old )?phone|improving (our |the )?phones|improving (an )?existing|moving across town|moving (our existing |the dental office )?across|i bought|relocating|same practice|same office continuing)\b/.test(t);
     if (/\b(adding|second (office|location)|another (office|location)|ninth office|opening a ninth|opening another|already have (one|a|\d+) .{0,40}office|two dental offices|keep everything under one roof|eight offices already)\b/.test(t) && !notSecond && !/another new (office|location)/.test(t))
         add('mode', 'adding');
-    else if (/\b(thirty years|had this .{0,24}office|weve had|we have had|ive had|for (twenty|thirty|forty|fifty|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|many) years|existing (office|setup|phones|dental)|bought an older|phones are just terrible|just fix (them|the phones)|moving across town|moving (our existing |the dental office )?across|i bought|relocating|same practice|same office continuing)\b/.test(t))
+    else if (improvingCue)
         add('mode', 'improving');
     else if (/\b(existing .{0,24}office|this office is already open|office i already have|same office continuing)\b/.test(t) && !notSecond)
         add('mode', 'improving');
-    else if (/\b(starting|opening|new practice|first dental office|we are opening|open until|advertising the phone number|new office we are opening|mode is a new opening|building a new|new dental office|new eye (care )?office)\b/.test(t) && !/not a (brand )?new opening|already open|office i already have|weve had|for .{0,16} years/.test(t))
+    else if (/\b(starting|opening|new practice|first dental office|we are opening|open until|advertising the phone number|new office we are opening|mode is a new opening|building a new|new dental office|new eye (care )?office)\b/.test(t) && !/not a (brand )?new opening|already open|been open|open for years|for years|office i already have|weve had|replacing (our |the )?(old )?phone|for .{0,16} years/.test(t))
         add('mode', 'opening');
 
     const expandingCity = /another office|second location|overflow|ninth office|already have|adding /.test(t) && !notSecond;
@@ -452,7 +463,7 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
         add('first.kind', 'menu');
     if (/thanks for calling.{0,40}then the girls pick up|greeting followed by reception/.test(t))
         add('first.kind', 'human');
-    if (/not a menu|hate (those|menus)|do not build (a )?press|girls to answer, not a menu|want the girls to answer/.test(t))
+    if (/not a menu|hate (those |the |phone )?menus?|do not build (a )?press|girls to answer, not a menu|want the girls to answer|real person during the day/.test(t))
         add('first.kind', 'human');
     if (/directly(?! scheduled)|receptionist to answer directly/.test(t))
         add('first.kind', 'human');
@@ -529,7 +540,7 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
     if (/drywall|build-out|build out|wiring is not done|still building|construction site|we are not open|not open yet/.test(t))
         add('opening.construction', 'build-out');
 
-    if (/i dont have somebody answering emergencies|we (do not|dont) have anyone on call|no nighttime on-call|nobody answering emergencies/.test(t) && !/have not figured|do not set up a doctor line/.test(t)) {
+    if ((deniesClinicianRoute(t) || /i dont have somebody answering emergencies|we (do not|dont) have anyone on call|no nighttime on-call|nobody answering emergencies/.test(t)) && !/have not figured|do not set up a doctor line/.test(t)) {
         add('urgent.kind', 'none');
         return;
     }

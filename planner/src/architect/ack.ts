@@ -242,14 +242,23 @@ function goldShape(set: Record<string, InterpreterUpdate['value']>, plan: Plan) 
         const rooms = set['policy.rooms'] != null ? Number(set['policy.rooms']) : plan.policy.rooms;
         const open = formatOpening(plan) || String(set['opening.date'] || '');
         const name = String(set.name || plan.name || '');
-        const bits = ['A new ' + spec + ' office' + (city ? ' in ' + city : '')];
+        // Mode is the authority — never hardcode "A new" when the owner is improving an existing office.
+        const mode = String(set.mode || plan.mode || '');
+        const lead = mode === 'improving'
+            ? 'An existing ' + spec + ' office'
+            : mode === 'adding'
+                ? 'A second ' + spec + ' office'
+                : mode === 'opening'
+                    ? 'A new ' + spec + ' office'
+                    : 'A ' + spec + ' office';
+        const bits = [lead + (city ? ' in ' + city : '')];
         if (name)
             bits[0] += ' — ' + name;
         if (rooms)
             bits.push(rooms + ' treatment rooms (not phones)');
         if (plan.policy.opening.construction === 'build-out' || set['opening.construction'] === 'build-out')
             bits.push('still a build-out');
-        if (open)
+        if (open && mode === 'opening')
             bits.push('aiming for the week of ' + open);
         return bits.join(', ') + '.';
     }

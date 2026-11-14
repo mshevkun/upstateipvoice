@@ -1111,3 +1111,36 @@ test('owner brief follows first-answer, sharing, and after-hours instead of a de
 
 
 
+
+test('Rivertown: existing practice + no on-call does not invent new/clinician path', async () => {
+  const mod = await load();
+  const empty = { acknowledgement: '', intent: 'provide_information', updates: [], unmapped_facts: [], explanation_topic: null };
+  const text = "We're Rivertown Family Eye in Beacon. We've been open for years and we're replacing our old phone system. Two people at the front desk, one office manager, three doctors. Patients should always get a real person during the day — I hate phone menus. We close for lunch. After hours just take a message, no on-call.";
+  const turned = mod.interpretTurn({ plan: mod.initial(), facts: {}, interpreter: empty, userText: text, question: null });
+  assert.equal(turned.plan.mode, 'improving');
+  assert.equal(turned.plan.policy.urgentKind, 'none');
+  assert.equal(turned.plan.policy.pendingClinicianRoute, false);
+  assert.notEqual(turned.follow?.id, 'urgent.scope');
+  assert.notEqual(turned.follow?.id, 'mode');
+  assert.equal(turned.plan.first.kind, 'human');
+  assert.equal(turned.plan.after.kind, 'message');
+  assert.doesNotMatch(turned.ack, /a new /i);
+  assert.match(turned.ack, /existing/i);
+  assert.doesNotMatch(turned.ack, /clinician path/i);
+  assert.equal(mod.deniesClinicianRoute(text), true);
+  assert.equal(mod.clinicianRouteAmbiguous(text, {}), false);
+});
+
+test('goldShape ack respects improving mode when name and city land together', async () => {
+  const mod = await load();
+  const empty = { acknowledgement: '', intent: 'provide_information', updates: [], unmapped_facts: [], explanation_topic: null };
+  const turned = mod.interpretTurn({
+    plan: mod.initial(),
+    facts: {},
+    interpreter: empty,
+    userText: 'Beacon Family Dental. We have been open for years. Replacing our old phones.',
+    question: null
+  });
+  assert.equal(turned.plan.mode, 'improving');
+  assert.doesNotMatch(turned.ack, /^A new /);
+});

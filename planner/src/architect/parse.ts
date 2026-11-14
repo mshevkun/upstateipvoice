@@ -688,7 +688,8 @@ export function parseUrgent(text: string): LocalHint[] {
     if (/if we miss|if (it|we) miss|backup|priority message/.test(t) && /miss|priority/.test(t))
         add('urgent.backup', 'message', 'priority message');
     const scoped = /only those urgent|not every call|every (incoming )?call|all (incoming )?calls|urgent_only|regular calls do not|only true emergencies|emergencies only/.test(t);
-    const ambiguousRoute = /on-?call|clinician phone|doctors? phone|docro/.test(t) && !scoped && !/try to reach the on-call|ring me/.test(t);
+    const deniedOnCall = /\bno on-?call\b|\bnot on-?call\b|\bwithout on-?call\b|\bdont (want|need|have) (an? )?on-?call\b|\bdo not (want|need|have) (an? )?on-?call\b|\bnobody on call\b|\bno nighttime on-?call\b/.test(t);
+    const ambiguousRoute = /on-?call|clinician phone|doctors? phone|docro/.test(t) && !scoped && !deniedOnCall && !/try to reach the on-call|ring me/.test(t);
     if (/priority (message|voicemail)|leave a priority|marked priority/.test(t) && /do not (ring|transfer)|dont ring|not ring the (doctor|dentist)|do not transfer to a doctor|not connecting a live transfer|do not live-transfer|no live doctor transfer/.test(t))
         add('urgent.kind', 'priority', 'priority message');
     else if (/no on-call during the day/.test(t) && /after (close|hours)/.test(t) && /emergenc/.test(t)) {
@@ -696,9 +697,10 @@ export function parseUrgent(text: string): LocalHint[] {
         add('urgent.team', 'clinical', 'doctor');
         add('urgent.coverage', 'closed', 'after close');
     }
-    else if (/no on-call|dont have anyone on call|nobody on call|we do not have anyone on call|we do not have an on-call|no nighttime on-call|nobody answering emergencies/.test(t) && !/have not figured|tested on-call|during the day/.test(t))
+    // Do not treat "during the day" (daytime answering) as blocking "no on-call" — that exclusion was swallowing after-hours denials.
+    else if ((deniedOnCall || /no on-call|dont have anyone on call|nobody on call|we do not have anyone on call|we do not have an on-call|no nighttime on-call|nobody answering emergencies/.test(t)) && !/have not figured|tested on-call|no on-call during the day/.test(t))
         add('urgent.kind', 'none', 'no on-call');
-    else if (!ambiguousRoute && (/on-?call|try to reach the (on-call )?(dentist|doctor|clinician)|ring me, the doctor|real emergencies.{0,40}ring me|only true emergencies ring|emergencies only.{0,40}(try|ring) the (doctor|dentist)|emergencies can reach|reach a doctor both/.test(t))) {
+    else if (!ambiguousRoute && !deniedOnCall && (/on-?call|try to reach the (on-call )?(dentist|doctor|clinician)|ring me, the doctor|real emergencies.{0,40}ring me|only true emergencies ring|emergencies only.{0,40}(try|ring) the (doctor|dentist)|emergencies can reach|reach a doctor both/.test(t))) {
         add('urgent.kind', 'connect', 'on-call');
         add('urgent.team', 'clinical', 'on-call dentist');
         add('urgent.owner', 'clinical', 'on-call');
@@ -919,12 +921,12 @@ export function parseOpening(text: string): LocalHint[] {
     }
     if (/opening a (ninth|second|third)|eight offices already|ninth office|already have .{0,20}offices|opening another|i am adding|adding the |adding a |adding one in|we(?:re| are) adding|already have .{0,60} adding /.test(t))
         hints.push({ field_id: 'mode', value: 'adding', span: 'adding', precision: 'exact', operation: 'set' });
-    else if (/\b(starting|opening) (a |my |our )?(new )?(family )?(dental|eye)|new (dental |eye |vision )?practice|new (vision|eye|dental) office|another new office|we are opening|im opening|i am opening/.test(t) && !/already open|existing|already have|opening a (ninth|second)|opening another|do not call this a brand new|offices exist/.test(t))
-        hints.push({ field_id: 'mode', value: 'opening', span: 'opening', precision: 'exact', operation: 'set' });
-    else if (/existing|already have|weve had|we have had|ive had|for (twenty|thirty|forty|fifty|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|many) years|had this|been here \d|keep (our |the )?(current |published )?number|port it/.test(t)
-        && !/\bopening\b/.test(t))
+    else if (/existing|already have|weve had|we have had|ive had|been open|already open|open for years|for years|for (twenty|thirty|forty|fifty|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|many) years|had this|been here \d|replacing (our |the )?(old )?phone|replace (our |the )?(old )?phone|keep (our |the )?(current |published )?number|port it/.test(t)
+        && !/\b(we are |im |i am )?opening (a |my |our )?(new )?/.test(t))
         hints.push({ field_id: 'mode', value: 'improving', span: 'existing', precision: 'heuristic', operation: 'set' });
-    else if (/family dental|family dentistry/.test(t) && !/existing|already have|had this|weve had|adding |for .{0,12} years/.test(t))
+    else if (/\b(starting|opening) (a |my |our )?(new )?(family )?(dental|eye)|new (dental |eye |vision )?practice|new (vision|eye|dental) office|another new office|we are opening|im opening|i am opening/.test(t) && !/already open|been open|open for years|for years|existing|already have|opening a (ninth|second)|opening another|do not call this a brand new|offices exist|replacing (our |the )?(old )?phone/.test(t))
+        hints.push({ field_id: 'mode', value: 'opening', span: 'opening', precision: 'exact', operation: 'set' });
+    else if (/family dental|family dentistry/.test(t) && !/existing|already have|had this|weve had|been open|open for years|for years|adding |replacing (our |the )?(old )?phone|for .{0,12} years/.test(t))
         hints.push({ field_id: 'mode', value: 'opening', span: 'family dental', precision: 'heuristic', operation: 'set' });
     if (/\bdental\b|dentist|orthodont/.test(t) && !/eye (care|office)|optometr/.test(t))
         hints.push({ field_id: 'specialty', value: 'Dental', span: 'dental', precision: 'exact', operation: 'set' });
@@ -961,11 +963,11 @@ export function parseRouting(text: string): LocalHint[] {
         add('first.kind', 'human', 'doctor first');
         add('first.team', 'clinical', 'doctor');
     }
-    else if (!skipFirst && /person at the front|reach a person|front desk first|staff should answer|staff answer now|the girls answer now|not a menu|\bperson first\b|whoever is at the front|someone answers all|a person at the front|a person answers|front desk person|receptionist(?:s)? (?:should )?answer first|front desk (?:people |person )?answer first|will answer the calls|answers that phone|human receptionist answers|(?:the )?receptionist answers(?! only if)|receptionists answer first|answers the phone|they answer the phone|albany should answer first|keep a person answering|the person who answers first is the receptionist|newburgh calls should be answered first|receptionist is supposed to answer|front desk still answers|front desk answers ordinary|front desk answers(?! beacon)|beacon front desk answers|both should ring at the same time|poughkeepsie (receptionists|staff|front desk) answer|ring one receptionist|offices ring one|answers beacon calls|shared reception team/.test(t)) {
+    else if (!skipFirst && /person at the front|reach a person|front desk first|staff should answer|staff answer now|the girls answer now|not a menu|hate (those |the |phone )?menus?|real person during the day|\bperson first\b|whoever is at the front|someone answers all|a person at the front|a person answers|front desk person|receptionist(?:s)? (?:should )?answer first|front desk (?:people |person )?answer first|will answer the calls|answers that phone|human receptionist answers|(?:the )?receptionist answers(?! only if)|receptionists answer first|answers the phone|they answer the phone|albany should answer first|keep a person answering|the person who answers first is the receptionist|newburgh calls should be answered first|receptionist is supposed to answer|front desk still answers|front desk answers ordinary|front desk answers(?! beacon)|beacon front desk answers|both should ring at the same time|poughkeepsie (receptionists|staff|front desk) answer|ring one receptionist|offices ring one|answers beacon calls|shared reception team/.test(t)) {
         add('first.kind', 'human', 'person first');
         add('first.team', 'reception', 'front desk');
     }
-    else if (!skipFirst && /(?:we want a |a short )?phone menu|press 1 for appointments|press 1,/.test(t) && !/not a menu/.test(t)) {
+    else if (!skipFirst && /(?:we want a |a short )?phone menu|press 1 for appointments|press 1,/.test(t) && !/not a menu|hate .{0,16}menus?|no menu|dont want (a )?menu/.test(t)) {
         add('first.kind', 'menu', 'menu first');
     }
     if (/both (receptionists|phones|lines).{0,30}ring|ring at the same time|whoever gets it|both lines should ring together/.test(t))

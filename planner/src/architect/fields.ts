@@ -2,7 +2,7 @@ import { days, type Plan } from '../config';
 import { applyHoursPreset, suggestedGreeting } from '../flow';
 import { setRole, type Role } from '../team-state';
 import type { FieldCatalogEntry, FieldDef, FieldOperation, Scalar } from './types';
-export { updatesFromOwnerText, detectIntent, clinicianRouteAmbiguous, mergeInterpreterUpdates, specifiesUrgentScope } from './extract';
+export { updatesFromOwnerText, detectIntent, clinicianRouteAmbiguous, deniesClinicianRoute, mentionsClinicianRoute, mergeInterpreterUpdates, specifiesUrgentScope } from './extract';
 
 export const SPECIALTIES = ['Dental', 'Eye care', 'Other healthcare practice'] as const;
 export const BLOCKED_FIELD_IDS = [
@@ -1320,8 +1320,16 @@ export const fields: FieldDef[] = [
                 if (next.first.kind === 'undecided' || next.first.kind === 'human' && !next.first.team)
                     next = { ...next, first: { kind: 'human', team: 'reception' } };
             }
-            if (scope === 'all_calls')
-                next = { ...next, first: { kind: 'human', team: 'clinical' }, urgent: { ...next.urgent, enabled: true, team: next.urgent.team || 'clinical' }, policy: { ...next.policy, urgentKind: next.policy.urgentKind === 'undecided' ? 'connect' : next.policy.urgentKind } };
+            if (scope === 'all_calls') {
+                // Only flip daytime first-answer to clinical when we were resolving a clinician-route ambiguity.
+                // If the owner already chose reception / no on-call, "every call" must not invent doctor-first.
+                const alreadyDesk = next.first.kind === 'human' && next.first.team === 'reception';
+                const noLiveUrgent = next.policy.urgentKind === 'none';
+                if (alreadyDesk || noLiveUrgent)
+                    next = policy(next, { urgentScope: 'all_calls', pendingClinicianRoute: false });
+                else
+                    next = { ...next, first: { kind: 'human', team: 'clinical' }, urgent: { ...next.urgent, enabled: true, team: next.urgent.team || 'clinical' }, policy: { ...next.policy, urgentKind: next.policy.urgentKind === 'undecided' ? 'connect' : next.policy.urgentKind } };
+            }
             return next;
         }
     },
