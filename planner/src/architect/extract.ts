@@ -140,7 +140,7 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
 
     if (/\b(starting|opening) a dental|\bdental\b|dentist'?s? office|dentist office|\b(im|i am) the dentist\b|tooth\b/.test(t))
         add('specialty', 'Dental');
-    if (/\beye (place|care|exams|office)|glasses|optometr|ophthalm/.test(t))
+    if (/\bfamily eye\b|\beye (place|care|exams|office|practice)\b|\bvision (care|office|practice|center)\b|glasses|optometr|ophthalm/.test(t))
         add('specialty', 'Eye care');
 
     const notSecond = /not a second|the only office|scratch the old|kingston was a mistake/.test(t);

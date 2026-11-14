@@ -102,6 +102,11 @@ export function dayIsStated(d: Plan['hours']['days'][number]) {
     return d.stated === true || !!(d.start && d.end);
 }
 
+/** True when at least one day has a real open answering window (not lunch-only). */
+export function hasOpenPhoneHours(p: Plan) {
+    return p.hours.days.some(d => !!(d.start && d.end));
+}
+
 export function applyHoursPreset(days: Plan['hours']['days'], preset: 'weekdays' | 'always' | 'custom' | 'undecided') {
     if (preset === 'always')
         return days.map(d => ({ ...d, open: true, start: '00:00', end: '24:00', breakStart: '', breakEnd: '', stated: true }));
@@ -124,9 +129,15 @@ export function hoursSummary(p: Plan) {
     const known = p.hours.days.filter(dayIsStated);
     if (!known.length)
         return 'Hours not given yet';
-    const open = known.filter(d => d.open);
-    if (!open.length)
-        return 'Closed all week';
+    const open = known.filter(d => d.open && d.start && d.end);
+    if (!open.length) {
+        // Lunch breaks parked on days with no open window are not a closed week.
+        if (known.some(d => d.breakStart || d.breakEnd) && !hasOpenPhoneHours(p))
+            return 'Hours not given yet';
+        if (known.every(d => !d.open))
+            return 'Closed all week';
+        return 'Hours not given yet';
+    }
     if (open.length === 7 && open.every(d => d.start === '00:00' && (d.end === '24:00' || d.end === '23:59')))
         return '24-hour phone coverage';
     const same = open.every(d => d.start === open[0].start && d.end === open[0].end);

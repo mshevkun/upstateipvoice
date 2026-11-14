@@ -930,7 +930,7 @@ export function parseOpening(text: string): LocalHint[] {
         hints.push({ field_id: 'mode', value: 'opening', span: 'family dental', precision: 'heuristic', operation: 'set' });
     if (/\bdental\b|dentist|orthodont/.test(t) && !/eye (care|office)|optometr/.test(t))
         hints.push({ field_id: 'specialty', value: 'Dental', span: 'dental', precision: 'exact', operation: 'set' });
-    else if (/eye care|optometr|ophthalm|vision office/.test(t))
+    else if (/\bfamily eye\b|eye care|eye (place|office|practice)|optometr|ophthalm|vision (office|care|practice|center)/.test(t))
         hints.push({ field_id: 'specialty', value: 'Eye care', span: 'eye', precision: 'exact', operation: 'set' });
     else if (/chiropract/.test(t)) {
         hints.push({ field_id: 'specialty', value: 'Other healthcare practice', span: 'chiropractic', precision: 'exact', operation: 'set' });

@@ -23,7 +23,8 @@ async function load() {
     const brief = await import(path.join(outDir, 'owner-brief.mjs'));
     const fusion = await import(path.join(outDir, 'fusion.mjs'));
     const eng = await import(path.join(outDir, 'engineer-brief.mjs'));
-    architect = { ...config, ...merge, ...questions, ...fields, ...extract, ...turn, ...scene, ...hear, ...advisor, ...brief, ...fusion, ...eng };
+    const flow = await import(path.join(outDir, 'flow.mjs'));
+    architect = { ...config, ...merge, ...questions, ...fields, ...extract, ...turn, ...scene, ...hear, ...advisor, ...brief, ...fusion, ...eng, ...flow };
   }
   return architect;
 }
@@ -175,7 +176,7 @@ test('next question skips first-answer when reception already answers everything
   assert.notEqual(question.id, 'first.kind');
   assert.notEqual(question.id, 'mode');
   assert.notEqual(question.id, 'specialty');
-  assert.ok(['hours.preset', 'hours.rest_closed', 'after.kind'].includes(question.id));
+  assert.ok(['hours.preset', 'hours.rest_closed', 'after.kind'].includes(question.id), 'got ' + question.id);
 });
 
 test('opening a dental practice drives the assembly scene', async () => {
@@ -1118,17 +1119,72 @@ test('Rivertown: existing practice + no on-call does not invent new/clinician pa
   const text = "We're Rivertown Family Eye in Beacon. We've been open for years and we're replacing our old phone system. Two people at the front desk, one office manager, three doctors. Patients should always get a real person during the day — I hate phone menus. We close for lunch. After hours just take a message, no on-call.";
   const turned = mod.interpretTurn({ plan: mod.initial(), facts: {}, interpreter: empty, userText: text, question: null });
   assert.equal(turned.plan.mode, 'improving');
+  assert.equal(turned.plan.specialty, 'Eye care');
   assert.equal(turned.plan.policy.urgentKind, 'none');
   assert.equal(turned.plan.policy.pendingClinicianRoute, false);
   assert.notEqual(turned.follow?.id, 'urgent.scope');
   assert.notEqual(turned.follow?.id, 'mode');
+  assert.notEqual(turned.follow?.id, 'specialty');
+  assert.notEqual(turned.follow?.id, 'hours.rest_closed');
   assert.equal(turned.plan.first.kind, 'human');
   assert.equal(turned.plan.after.kind, 'message');
   assert.doesNotMatch(turned.ack, /a new /i);
   assert.match(turned.ack, /existing/i);
   assert.doesNotMatch(turned.ack, /clinician path/i);
+  assert.doesNotMatch(mod.hoursSummary(turned.plan), /Closed all week/i);
   assert.equal(mod.deniesClinicianRoute(text), true);
   assert.equal(mod.clinicianRouteAmbiguous(text, {}), false);
+});
+
+test('lunch before open hours does not mark days stated or invent Closed all week', async () => {
+  const mod = await load();
+  const empty = { acknowledgement: '', intent: 'provide_information', updates: [], unmapped_facts: [], explanation_topic: null };
+  const lunch = mod.interpretTurn({
+    plan: mod.initial(),
+    facts: {},
+    interpreter: empty,
+    userText: 'Existing Beacon practice. We close for lunch from 12 to 1.',
+    question: null
+  });
+  assert.ok(lunch.plan.hours.days.some(d => d.breakStart === '12:00'));
+  assert.equal(lunch.plan.hours.days.every(d => !d.stated || !!(d.start && d.end)), true);
+  assert.equal(mod.hoursSummary(lunch.plan), 'Hours not given yet');
+  assert.notEqual(lunch.follow?.id, 'hours.rest_closed');
+  const questions = mod.ownerQuestions(lunch.plan, lunch.facts);
+  assert.ok(questions.some(q => q.id === 'hours.preset'), 'hours.preset must stay available after lunch-only');
+  assert.equal(questions.some(q => q.id === 'hours.rest_closed'), false);
+
+  const preset = questions.find(q => q.id === 'hours.preset');
+  const weekdays = preset.options.find(o => o.value === 'weekdays');
+  const after = mod.chipTurn({ plan: lunch.plan, facts: lunch.facts, chip: weekdays });
+  assert.match(mod.hoursSummary(after.plan), /Mon–Fri/);
+  assert.doesNotMatch(mod.hoursSummary(after.plan), /Closed all week/);
+  assert.ok(after.plan.hours.days.filter(d => d.open).every(d => d.breakStart === '12:00' || d.day === 'Saturday' || d.day === 'Sunday' || !d.open));
+});
+
+test('clinical none does not immediately ask policy.rooms', async () => {
+  const mod = await load();
+  const empty = { acknowledgement: '', intent: 'provide_information', updates: [], unmapped_facts: [], explanation_topic: null };
+  let plan = mod.initial();
+  let facts = {};
+  let follow = null;
+  const first = mod.interpretTurn({
+    plan, facts, interpreter: empty,
+    userText: 'Existing dental in Troy. Two front desk. Two doctors. Front desk answers first. After hours voicemail, no on-call. Monday through Friday 9 to 5.',
+    question: null
+  });
+  plan = first.plan; facts = first.facts; follow = first.follow;
+  let guard = 0;
+  while (follow && follow.id !== 'devices.clinical.area' && guard++ < 40) {
+    const chip = follow.options.find(o => o.operation === 'set') || follow.options.find(o => o.operation === 'skip');
+    if (!chip) break;
+    const step = mod.chipTurn({ plan, facts, chip });
+    plan = step.plan; facts = step.facts; follow = step.follow;
+  }
+  assert.equal(follow?.id, 'devices.clinical.area');
+  const none = follow.options.find(o => o.value === 'none');
+  const after = mod.chipTurn({ plan, facts, chip: none });
+  assert.notEqual(after.follow?.id, 'policy.rooms');
 });
 
 test('goldShape ack respects improving mode when name and city land together', async () => {

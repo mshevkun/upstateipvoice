@@ -35,6 +35,7 @@ for (const name of [
 
 const { initial } = await import(path.join(buildDir, 'config.mjs'));
 const { interpretTurn, chipTurn } = await import(path.join(buildDir, 'architect/turn.mjs'));
+const { hoursSummary } = await import(path.join(buildDir, 'flow.mjs'));
 
 const blank = { acknowledgement: '', intent: 'provide_information', updates: [], unmapped_facts: [], explanation_topic: null };
 
@@ -42,7 +43,7 @@ const CASES = [
   {
     id: 'R01-rivertown',
     turns: ["We're Rivertown Family Eye in Beacon. We've been open for years and we're replacing our old phone system. Two people at the front desk, one office manager, three doctors. Patients should always get a real person during the day — I hate phone menus. We close for lunch. After hours just take a message, no on-call."],
-    expect: p => p.mode === 'improving' && p.policy.urgentKind === 'none' && !p.policy.pendingClinicianRoute && p.first.kind === 'human' && p.after.kind === 'message'
+    expect: (p, _a, f) => p.mode === 'improving' && p.specialty === 'Eye care' && p.policy.urgentKind === 'none' && !p.policy.pendingClinicianRoute && p.first.kind === 'human' && p.after.kind === 'message' && f !== 'specialty' && f !== 'hours.rest_closed'
   },
   {
     id: 'R02-ack-not-new',
@@ -118,7 +119,7 @@ const CASES = [
   {
     id: 'R15-lunch-closed-existing',
     turns: ['Existing Kingston dental. We close for lunch. Front desk first. No on-call after hours — just take a message.'],
-    expect: (p, a) => p.mode === 'improving' && p.policy.urgentKind === 'none' && /lunch/i.test(a)
+    expect: (p, a, f) => p.mode === 'improving' && p.policy.urgentKind === 'none' && /lunch/i.test(a) && f !== 'hours.rest_closed' && !p.hours.days.every(d => d.stated)
   },
   {
     id: 'R16-mode-not-reasked',
@@ -138,7 +139,7 @@ const CASES = [
   {
     id: 'R19-ack-existing-named',
     turns: ['Rivertown Family Eye in Beacon. Open for years. Replacing our old phone system.'],
-    expect: (_p, a) => /existing/i.test(a) && !/a new /i.test(a)
+    expect: (p, a) => p.specialty === 'Eye care' && /existing/i.test(a) && !/a new /i.test(a)
   },
   {
     id: 'R20-chip-every-call-denied-path',
@@ -155,6 +156,55 @@ const CASES = [
       return chipTurn({ plan: first.plan, facts: first.facts, chip });
     },
     expect: p => p.first.team !== 'clinical' && p.policy.urgentKind === 'none'
+  }
+];
+
+const EXTRA = [
+  {
+    id: 'X01-lunch-before-hours-not-closed-week',
+    turns: ['Existing Beacon eye office. We close for lunch from 12 to 1.'],
+    expect: (p, _a, f) => {
+      const summary = hoursSummary(p);
+      const lunchStated = p.hours.days.some(d => d.breakStart && d.stated);
+      return !lunchStated
+        && !/Closed all week/i.test(summary)
+        && (f === 'hours.preset' || f === 'name' || f === 'teams.reception.count' || f === 'first.kind' || !f || f !== 'hours.rest_closed')
+        && f !== 'hours.rest_closed'
+        && !p.hours.days.some(d => d.stated && !(d.start && d.end) && (d.breakStart || d.breakEnd));
+    }
+  },
+  {
+    id: 'X02-family-eye-specialty',
+    turns: ["We're Rivertown Family Eye in Beacon."],
+    expect: (p, _a, f) => p.specialty === 'Eye care' && f !== 'specialty'
+  },
+  {
+    id: 'X03-rooms-not-after-clinical-none',
+    setup: () => {
+      let plan = initial();
+      let facts = {};
+      let follow = null;
+      const first = interpretTurn({
+        plan, facts, interpreter: blank,
+        userText: 'Existing dental in Troy. Two front desk. Two doctors. Front desk answers first. After hours voicemail, no on-call. Monday through Friday 9 to 5.',
+        question: null
+      });
+      plan = first.plan; facts = first.facts; follow = first.follow;
+      let guard = 0;
+      while (follow && follow.id !== 'devices.clinical.area' && guard++ < 40) {
+        const chip = follow.options.find(o => o.operation === 'set') || follow.options.find(o => o.operation === 'skip');
+        if (!chip) break;
+        const step = chipTurn({ plan, facts, chip });
+        plan = step.plan; facts = step.facts; follow = step.follow;
+      }
+      if (follow?.id === 'devices.clinical.area') {
+        const none = follow.options.find(o => o.value === 'none');
+        const step = chipTurn({ plan, facts, chip: none });
+        plan = step.plan; facts = step.facts; follow = step.follow;
+      }
+      return { plan, facts, follow, ack: '' };
+    },
+    expect: (_p, _a, f) => f !== 'policy.rooms'
   }
 ];
 
@@ -189,7 +239,7 @@ function runCase(mod, c) {
   return { id: c.id, ok, detail: { mode: plan.mode, urgent: plan.policy.urgentKind, pending: plan.policy.pendingClinicianRoute, first: plan.first, after: plan.after.kind, follow: follow?.id, ack } };
 }
 
-const results = CASES.map(c => runCase({ interpretTurn, chipTurn }, c));
+const results = [...CASES, ...EXTRA].map(c => runCase({ interpretTurn, chipTurn }, c));
 const failed = results.filter(r => !r.ok);
 console.log(JSON.stringify({ passed: results.length - failed.length, total: results.length, failed: failed.map(f => ({ id: f.id, detail: f.detail })) }, null, 2));
 if (failed.length)

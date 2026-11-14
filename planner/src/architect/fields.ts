@@ -251,12 +251,21 @@ function teamCount(p: Plan, role: Role, operation: FieldOperation, value: Scalar
     return next;
 }
 
-function setDay(p: Plan, day: string, patch: Partial<Plan['hours']['days'][number]>): Plan {
+function setDay(p: Plan, day: string, patch: Partial<Plan['hours']['days'][number]>, opts?: { markStated?: boolean }): Plan {
+    const markStated = opts?.markStated !== false;
     return {
         ...p,
         hours: {
             ...p.hours,
-            days: p.hours.days.map(d => d.day === day ? { ...d, ...patch, stated: true } : d)
+            days: p.hours.days.map(d => {
+                if (d.day !== day)
+                    return d;
+                const next = { ...d, ...patch };
+                // Lunch/break alone is not open-hours knowledge — do not block hours.preset or invent "Closed all week".
+                if (markStated)
+                    next.stated = true;
+                return next;
+            })
         },
         policy: { ...p.policy, hoursPreset: p.policy.hoursPreset === 'always' ? 'always' : 'custom' }
     };
@@ -343,9 +352,9 @@ const dayFields: FieldDef[] = days.flatMap(day => [
             if (operation !== 'set')
                 return p;
             if (asString(value) === '')
-                return setDay(p, day, { breakStart: '', breakEnd: p.hours.days.find(d => d.day === day)?.breakEnd ? '' : '' });
+                return setDay(p, day, { breakStart: '', breakEnd: p.hours.days.find(d => d.day === day)?.breakEnd ? '' : '' }, { markStated: false });
             const start = normalizeTime(value);
-            return start ? setDay(p, day, { breakStart: start }) : p;
+            return start ? setDay(p, day, { breakStart: start }, { markStated: false }) : p;
         }
     },
     {
@@ -358,9 +367,9 @@ const dayFields: FieldDef[] = days.flatMap(day => [
             if (operation !== 'set')
                 return p;
             if (asString(value) === '')
-                return setDay(p, day, { breakStart: '', breakEnd: '' });
+                return setDay(p, day, { breakStart: '', breakEnd: '' }, { markStated: false });
             const end = normalizeTime(value);
-            return end ? setDay(p, day, { breakEnd: end }) : p;
+            return end ? setDay(p, day, { breakEnd: end }, { markStated: false }) : p;
         }
     }
 ]);
@@ -864,7 +873,8 @@ export const fields: FieldDef[] = [
                 ...p,
                 hours: {
                     ...p.hours,
-                    days: p.hours.days.map((d, i) => i < 5 && d.open && !d.breakStart ? { ...d, breakStart: pair[0], breakEnd: pair[1] } : d)
+                    // Apply lunch to weekdays even before open hours exist — preset will keep these breaks.
+                    days: p.hours.days.map((d, i) => i < 5 && !d.breakStart ? { ...d, breakStart: pair[0], breakEnd: pair[1] } : d)
                 }
             };
         }

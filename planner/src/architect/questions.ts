@@ -1,5 +1,5 @@
 import type { Plan } from '../config';
-import { dayIsStated, hoursSummary } from '../flow';
+import { dayIsStated, hasOpenPhoneHours, hoursSummary } from '../flow';
 import { ringMembers } from '../provisioning';
 import { roleState } from '../team-state';
 import type { Chip, Fact, NextQuestion } from './types';
@@ -367,7 +367,8 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
             id: 'policy.rooms',
             text: 'How many treatment rooms are you planning?',
             detail: 'Room count does not order phones.',
-            priority: 100,
+            // Ask before clinical-area devices so "rooms aren't phones" is not followed by a room-count re-ask.
+            priority: 77,
             skipAllowed: true,
             affectedFields: ['policy.rooms'],
             options: [
@@ -635,11 +636,13 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
     if (id === 'teams.administration.count')
         return roleState(p, 'clinical').status !== 'unanswered' && roleState(p, 'administration').status === 'unanswered' && !skipped(facts, 'teams.administration.count') && !confirmed(facts, 'billing.performed_by');
     if (id === 'hours.preset')
-        return !p.confirmed.includes('hours') && !skipped(facts, 'hours.preset') && !confirmed(facts, 'hours.preset') && !p.hours.days.some(dayIsStated);
+        // Offer the preset until a real open window exists. Closed weekends or lunch-only must not block it.
+        return !p.confirmed.includes('hours') && !skipped(facts, 'hours.preset') && !confirmed(facts, 'hours.preset') && !hasOpenPhoneHours(p);
     if (id === 'hours.rest_closed')
-        return p.hours.days.some(dayIsStated) && restClosedDays(p).length > 0 && !settled(facts, 'hours.rest_closed') && !skipped(facts, 'hours.preset');
+        // Never ask "rest closed?" until a real open window exists — lunch alone is not hours.
+        return hasOpenPhoneHours(p) && restClosedDays(p).length > 0 && !settled(facts, 'hours.rest_closed') && !skipped(facts, 'hours.preset');
     if (id === 'hours.lunch')
-        return (confirmed(facts, 'hours.preset') || confirmed(facts, 'hours.weekdays_start') || p.confirmed.includes('hours') || p.hours.days.some(dayIsStated))
+        return (confirmed(facts, 'hours.preset') || confirmed(facts, 'hours.weekdays_start') || p.confirmed.includes('hours') || hasOpenPhoneHours(p))
             && !settled(facts, 'hours.lunch')
             && !skipped(facts, 'hours.preset')
             && !p.hours.days.some(d => d.breakStart && d.breakEnd)
@@ -680,8 +683,12 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
         return p.mode === 'opening' && !p.policy.opening.date && !skipped(facts, 'opening.date');
     if (id === 'beforeOpening')
         return p.mode === 'opening' && p.policy.beforeOpening === 'undecided' && !skipped(facts, 'beforeOpening');
-    if (id === 'policy.rooms')
-        return !p.policy.roomsSpecified && !skipped(facts, 'policy.rooms');
+    if (id === 'policy.rooms') {
+        // After "none — rooms are not phones", do not immediately ask for a room count.
+        const clinicalNone = settled(facts, 'devices.clinical.area')
+            && (facts['devices.clinical.area']?.value === 'none' || facts['devices.clinical.area']?.value === 'per_room');
+        return !p.policy.roomsSpecified && !skipped(facts, 'policy.rooms') && !clinicalNone;
+    }
     if (id === 'languages.decision')
         return p.policy.languageDecision === 'undecided' && !skipped(facts, 'languages.decision');
     if (id === 'hours.lunch.time')
