@@ -4,31 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const ts = require('typescript');
+const { prepareBuild } = require('./planner-transpile');
 
-const srcDir = path.join(__dirname, '../planner/src');
-const outDir = path.join(__dirname, '../planner/.test-build');
-fs.mkdirSync(path.join(outDir, 'architect'), { recursive: true });
-
-function transpile(rel) {
-  let out = ts.transpile(fs.readFileSync(path.join(srcDir, rel + '.ts'), 'utf8'), {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext
-  });
-  out = out.replace(/from ['"](\.\.?\/[^'"]+)['"]/g, "from '$1.mjs'");
-  const dest = path.join(outDir, rel + '.mjs');
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, out);
-}
-
-for (const name of [
-  'config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state',
-  'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract',
-  'architect/ack', 'architect/merge', 'architect/questions', 'architect/turn',
-  'architect/hear', 'architect/scrub', 'provisioning', 'bom', 'opening', 'status',
-  'readiness', 'privacy', 'advisor', 'owner-brief', 'fusion', 'engineer-brief'
-])
-  transpile(name);
+const { srcDir, outDir } = prepareBuild(path.basename(__filename, '.test.js'));
 
 function complete(base) {
   const p = structuredClone(base);

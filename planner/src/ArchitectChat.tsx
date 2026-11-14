@@ -5,7 +5,7 @@ import { Note } from './components';
 import { buySummary, identity, isLocked, purchaseBands } from './advisor';
 import { read, commit, initial, key, scenarios, simulate, valid, type Plan } from './config';
 import { chapterIndex, chapters, dayIsStated, formatOpening, help, hoursSummary } from './flow';
-import { stillOpen } from './readiness';
+import { blueprintReadyForOwner, stillOpen, walkthroughLeftoversNote } from './readiness';
 import { PRIVACY_COPY } from './privacy';
 import {
     callerHear, canPreviewHear, chapterForQuestion, chipTurn, clearConversation, createRemoteSession, emptyFacts, headerChapter, interpretRemote, interpretTurn, lockRemoteSession, nextQuestion, questionById, updatesFromOwnerText,
@@ -15,10 +15,6 @@ import type { Chip, ConversationRecord, Fact, InterpreterResponse, NextQuestion 
 
 const EXAMPLE = "I'm opening a dental practice in New York next March. We're planning six operatories, two receptionists, a dentist, three assistants, and an office manager. I want patients to reach the front desk first, but we need help after hours. I don't know how many phones to buy.";
 const GREETING = "Describe your practice in your own words. I will collect what I can and only ask what still changes the plan.";
-
-function blueprintReady(p: Plan) {
-    return !!p.name.trim() && p.hours.days.some(dayIsStated) && p.first.kind !== 'undecided';
-}
 const EXAMPLE_INTERPRETER: InterpreterResponse = {
     acknowledgement: 'Opening a dental practice in New York with six operatories and a front-desk-first plan. I left phones unset, and after-hours is still open.',
     intent: 'provide_information',
@@ -54,10 +50,42 @@ function sessionParam() {
     return typeof location !== 'undefined' ? new URLSearchParams(location.search).get('s') : '';
 }
 
+function draftSummary(p: Plan) {
+    const bits: string[] = [];
+    if (p.name.trim())
+        bits.push(p.name.trim());
+    const spec = p.specialty === 'Other healthcare practice' && p.specialtyDetail?.trim()
+        ? p.specialtyDetail.trim()
+        : (p.specialty || '');
+    if (spec)
+        bits.push(spec);
+    if (p.first.kind === 'human')
+        bits.push('person answers first');
+    else if (p.first.kind === 'menu')
+        bits.push('menu first');
+    else if (p.first.kind === 'assistant')
+        bits.push('AI first — confirm before install');
+    const hours = hoursSummary(p);
+    if (hours)
+        bits.push(hours);
+    return bits.join(' · ') || 'Your answering rules are recorded.';
+}
+
+function reviewBookUrl(plan: Plan, sid: string) {
+    const q = new URLSearchParams();
+    q.set('plan', plan.planId);
+    if (sid)
+        q.set('s', sid);
+    if (plan.name.trim())
+        q.set('name', plan.name.trim());
+    return 'https://upstateipvoice.com/review/?' + q.toString();
+}
+
 function BlueprintRail({
-    p, sessionId, locked, hear, pdfBusy, onPdf, onBook, onCopy, onLock
+    p, ready, sessionId, locked, hear, pdfBusy, onPdf, onBook, onCopy, onLock
 }: {
     p: Plan;
+    ready: boolean;
     sessionId: string;
     locked: boolean;
     hear: HearRow[];
@@ -85,7 +113,7 @@ function BlueprintRail({
         <p className="blueprint-meta">{[p.policy.cityState, formatOpening(p)].filter(Boolean).join(' · ') || 'City and opening still open'}</p>
         <p className="blueprint-id">{locked ? 'LOCKED' : 'Draft'} {id.planId} · r{id.revision} · {id.checksum}</p>
         <p className="blueprint-hours">{hoursKnown ? hours : 'Hours not given yet'}</p>
-        {order.length > 0 && blueprintReady(p) && <div className="blueprint-order">
+        {order.length > 0 && ready && <div className="blueprint-order">
             <p className="blueprint-label">What to order</p>
             <p>{order.join(' · ')}</p>
             <p className="blueprint-hint">Do not order a phone per room.</p>
@@ -95,13 +123,13 @@ function BlueprintRail({
             <ol>{hear.filter(row => row.kind !== 'note').map(row => <li key={row.when}><strong>{row.when}</strong> {row.hear}</li>)}</ol>
         </div>}
         {open.length > 0 && <div className="blueprint-open">
-            <p className="blueprint-label">Still open — handled at install</p>
+            <p className="blueprint-label">Handled at your walkthrough / install</p>
             <ul>{open.map(item => <li key={item}>{item}</li>)}</ul>
         </div>}
         <div className="blueprint-actions">
-            <button type="button" className="primary" disabled={pdfBusy || !blueprintReady(p)} onClick={() => onPdf('owner')}>{pdfBusy ? 'Creating…' : 'Download owner blueprint'}</button>
-            <button type="button" className="secondary" onClick={onBook}>Book a time with Upstate</button>
-            <button type="button" className="text-button" disabled={pdfBusy || !blueprintReady(p)} onClick={() => onPdf('engineer')}>For your installer: technical spec</button>
+            <button type="button" className="primary" onClick={onBook}>Book a walkthrough</button>
+            <button type="button" className="secondary" disabled={pdfBusy || !ready} onClick={() => onPdf('owner')}>{pdfBusy ? 'Creating…' : 'Download owner blueprint'}</button>
+            <button type="button" className="text-button" disabled={pdfBusy || !ready} onClick={() => onPdf('engineer')}>For your installer: technical spec</button>
             {sessionId && <button type="button" className="text-button" onClick={onCopy}>Copy my plan link</button>}
             {labMode() && sessionId && !locked && <button type="button" className="text-button" onClick={onLock}>Lock this revision</button>}
         </div>
@@ -542,7 +570,8 @@ export function Architect() {
 
     async function send(text: string) {
         const trimmed = text.trim();
-        if (!trimmed || interacting)
+        // Talk-first: chips are optional. Only block send while a turn is in flight.
+        if (!trimmed || busy || typing)
             return;
         const token = epoch.current;
         const targetQuestion = correctingQuestion || question;
@@ -688,6 +717,17 @@ export function Architect() {
         catch { /* chips work without the API */ }
     }
 
+    async function bookWalkthrough() {
+        try {
+            const remote = await ensureSession(p);
+            window.open(reviewBookUrl(p, remote.id), '_blank', 'noopener');
+        }
+        catch {
+            window.open(reviewBookUrl(p, sessionIdRef.current || sessionId), '_blank', 'noopener');
+            setNotice('Opened booking. If the private session did not save yet, your answers are still on this device.');
+        }
+    }
+
     async function pdf(kind: 'owner' | 'engineer' | 'both' = 'owner') {
         setPdfBusy(true);
         const snapshot = structuredClone(p);
@@ -740,8 +780,11 @@ export function Architect() {
     catch {
         hear = [];
     }
-    const draftReady = !question && !typing && !busy && !suppressPrompt && !correcting && !welcome;
+    const conversationComplete = blueprintReadyForOwner(p, facts);
+    const draftReady = conversationComplete && !question && !typing && !busy && !suppressPrompt && !correcting && !welcome;
     const showHear = draftReady && canPreviewHear(p) && hear.some(row => row.kind !== 'note');
+    const leftoverNote = walkthroughLeftoversNote(p);
+    const turnInFlight = busy || typing;
 
     return <div className={'planner architect' + (reviewing ? ' reviewing' : '')} data-step="architect" data-revision={p.revision}>
         <header className={'header' + (restarting ? ' header-restarting' : '')}>
@@ -828,19 +871,18 @@ export function Architect() {
                         })()}
                         {draftReady && <div className="chat-prompt-block chat-prompt-draft">
                             <p className="chat-question-kicker">Your blueprint</p>
-                            <h2 className="chat-question-text">That's everything I need to draw both files.</h2>
-                            <p className="chat-question-detail">{PRIVACY_COPY} The implementation spec stays a planning document until an installer verifies it.{stillOpen(p).length ? ' Still open at install: ' + stillOpen(p).join('; ') + '.' : ''}</p>
+                            <h2 className="chat-question-text">Here's your practice blueprint</h2>
+                            <p className="chat-question-lead">{draftSummary(p)}</p>
                             {showHear && <HearPanel rows={hear}/>}
                             <div className="chat-choices">
                                 <div className="chat-chips stack">
-                                    <button type="button" className="chat-chip" disabled={pdfBusy || !blueprintReady(p)} onClick={() => pdf('owner')}>Download owner blueprint</button>
-                                    <button type="button" className="chat-chip quiet" onClick={() => {
-                                        const book = 'https://upstateipvoice.com/review/?plan=' + encodeURIComponent(p.planId) + (sessionId ? '&s=' + encodeURIComponent(sessionId) : '');
-                                        window.open(book, '_blank', 'noopener');
-                                    }}>Book a time with Upstate</button>
+                                    <button type="button" className="chat-chip primary" onClick={() => bookWalkthrough()}>Book a walkthrough</button>
+                                    <button type="button" className="chat-chip quiet" disabled={pdfBusy || !conversationComplete} onClick={() => pdf('owner')}>{pdfBusy ? 'Creating…' : 'Download owner blueprint'}</button>
+                                    <button type="button" className="chat-chip quiet" disabled={pdfBusy || !conversationComplete} onClick={() => pdf('engineer')}>Download installer spec</button>
                                     {labMode() && <button type="button" className="chat-chip quiet" onClick={() => setReviewing(true)}>Open call simulator</button>}
                                 </div>
                             </div>
+                            <p className="chat-draft-note">{leftoverNote ? leftoverNote + ' ' : ''}The installer spec stays a planning document until verified. {PRIVACY_COPY}</p>
                         </div>}
                     </div>
                     <div className="architect-dock">
@@ -851,11 +893,11 @@ export function Architect() {
                         <form className="architect-composer" onSubmit={e => { e.preventDefault(); send(input); }}>
                             <label className="sr-only" htmlFor="architect-input">Describe your practice</label>
                             <div className={'composer-shell' + (input.trim() ? ' has-text' : '')}>
-                                <textarea id="architect-input" ref={inputRef} rows={1} value={input} placeholder={correcting ? 'Type what this should be instead' : question ? 'Or type your answer' : 'Describe the practice in your own words'} disabled={interacting} onChange={e => { setInput(e.target.value); autoSize(e.target); }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) {
+                                <textarea id="architect-input" ref={inputRef} rows={1} value={input} placeholder={correcting ? 'Type what this should be instead' : 'Tell me in your own words…'} disabled={turnInFlight} onChange={e => { setInput(e.target.value); autoSize(e.target); }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
                                     send(input);
                                 } }}/>
-                                <button type="submit" className="composer-send" disabled={interacting || !input.trim()} aria-label="Send">
+                                <button type="submit" className="composer-send" disabled={turnInFlight || !input.trim()} aria-label="Send">
                                     <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 15.5V4.5M5.2 9.2 10 4.5l4.8 4.7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                 </button>
                             </div>
@@ -870,15 +912,13 @@ export function Architect() {
                 </div>
                 {sheetOpen && <BlueprintRail
                     p={p}
+                    ready={conversationComplete}
                     sessionId={sessionId}
                     locked={locked || isLocked(p)}
                     hear={hear}
                     pdfBusy={pdfBusy}
                     onPdf={kind => pdf(kind)}
-                    onBook={() => {
-                        const book = 'https://upstateipvoice.com/review/?plan=' + encodeURIComponent(p.planId) + (sessionId ? '&s=' + encodeURIComponent(sessionId) : '');
-                        window.open(book, '_blank', 'noopener');
-                    }}
+                    onBook={() => { void bookWalkthrough(); }}
                     onCopy={() => {
                         const url = location.origin + '/planner/?s=' + encodeURIComponent(sessionId);
                         navigator.clipboard?.writeText(url);

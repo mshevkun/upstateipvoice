@@ -43,6 +43,18 @@ test('one-receptionist Lock walk matches checksum', async ({ page }) => {
     await page.waitForTimeout(200);
   }
 
+  const draft = page.locator('.chat-prompt-draft');
+  await expect(draft).toBeVisible({ timeout: 20_000 });
+  const book = draft.getByRole('button', { name: /Book a walkthrough/i });
+  await expect(book).toBeVisible();
+  const [popup] = await Promise.all([
+    page.waitForEvent('popup'),
+    book.click()
+  ]);
+  await expect(popup).toHaveURL(/[?&]plan=/);
+  await expect(popup).toHaveURL(/[?&]s=/);
+  await popup.close();
+
   const toggle = page.locator('.blueprint-sheet-toggle');
   if (await toggle.isVisible())
     await toggle.click();

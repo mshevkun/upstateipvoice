@@ -6,6 +6,7 @@ export const QUESTION_CHAPTER: Record<string, number> = {
     mode: 0,
     name: 0,
     specialty: 0,
+    specialtyDetail: 0,
     'opening.date': 0,
     'policy.rooms': 0,
     'teams.reception.count': 1,
@@ -58,7 +59,7 @@ export function sceneFromPlan(p: Plan, viewingBlueprint = false) {
         chapter = Math.max(chapter, 2);
     if (p.policy.placements.length || viewingBlueprint)
         chapter = Math.max(chapter, 3);
-    const specialtyBadge = p.specialty === 'Dental' ? 'Dental practice' : p.specialty === 'Eye care' ? 'Eye care practice' : p.specialty ? 'Consultation space' : '';
+    const specialtyBadge = p.specialty === 'Dental' ? 'Dental practice' : p.specialty === 'Eye care' ? 'Eye care practice' : p.specialtyDetail?.trim() ? p.specialtyDetail.trim() + (/\bpractice\b/i.test(p.specialtyDetail) ? '' : ' practice') : p.specialty ? 'Healthcare practice' : '';
     const badge = !p.mode
         ? 'Built around your practice'
         : p.specialty && chapter === 1

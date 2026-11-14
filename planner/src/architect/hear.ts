@@ -26,6 +26,8 @@ function recordingWhen(p: Plan, filename: string, name: string): string {
         return lunchWhen(p) || 'At lunch';
     if (/after-hours-urgent-option/.test(filename))
         return 'After hours';
+    if (/priority-message/.test(filename))
+        return 'If on-call is missed';
     if (/greeting_1|after-hours-info/.test(filename) && name.toLowerCase().includes('after'))
         return 'After hours';
     if (/before-opening/.test(filename))
@@ -35,6 +37,25 @@ function recordingWhen(p: Plan, filename: string, name: string): string {
     if (/ivr-open-short/.test(filename))
         return 'During phone hours, if they do not choose';
     return name;
+}
+
+function hearRank(when: string) {
+    const w = when.toLowerCase();
+    if (/nobody answers|if nobody/.test(w))
+        return 1;
+    if (/during phone hours/.test(w))
+        return 2;
+    if (/lunch/.test(w))
+        return 3;
+    if (/^after hours$|after hours$/.test(w) && !/press 9/.test(w))
+        return 4;
+    if (/priority|on-call is missed/.test(w))
+        return 5;
+    if (/before opening/.test(w))
+        return 6;
+    if (/press 9|slammed/.test(w))
+        return 7;
+    return 8;
 }
 
 /** Patient-facing words come only from fusionBuild(p).recordings. */
@@ -65,7 +86,7 @@ export function callerHear(p: Plan): CallerHear[] {
             kind: 'note'
         });
     void hoursSummary;
-    return out;
+    return out.sort((a, b) => hearRank(a.when) - hearRank(b.when) || a.when.localeCompare(b.when));
 }
 
 export function callerHearText(p: Plan) {

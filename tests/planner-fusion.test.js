@@ -2,24 +2,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
 const path = require('path');
-const ts = require('typescript');
+const { prepareBuild } = require('./planner-transpile');
 
-const srcDir = path.join(__dirname, '../planner/src');
-const outDir = path.join(__dirname, '../planner/.test-build');
-fs.mkdirSync(outDir, { recursive: true });
-
-fs.mkdirSync(path.join(outDir, 'architect'), { recursive: true });
-for (const name of ['config', 'policy', 'routing', 'locations', 'fusion', 'plan-content', 'provisioning', 'status', 'readiness', 'bom', 'opening', 'advisor', 'flow', 'team-state', 'architect/questions']) {
-  let out = ts.transpile(fs.readFileSync(path.join(srcDir, name + '.ts'), 'utf8'), {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext
-  });
-  out = out.replace(/from ['"](\.\.?\/[^'"]+)['"]/g, "from '$1.mjs'");
-  fs.mkdirSync(path.dirname(path.join(outDir, name + '.mjs')), { recursive: true });
-  fs.writeFileSync(path.join(outDir, name + '.mjs'), out);
-}
+const { outDir } = prepareBuild(path.basename(__filename, '.test.js'));
 
 let loaded;
 async function load() {

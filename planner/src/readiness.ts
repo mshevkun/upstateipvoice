@@ -1,4 +1,5 @@
-import { ownerQuestions } from './architect/questions';
+import { nextQuestion, ownerQuestions } from './architect/questions';
+import type { Fact } from './architect/types';
 import type { Plan } from './config';
 import { unapprovedTerminals } from './status';
 
@@ -12,6 +13,7 @@ export type Readiness = {
     label: string;
 };
 
+/** Install / walkthrough leftovers — never chat homework. */
 export function stillOpen(p: Plan): string[] {
     const q = p.policy;
     const items: string[] = [];
@@ -31,6 +33,24 @@ export function stillOpen(p: Plan): string[] {
             items.push('Christmas 2027 falls on Saturday — observe Fri Dec 24?');
     }
     return items;
+}
+
+/** True when the architect has no further owner chat questions (inbound RG safe). */
+export function ownerConversationComplete(p: Plan, facts: Record<string, Fact> = {}) {
+    return nextQuestion(p, facts) == null;
+}
+
+/** PDF / Book enablement matches conversation completion — not a thinner mid-chat bar. */
+export function blueprintReadyForOwner(p: Plan, facts: Record<string, Fact> = {}) {
+    return ownerConversationComplete(p, facts);
+}
+
+/** Owner-facing install leftovers under the draft close / rail. */
+export function walkthroughLeftoversNote(p: Plan) {
+    const open = stillOpen(p);
+    if (!open.length)
+        return '';
+    return 'At your walkthrough we’ll still confirm: ' + open.join('; ') + '.';
 }
 
 /** Inferred from other answers — never asked again as a chat question. */

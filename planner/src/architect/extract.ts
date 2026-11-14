@@ -15,13 +15,14 @@ export function fold(value: string) {
     return value.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-const NAMED_CITIES = 'kingston|poughkeepsie|newburgh|middletown|albany|troy|new paltz|beacon|hudson|catskill|saugerties';
+const NAMED_CITIES = 'kingston|poughkeepsie|newburgh|middletown|albany|troy|new paltz|beacon|hudson|catskill|saugerties|glens falls|rhinebeck';
 
 export function isCorrection(text: string) {
     const t = fold(text);
     return /\b(actually|instead|change that|change a few things|no,? wait|wait,? only|not anymore|not april|not two|not four|i dont want the ai answering first|only two|only one|no, one|kingston was a mistake|scratch the old|now in |not a second location|that is two clinicians|clinical count is)\b/i.test(t)
         || new RegExp('\\bforget (?:the )?(?:' + NAMED_CITIES + ')\\b').test(t)
-        || new RegExp('\\bthis is (?:' + NAMED_CITIES + ')\\b').test(t);
+        || new RegExp('\\bthis is (?:' + NAMED_CITIES + ')\\b').test(t)
+        || new RegExp("\\b(?:it'?s|actually(?: it'?s)?) (?:" + NAMED_CITIES + ')\\b').test(t);
 }
 
 export function detectIntent(text: string, groqIntent?: InterpreterIntent): InterpreterIntent {
@@ -117,6 +118,14 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
                 add(option.field_id, option.value);
             }
         }
+        if (question.id === 'specialtyDetail' || question.affectedFields.includes('specialtyDetail')) {
+            const skip = /^(skip|not sure|unsure|later|i don'?t know|dont know)\b/.test(t);
+            const raw = text.trim().replace(/^(we(?:'re| are)|it(?:'s| is)|i (?:run|have|own|practice))\s+(a |an )?/i, '').slice(0, 120).trim();
+            if (!skip && raw && !updates.some(u => u.field_id === 'specialtyDetail')) {
+                add('specialty', 'Other healthcare practice', 'exact');
+                add('specialtyDetail', raw.replace(/^./, ch => ch.toUpperCase()), 'exact');
+            }
+        }
     }
 
     if (/\b(starting|opening) a dental|\bdental\b|dentist'?s? office|dentist office|\b(im|i am) the dentist\b|tooth\b/.test(t))
@@ -127,16 +136,36 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
     const notSecond = /not a second|the only office|scratch the old|kingston was a mistake/.test(t);
     if (/\b(adding|second (office|location)|another (office|location)|ninth office|opening a ninth|opening another|already have (one|a|\d+) .{0,40}office|two dental offices|keep everything under one roof|eight offices already)\b/.test(t) && !notSecond && !/another new (office|location)/.test(t))
         add('mode', 'adding');
-    else if (/\b(thirty years|had this .{0,24}office|weve had this|for (twenty|\d+|many) years|existing (office|setup|phones|dental)|bought an older|phones are just terrible|just fix (them|the phones)|moving across town|moving (our existing |the dental office )?across|i bought|relocating|same practice|same office continuing)\b/.test(t))
+    else if (/\b(thirty years|had this .{0,24}office|weve had|we have had|ive had|for (twenty|thirty|forty|fifty|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|many) years|existing (office|setup|phones|dental)|bought an older|phones are just terrible|just fix (them|the phones)|moving across town|moving (our existing |the dental office )?across|i bought|relocating|same practice|same office continuing)\b/.test(t))
         add('mode', 'improving');
     else if (/\b(existing .{0,24}office|this office is already open|office i already have|same office continuing)\b/.test(t) && !notSecond)
         add('mode', 'improving');
-    else if (/\b(starting|opening|new practice|first dental office|we are opening|open until|advertising the phone number|new office we are opening|mode is a new opening|building a new|new dental office|new eye (care )?office)\b/.test(t) && !/not a (brand )?new opening|already open|office i already have/.test(t))
+    else if (/\b(starting|opening|new practice|first dental office|we are opening|open until|advertising the phone number|new office we are opening|mode is a new opening|building a new|new dental office|new eye (care )?office)\b/.test(t) && !/not a (brand )?new opening|already open|office i already have|weve had|for .{0,16} years/.test(t))
         add('mode', 'opening');
 
     const expandingCity = /another office|second location|overflow|ninth office|already have|adding /.test(t) && !notSecond;
     const picked = pickCities(t);
-    if (!updates.some(u => u.field_id === 'cityState')) {
+    // When adding a second office in the same breath, keep the existing city as primary.
+    const homeCity = t.match(new RegExp('(?:already have|existing (?:office|practice) in|(?:office|practice) in) ((?:' + NAMED_CITIES + '))', 'i'))
+        || t.match(new RegExp('\\b((?:' + NAMED_CITIES + ')) (?:family )?(?:dental|eye|vision|orthodont)', 'i'));
+    const addCity = t.match(new RegExp('adding (?:a |an |one )?(?:second )?(?:office |location )?in ((?:' + NAMED_CITIES + '))', 'i'));
+    if (expandingCity && homeCity && addCity) {
+        const home = titleCity(homeCity[1]);
+        const added = titleCity(addCity[1]);
+        if (!updates.some(u => u.field_id === 'cityState'))
+            add('cityState', home, 'exact');
+        else {
+            // Replace a wrong "adding city" exact from parse with the home city.
+            const priorCity = updates.find(u => u.field_id === 'cityState');
+            if (priorCity && fold(String(priorCity.value)) === fold(added)) {
+                priorCity.value = home;
+                priorCity.precision = 'exact';
+            }
+        }
+        if (fold(home) !== fold(added) && !updates.some(u => u.field_id === 'policy.notes'))
+            add('policy.notes', added);
+    }
+    else if (!updates.some(u => u.field_id === 'cityState')) {
         if (picked.primary) {
             const prior = String(facts.cityState?.value || '').toLowerCase();
             if (expandingCity && facts.cityState?.status === 'confirmed' && prior && !prior.startsWith(picked.primary.toLowerCase()))
@@ -258,19 +287,30 @@ function pickCities(t: string) {
     const names = NAMED_CITIES;
     const skip = (t.match(/do not replace (\w+)/) || [])[1];
     const title = (c: string) => titleCity(c.replace(/\s+new york$/, ''));
-    const mentioned = CITIES.filter(name => name !== 'new york' && t.includes(name) && name !== skip).map(title);
+    // "not Kingston" / "not in Kingston" must not win over "it's New Paltz".
+    const negated = new Set(
+        [...t.matchAll(new RegExp('\\bnot (?:in )?((?:' + names + '))\\b', 'g'))].map(m => title(m[1]).toLowerCase())
+    );
+    const mentioned = CITIES
+        .filter(name => name !== 'new york' && t.includes(name) && name !== skip && !negated.has(title(name).toLowerCase()))
+        .map(title);
     const unique = [...new Set(mentioned)];
     const adding = t.match(new RegExp('adding (?:a |an |one in )?((?:' + names + '))'));
     const thisIs = t.match(new RegExp('\\bthis is ((?:' + names + '))\\b'));
+    const itsCity = t.match(new RegExp("\\b(?:it'?s|actually(?: it'?s)?) ((?:" + names + '))\\b'));
     const forgotten = t.match(new RegExp('\\bforget (?:the )?((?:' + names + '))\\b'));
     const planCity = t.match(new RegExp('this (?:plan|blueprint) is (?:the )?((?:' + names + '))'));
-    const inCities = [...t.matchAll(new RegExp('\\bin ((?:' + names + ')(?:\\s+new york)?)\\b', 'g'))].map(m => title(m[1]));
+    const inCities = [...t.matchAll(new RegExp('\\bin ((?:' + names + ')(?:\\s+new york)?)\\b', 'g'))]
+        .map(m => title(m[1]))
+        .filter(c => !negated.has(c.toLowerCase()));
     let primary = '';
-    if (thisIs)
+    if (itsCity && !negated.has(title(itsCity[1]).toLowerCase()))
+        primary = title(itsCity[1]);
+    else if (thisIs && !negated.has(title(thisIs[1]).toLowerCase()))
         primary = title(thisIs[1]);
-    else if (planCity)
+    else if (planCity && !negated.has(title(planCity[1]).toLowerCase()))
         primary = title(planCity[1]);
-    else if (adding)
+    else if (adding && !negated.has(title(adding[1]).toLowerCase()))
         primary = title(adding[1]);
     else if (inCities.length)
         primary = inCities[inCities.length - 1];
@@ -283,6 +323,8 @@ function pickCities(t: string) {
         if (lower === primary.toLowerCase())
             return false;
         if (forgotten && lower === forgotten[1])
+            return false;
+        if (negated.has(lower))
             return false;
         return true;
     });
@@ -418,10 +460,13 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
         add('first.kind', 'human');
     if (/ai .{0,50}later|keep ai as something we might add|ai later when/.test(t))
         add('future.ai_receptionist', 'AI later');
-    if (/live answering service/.test(t))
+    if (/live answering service|after hours we use (answerconnect|ruby|smith\.ai|answer force)|(?:use|with) answerconnect/.test(t))
         add('after.kind', 'service');
 
-    if (/take a message|leave (a message|their information)|leave a (message|voicemail)|voicemail is fine|just voicemail|then voicemail|\bvoicemail\b/.test(t) && !/never want a voicemail|no after-?hours voicemail/.test(t)) {
+    const infoHangup = /play (our |the )?hours and hang|play information|information and hang|just play our hours|announcement then (end|hang)|no voicemail/.test(t);
+    if (/take a message|leave (a message|their information)|leave a (message|voicemail)|voicemail is fine|just voicemail|then voicemail|\bvoicemail\b/.test(t)
+        && !/never want a voicemail|no after-?hours voicemail|no voicemail/.test(t)
+        && !infoHangup) {
         if (/then (take a )?voicemail/.test(t) && (/wait|minute|second/.test(t))) {
             add('busy.kind', 'queue');
             add('busy.exit', 'message');
@@ -459,15 +504,18 @@ function extractRouting(t: string, facts: Record<string, Fact>, add: (id: string
         add('after.owner', 'reception');
         add('messages.owner', 'reception');
     }
-    if (/i (check|listen to) (the )?(voicemail|messages)|i pick up the messages/.test(t) && !/receptionist|front desk|girls/.test(t)) {
+    if (/i (check|listen to) (the )?(voicemail|messages)|i check the messages myself|i pick up the messages/.test(t)
+        && !/(receptionist|front desk|girls) .{0,24}(check|listen|own)/.test(t)) {
         add('messages.owner', 'clinical');
         add('busy.owner', 'clinical');
         add('after.owner', 'clinical');
     }
     if (!has('beforeOpening') && (/before (the office |we )?open|before opening day|not open yet|while were building/.test(t) || /advertis/.test(t) && /number/.test(t))) {
-        if (/callback|call back|take a message|leave (a message|their information)/.test(t))
+        const wantsCallback = /callback|call back|take a message|leave (a message|their information)/.test(t)
+            && !/\bno callback\b|\bnot a callback\b|\bwithout (a )?callback\b|\bno callback box\b/.test(t);
+        if (wantsCallback)
             add('beforeOpening', 'message', 'exact');
-        else if (/recording|announcement|say we are not open/.test(t))
+        else if (/recording|announcement|say we are not open|not-open-yet/.test(t))
             add('beforeOpening', 'information', 'heuristic');
     }
     if (/internet is not in|internet is not ready|no internet yet/.test(t))
@@ -534,7 +582,7 @@ function extractHours(t: string, add: (id: string, value: Scalar) => void) {
         add('hours.Saturday.open', false);
         add('hours.Sunday.open', false);
     }
-    if (/closes at four instead of six|closes at 4/.test(t))
+    if (/closes at four instead of six|closes at 4|close at 4|close at four/.test(t))
         add('hours.weekdays_end', '16:00');
 }
 
@@ -555,9 +603,10 @@ function extractDevices(t: string, add: (id: string, value: Scalar) => void) {
         add('devices.reception.desk_count', 2);
     if (/three phones that all ring|three independently/.test(t))
         add('devices.reception.desk_count', 3);
-    if (/both (can )?pick up|can both pick up|pick up at once/.test(t) || (/two (separate )?(lines|extensions)|each (has|gets) (a |their )?(own )?(phone|line)|independently/.test(t) && /front|desk|girl|receptionist|phone|line/.test(t)))
+    if ((/both (can )?pick up|can both pick up|pick up at once/.test(t) || (/two (separate )?(lines|extensions)|each (has|gets) (a |their )?(own )?(phone|line)|independently/.test(t) && /front|desk|girl|receptionist|phone|line/.test(t)))
+        && !/can'?t both|cannot both|can not both|sharing one|share one/.test(t))
         add('devices.reception.sharing', 'separate');
-    if (/share (one |a )?(phone|line)|one (desk )?phone between|one line between|they share one/.test(t))
+    if (/shar(e|ing) (one |a )?(phone|line)|one (desk )?phone between|one line between|they share one|can'?t both talk|cannot both talk/.test(t))
         add('devices.reception.sharing', 'shared');
 }
 

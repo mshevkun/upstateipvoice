@@ -46,7 +46,11 @@
 
   const plannerParams = (() => {
     const q = new URLSearchParams(location.search);
-    return { planId: q.get("plan") || "", sessionId: q.get("s") || "" };
+    return {
+      planId: q.get("plan") || "",
+      sessionId: q.get("s") || "",
+      practiceName: (q.get("name") || "").trim().slice(0, 120),
+    };
   })();
 
   const state = {
@@ -364,8 +368,13 @@
     if (!state.token) {
       loadingEl.classList.add("is-hidden");
       page.classList.remove("is-hidden");
-      if (plannerParams.planId && fields.business_name && !fields.business_name.value)
+      if (fields.business_name && !fields.business_name.value) {
         fields.business_name.placeholder = 'Practice name';
+        if (plannerParams.practiceName) {
+          fields.business_name.value = plannerParams.practiceName;
+          fields.business_name.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
       render();
       return;
     }

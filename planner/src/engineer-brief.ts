@@ -447,15 +447,18 @@ function pathMoments(p: Plan, b: FusionBuild): BriefMoment[] {
     return callPath(p, b).map(h => ({ when: h.when, happen: h.happen }));
 }
 
-function addressNote(p: Plan, b: FusionBuild) {
+function addressNotes(p: Plan, b: FusionBuild): string[] {
+    const items: string[] = [];
     const rec = directory(p).find(d => d.device === 'desk' && d.sharing === 'separate' && d.count > 1);
     const shared = directory(p).find(d => d.sharing === 'shared' && d.count > 1);
-    const split = rec
-        ? rec.extension + ' and ' + String(Number(rec.extension) + 1) + ' are two SIP users so both can pick up. Do not register two phones on one user. '
-        : shared
-            ? shared.count + ' devices on one SIP user (' + shared.extension + ') — one concurrent call. '
-            : '';
-    return split + 'Transfer “<ext> XML ' + b.domain + '”. Voicemail *99<ext>. Users 2xx · TC 8xxx · RG 7xxx · IVR 9xxx. Desk TLS :5081 · computer WSS :7443. reloadxml after writes.';
+    if (rec)
+        items.push(rec.extension + ' and ' + String(Number(rec.extension) + 1) + ' are two SIP users so both can pick up. Do not register two phones on one user.');
+    else if (shared)
+        items.push(shared.count + ' devices on one SIP user (' + shared.extension + ') — one concurrent call.');
+    items.push('Transfer “<ext> XML ' + b.domain + '”. Voicemail *99<ext>.');
+    items.push('Users 2xx · TC 8xxx · RG 7xxx · IVR 9xxx. Desk TLS :5081 · computer WSS :7443.');
+    items.push('reloadxml after writes.');
+    return items;
 }
 
 function directoryTable(p: Plan, b: FusionBuild): { headers: string[]; rows: string[][]; widths: number[] } {
@@ -487,12 +490,27 @@ function directoryTable(p: Plan, b: FusionBuild): { headers: string[]; rows: str
                                 : d.device === 'mobile'
                                     ? 'No · Follow Me'
                                     : 'No · transfer';
-        return [place, ext, sip, inboundCell, String(d.concurrent), '☐ pwd', 'MAC ______', '______'];
+        return [place, ext, sip, inboundCell, String(d.concurrent), '☐ ________', 'MAC ________', '☐'];
     });
     return {
         headers: ['Place', 'Ext', 'Register', 'DID member', 'Conc.', 'Password', 'MAC', 'Tested'],
         rows: rows.length ? rows : [['None yet', '—', '—', '—', '—', '—', '—', '—']],
-        widths: [88, 48, 78, 90, 40, 52, 70, 48]
+        // Ext must fit "201–202"; Register must fit "App + Follow Me" — both on one line after scale.
+        widths: [76, 58, 80, 78, 36, 70, 72, 34]
+    };
+}
+
+function pathTable(p: Plan, b: FusionBuild): { headers: string[]; rows: string[][]; widths: number[] } {
+    const rows = callPath(p, b).map(h => [
+        h.when,
+        h.object,
+        h.happen,
+        h.test
+    ]);
+    return {
+        headers: ['When', 'Object', 'Action', 'Test cue'],
+        rows: rows.length ? rows : [['—', '—', 'Path still open', '—']],
+        widths: [78, 72, 200, 154]
     };
 }
 
@@ -607,6 +625,11 @@ function chunk<T>(xs: T[], n: number): T[][] {
     const out: T[][] = [];
     for (let i = 0; i < xs.length; i += n)
         out.push(xs.slice(i, i + n));
+    // Never leave a one-row orphan page when the previous chunk can take it.
+    if (out.length > 1 && out[out.length - 1].length === 1) {
+        const last = out.pop()!;
+        out[out.length - 1].push(...last);
+    }
     return out;
 }
 
@@ -651,7 +674,7 @@ function objectRows(p: Plan, b: FusionBuild): BriefRow[] {
     const tc = b.objects.find(o => o.kind === 'time_condition');
     if (tc)
         rows.push({
-            label: (tc.extension || '8000') + ' · time condition',
+            label: (tc.extension || '8000') + ' · TC',
             value: 'Groups on page 03. Open → ' + openAction(p, b) + '. '
                 + (lunchDay(p) ? 'Lunch → lunch-closed.wav. ' : 'No lunch group. ')
                 + '999 → ' + closedAction(p, b) + '.'
@@ -811,7 +834,8 @@ function liveTestTable(p: Plan, b: FusionBuild) {
     });
     return {
         headers: ['When', 'File', 'Object', 'Hop test', '☐'],
-        widths: [78, 120, 70, 210, 24],
+        // Proportional weights — pdf scales to content width (File needs room for *.wav).
+        widths: [72, 132, 78, 198, 22],
         rows: deduped
     };
 }
@@ -914,14 +938,14 @@ export function engineerBrief(p: Plan): BriefPage[] {
     const dir = directoryTable(p, b);
     const groups = fusionGroupTable(p, b);
     const blockers = [...b.blockers, ...b.parity];
-    const moments = pathMoments(p, b);
+    const path = pathTable(p, b);
+    const pathParts = chunk(path.rows, 6);
     const recs = recordingScripts(p, b);
     const objs = objectRows(p, b);
     const tests = liveTestTable(p, b);
     const rails = guardrails(p, b);
     const open = unresolved(p);
     const pages: BriefPage[] = [];
-    const momentParts = chunk(moments, 5);
     const blockerHead = blockers.slice(0, 3);
     const blockerRest = blockers.slice(3);
     pages.push({
@@ -935,20 +959,20 @@ export function engineerBrief(p: Plan): BriefPage[] {
                 ? [{ kind: 'kicker' as const, text: 'Do not provision until resolved' }, { kind: 'list' as const, items: blockerHead }]
                 : []),
             { kind: 'kicker', text: 'Call path to build' },
-            { kind: 'moments', items: momentParts[0] }
+            { kind: 'table', headers: path.headers, rows: pathParts[0] || path.rows, widths: path.widths }
         ]
     });
-    momentParts.slice(1).forEach((part, i) => {
+    pathParts.slice(1).forEach((part, i) => {
         pages.push({
             kicker: kickerOf('01', 'Path', i + 1),
             title: 'Call path continued.',
             lede: 'Same identity. Tests on page 07 quote this table.',
-            blocks: [{ kind: 'moments', items: part }]
+            blocks: [{ kind: 'table', headers: path.headers, rows: part, widths: path.widths }]
         });
     });
     if (blockerRest.length)
         pages.push({
-            kicker: kickerOf('01', 'Path', momentParts.length),
+            kicker: kickerOf('01', 'Path', pathParts.length),
             title: 'Do not provision until resolved.',
             lede: 'Remaining fusion blockers. They are not dropped.',
             blocks: [{ kind: 'list', items: blockerRest }]
@@ -959,7 +983,9 @@ export function engineerBrief(p: Plan): BriefPage[] {
         lede: 'Suggested extensions are not reserved. Confirm each number is free on this domain_uuid.',
         blocks: [
             { kind: 'table', headers: dir.headers, rows: dir.rows, widths: dir.widths },
-            { kind: 'note', text: addressNote(p, b) }
+            { kind: 'note', text: 'Write password and MAC at the desk. Tick Tested only after that handset registers on this domain.' },
+            { kind: 'kicker', text: 'Register rules' },
+            { kind: 'list', items: addressNotes(p, b) }
         ]
     });
     pages.push({
@@ -975,7 +1001,7 @@ export function engineerBrief(p: Plan): BriefPage[] {
         ? (lunchDay(p) ? 'Do not reuse lunch-closed.wav on group 999. ' : 'Do not invent a lunch recording. ')
             + 'Assign greet_long / voicemail greeting_1.wav as listed.'
         : 'No practice recordings beyond a standard voicemail greeting.';
-    chunk(recs, 5).forEach((part, i, parts) => {
+    chunk(recs, 6).forEach((part, i, parts) => {
         pages.push({
             kicker: kickerOf('04', 'Recordings', i),
             title: i === 0 ? 'Files to record and upload.' : 'Recordings continued.',
@@ -1013,7 +1039,7 @@ export function engineerBrief(p: Plan): BriefPage[] {
         title: 'Order of operations.',
         lede: 'Do not skip to Destinations before recordings and Time Condition groups exist.',
         blocks: [
-            { kind: 'list', items: buildOrder(p, b) },
+            { kind: 'checks', items: buildOrder(p, b) },
             { kind: 'kicker', text: 'If you skip a step' },
             { kind: 'list', items: [
                 lunchDay(p)
@@ -1026,7 +1052,7 @@ export function engineerBrief(p: Plan): BriefPage[] {
             ] }
         ]
     });
-    chunk(tests.rows, 8).forEach((part, i, parts) => {
+    chunk(tests.rows, 10).forEach((part, i, parts) => {
         pages.push({
             kicker: kickerOf('07', 'Tests', i),
             title: i === 0 ? 'Prove it on the DID.' : 'Tests continued.',
@@ -1056,7 +1082,7 @@ export function engineerBrief(p: Plan): BriefPage[] {
                 ...(lastRail && !openParts.length
                     ? [{ kind: 'note' as const, text: 'No extra provider parameters. Live tests still happen on the DID.' }]
                     : lastRail && openParts.length
-                        ? [{ kind: 'kicker' as const, text: 'Still open' }, { kind: 'rows' as const, items: openParts[0] }]
+                        ? [{ kind: 'kicker' as const, text: 'Handled at install' }, { kind: 'rows' as const, items: openParts[0] }]
                         : [])
             ]
         });
@@ -1064,7 +1090,7 @@ export function engineerBrief(p: Plan): BriefPage[] {
     openParts.slice(1).forEach((part, i) => {
         pages.push({
             kicker: kickerOf('08', 'Guardrails', railParts.length + i),
-            title: 'Still open.',
+            title: 'Handled at install.',
             lede: 'Same identity. Remaining unresolved parameters.',
             blocks: [{ kind: 'rows', items: part }]
         });

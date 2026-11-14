@@ -410,10 +410,12 @@ function coverGlance(p: Plan): BriefMoment[] {
     if (lunch)
         items.push({
             when: 'Lunch',
-            happen: formatTime(lunch.breakStart) + '–' + formatTime(lunch.breakEnd) + ' · front desk closed · lunch recording, we will call you back'
+            happen: formatTime(lunch.breakStart) + '–' + formatTime(lunch.breakEnd)
+                + '. Front desk closed. Lunch callback'
                 + (/lunch callback this afternoon/i.test(p.policy.notes || '') ? ' this afternoon' : '')
-                + '. Not overnight.'
-                + (onCallAfterHours(p) ? ' Not ' + onCallLabel(p) + '.' : '')
+                + ' — not overnight'
+                + (onCallAfterHours(p) ? ', not the ' + onCallLabel(p) : '')
+                + '.'
         });
     if (alwaysOn(p))
         items.push({
@@ -641,17 +643,20 @@ function orderPoints(p: Plan) {
     if (outside.length)
         bits.push(outside.map(x => {
             const n = x.count;
-            const where = x.label || who(p, x.team) || 'the practice';
-            const place = (n === 1 ? ' computer at the ' : ' computers at the ') + where.replace(/^the /i, '');
-            return x.team === (p.first.team || 'reception')
-                ? n + place + ' can answer the published number. Confirm headset and network there.'
-                : n + place + ' is not inbound on the published number.';
-        }).join('. '));
+            const team = who(p, x.team) || 'the practice';
+            if (x.team === (p.first.team || 'reception'))
+                return (n === 1 ? 'One answering computer at ' : n + ' answering computers at ')
+                    + team + '. Confirm headset and network there.';
+            return (n === 1 ? 'One office computer for ' : n + ' office computers for ')
+                + team + ' — not inbound on the published number.';
+        }).join(' '));
     else if (buy.computer.qty)
         bits.push(buy.computer.qty + (buy.computer.qty === 1 ? ' computer position' : ' computer positions') + ' can answer. Confirm headset and network there.');
     const places = answeringPlaces(p);
     if (places.internalComputer)
-        bits.push(places.internalComputer === 1 ? 'one clinical computer (internal)' : places.internalComputer + ' clinical computers (internal)');
+        bits.push(places.internalComputer === 1
+            ? 'One clinical computer (internal) — not on the published number.'
+            : places.internalComputer + ' clinical computers (internal) — not on the published number.');
     return bits;
 }
 
@@ -833,6 +838,8 @@ function useChecks(p: Plan) {
         items.push('Let it ring with nobody answering. Confirm the message, and that ' + who(p, p.busy.owner) + ' opens that inbox.');
     else if (p.busy.kind === 'queue')
         items.push('Let it ring with nobody answering. They should wait, then leave a message for ' + who(p, p.busy.owner) + '.');
+    else if (p.busy.kind === 'backup')
+        items.push('Let both desk lines stay busy. Confirm the work mobile rings, then a message for ' + who(p, p.busy.owner) + '. Never a personal cell.');
     const lunch = lunchDay(p);
     if (lunch)
         items.push('Call during lunch. Hear the lunch recording — we will call you back'
@@ -870,7 +877,6 @@ export function ownerBrief(p: Plan): BriefPage[] {
     const label = openingLabel(p).split(' · ')[0];
     const city = p.policy.cityState;
     const coverNumbers = ownerStats(p);
-    const orderNumbers = orderStats(p);
     const hours = hoursLines(p);
     const holiday = holidayLine(p);
     const tz = p.hours.timezone === 'America/New_York' ? 'Eastern Time' : (p.hours.timezone && p.hours.timezone !== 'UTC' ? p.hours.timezone.replace(/_/g, ' ') : '');
@@ -891,7 +897,7 @@ export function ownerBrief(p: Plan): BriefPage[] {
             blocks: [
                 { kind: 'steps', items: openingSteps(p) },
                 ...(installOpen(p).length
-                    ? [{ kind: 'kicker' as const, text: 'Still open — handled at install' }, { kind: 'checks' as const, items: installOpen(p) }]
+                    ? [{ kind: 'kicker' as const, text: 'Handled at your walkthrough / install' }, { kind: 'checks' as const, items: installOpen(p) }]
                     : [{ kind: 'note' as const, text: 'Owner policy on this page is recorded. Live tests still happen on installed phones.' }])
             ] as BriefBlock[]
         }
@@ -912,37 +918,34 @@ export function ownerBrief(p: Plan): BriefPage[] {
             ] as BriefBlock[]
         };
 
+    const hearScripts = scripts(p);
     return [
         {
             kicker: '01  ·  Cover',
             title: p.name.trim() || 'Your practice',
             lede: coverLede || 'A plan for how patients reach you. Nothing here is installed.',
             blocks: [
-                { kind: 'stats', items: coverNumbers },
-                { kind: 'note', text: orderTotal(p) },
+                { kind: 'stats', items: coverNumbers.slice(0, 2) },
                 { kind: 'hours', items: coverHours },
                 { kind: 'note', text: (tz ? 'Phone hours in ' + tz + '. ' : '') + 'Draft. Nothing is installed.' },
                 { kind: 'kicker', text: 'When someone calls' },
-                { kind: 'moments', items: coverGlance(p) }
+                { kind: 'moments', items: coverGlance(p).slice(0, p.mode === 'opening' ? 4 : 3) }
             ]
         },
         {
             kicker: '02  ·  Every call',
-            title: 'What happens when someone calls.',
+            title: 'What a caller hears.',
             lede: p.first.kind === 'menu'
-                ? 'Callers press a keypad first. The scripts below are what to record.'
+                ? 'Callers press a keypad first. Approve each script before anything is recorded.'
                 : p.first.kind === 'assistant'
                     ? 'A virtual receptionist is proposed to answer first — not live until a vendor proves it.'
                     : receptionOutsideComputers(p) && !deskToBuy(p)
-                        ? 'The answering computer picks up. No keypad. The scripts below are what to record.'
-                        : 'A person answers. No keypad. The scripts below are what to record.',
+                        ? 'The answering computer picks up. No keypad. One script per moment below.'
+                        : 'A person answers. No keypad. One script per moment below.',
             blocks: [
-                // Scripts first so freeze-fit owner pages never drop lunch / before-opening hears.
-                { kind: 'kicker', text: 'What a caller hears' },
-                { kind: 'scripts', items: scripts(p) },
-                { kind: 'kicker', text: 'In plain words' },
-                { kind: 'moments', items: callMoments(p).slice(0, 4) },
-                { kind: 'note', text: 'Wording is a preview of the path, not a live call. Approve it before anything is recorded.' }
+                // One job: scripts only. Cover keeps the plain-words glance.
+                { kind: 'scripts', items: hearScripts },
+                { kind: 'note', text: 'Preview of the path — not a live call. Approve wording before recording.' }
             ]
         },
         {
@@ -950,12 +953,14 @@ export function ownerBrief(p: Plan): BriefPage[] {
             title: orderTitle(p),
             lede: orderLede(p),
             blocks: [
-                { kind: 'stats', items: orderNumbers },
-                { kind: 'list', items: orderPoints(p) },
+                ...(orderPoints(p).length
+                    ? [{ kind: 'list' as const, items: orderPoints(p) }]
+                    : []),
                 { kind: 'kicker', text: 'Do not order' },
-                { kind: 'list', items: doNotOrder(p) },
-                { kind: 'note', text: 'A quote should match these quantities. This file never invents a price.' },
-                { kind: 'rows', items: staffRows(p) }
+                { kind: 'list', items: doNotOrder(p).slice(0, 4) },
+                { kind: 'kicker', text: 'Who uses them' },
+                { kind: 'rows', items: staffRows(p) },
+                { kind: 'note', text: 'A quote should match these quantities. This file never invents a price.' }
             ]
         },
         {
@@ -969,6 +974,7 @@ export function ownerBrief(p: Plan): BriefPage[] {
                         ? 'The answering computer picks up. These are handoffs after pickup — not a daytime menu.'
                         : 'Front desk answers first. These are handoffs after pickup — not a daytime menu.',
             blocks: [
+                { kind: 'kicker', text: 'After pickup' },
                 { kind: 'rows', items: coverage(p) },
                 { kind: 'kicker', text: 'This number is not' },
                 { kind: 'rows', items: boundaries(p) },

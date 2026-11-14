@@ -1338,6 +1338,7 @@ export const fields: FieldDef[] = [
         }
     },
     enumField('policy.ring', ['together', 'order', 'undecided'], 'Whether available reception phones ring together or in order.', p => p.policy.ring, (p, value) => policy(p, { ring: value as Plan['policy']['ring'] }), 'positions'),
+    enumField('locationEntry', ['shared', 'menu', 'separate', 'undecided'], 'How a multi-location main number chooses a site. menu is press-for-location. separate is one DID per office. shared is one reception team asking which location.', p => p.policy.locationEntry, (p, value) => policy(p, { locationEntry: value as Plan['policy']['locationEntry'] }), 'practice'),
     {
         id: 'opening.pms',
         type: 'string',

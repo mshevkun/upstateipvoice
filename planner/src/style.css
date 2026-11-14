@@ -270,8 +270,11 @@
 .chat-chip:hover:not(:disabled):not(.picked){background:#fff;border-color:#131313;transform:translateY(-2px);box-shadow:0 10px 22px #202b2016}
 .chat-chip:active:not(:disabled){transform:scale(.97) translateY(0);box-shadow:none}
 .chat-chips.stack .chat-chip:hover:not(:disabled):not(.picked){transform:translateY(-2px)}
+.chat-chip.primary{background:#131313;border-color:#131313;color:#fff;font-weight:600}
+.chat-chip.primary:hover:not(:disabled):not(.picked){background:#303631;border-color:#303631;color:#fff;box-shadow:0 10px 22px #202b2016}
 .chat-chip.quiet{border-color:transparent;background:transparent;color:#6d746c;font-weight:500;min-height:36px;padding:6px 2px;justify-content:flex-start}
 .chat-chip.quiet:hover:not(:disabled):not(.picked){background:transparent;border-color:transparent;color:#131313;box-shadow:none;transform:none;text-decoration:underline;text-underline-offset:3px}
+.chat-draft-note{margin:14px 0 0;max-width:28rem;font-size:12.5px;line-height:1.45;color:#6d746c}
 .chat-chips.aside{gap:4px 14px;margin-top:2px}
 .chat-chip.picked{background:#131313;border-color:#131313;color:#fff;transform:scale(.97);box-shadow:none;animation:none}
 .chat-chip:disabled:not(.picked){opacity:.35}

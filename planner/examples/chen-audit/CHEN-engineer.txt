@@ -1,383 +1,110 @@
-                                                                                                 IMPLEMENTATION SPEC
-
-
-
-
-01 · PATH
-
-
 Chen Family Dental
-DRAFT — do not build. Must match owner UP-mwfupq6a-gno8pv · r12 · 33dc4671. Nothing here is
-provisioned.
-
-
-2                                                1                                 1
-Desk phones                                      Work mobile                       Answering computer
-2 people at the front                            Follow Me · not a personal cell   WSS · not inbound RG
-
-
-
-
+DRAFT — do not build. Must match owner UP-mwgs9rft-anhxon · r12 · b3dd8b83. Nothing here is provisioned.
+2 Desk phones 2 people at the front
+1 Work mobile Follow Me · not a personal cell
+1 Answering computer WSS · not inbound RG
 Main practice · Eastern Time. Transfer data is always “<ext> XML <tenant>.upstateipvoice.com”.
-
-DO NOT PROVISION UNTIL RESOLVED
-
-    On-call RG has no outside member. Digit 9 is BLOCKED. Do not go live until Follow Me is populated.
-
-CALL PATH TO BUILD
-
-BEFORE OPENING
-
-DID → *99304 (box 304). Not TC 8000. Put before-opening-callback.wav on that box before the
-number is public.
-
-OPEN HOURS
-
-DID → TC 8000 → RG 7000 (201, 202 simultaneous, 25s). No IVR. 211, 221 are not inbound members.
-
-LUNCH · 12:30 PM–1:30 PM
-
-TC lunch groups → lunch-closed.wav → box 301. we will call you back. Not group 999. Not on-call.
-
-AFTER HOURS
-
-TC group 999 → IVR 9002. Digit 1 / timeout → box 303. Digit 9 → RG 7900 is BLOCKED — no outside
-on-call identity. Do not go live until Follow Me is populated. Not the internal computer.
-
-NOBODY ANSWERS
-
-RG 7000 timeout 25s → RG 7001 then box 301. Overflow RG dials the work-mobile extension so Follow
-Me can fire.
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                     1 / 10
-                                                                                                       IMPLEMENTATION SPEC
-
-
-
-
-02 · DIRECTORY
-
-
+Do not provision until resolved
+On-call RG has no outside member. Digit 9 is BLOCKED. Do not go live until Follow Me is populated.
+Call path to build
+When | Object | Action | Test cue
+Before opening | *99304 | DID → *99304 (box 304). Not TC 8000. Put before-opening-callback.wav on that box before the number is public. | Before opening: DID still → *99304, not TC 8000.
+Open hours | RG 7000 | DID → TC 8000 → RG 7000 (201, 202 simultaneous, 25s). No IVR. 211, 221 are not inbound members. | Open hours: two simultaneous calls. 201 and 202 both ring. No IVR.
+Lunch · 12:30 PM–1:30 PM | lunch-closed.wav → box 301 | TC lunch groups → lunch-closed.wav → box 301. we will call you back. Not group 999. Not on-call. | Lunch: lunch-closed.wav, we will call you back — not group 999, not on-call.
+After hours | IVR 9002 | TC group 999 → IVR 9002. Digit 1 / timeout → box 303. Digit 9 → RG 7900 is BLOCKED — no outside on-call identity. Do not go live until Follow Me is populated. Not the internal computer. | BLOCKED: after hours digit 9 must not go live. RG 7900 has no outside member. Follow Me is empty — fail the install.
+Nobody answers | RG 7001 then box 301 | RG 7000 timeout 25s → RG 7001 then box 301. Overflow RG dials the work-mobile extension so Follow Me can fire. | Nobody answers (25s). Hear RG 7001 then box 301.
 What to create in Fusion.
 Suggested extensions are not reserved. Confirm each number is free on this domain_uuid.
-
-PLACE                   EXT          REGISTER                DID MEMBER       CONC.   PASSWORD   MAC             TESTED
-
-Front desk              201–202      TLS :5081               Yes · RG 7000    2        pwd       MAC ______      ______
-
-Work mobile             211          App + Follow Me         No · Follow Me   1        pwd       MAC ______      ______
-
-Administration          221          WSS :7443               No · transfer    1        pwd       MAC ______      ______
-
-Clinical                231          WSS :7443               No · internal    1        pwd       MAC ______      ______
-
-
-201 and 202 are two SIP users so both can pick up. Do not register two phones on one user. Transfer “<ext> XML
-<tenant>.upstateipvoice.com”. Voicemail *99<ext>. Users 2xx · TC 8xxx · RG 7xxx · IVR 9xxx. Desk TLS :5081 ·
-computer WSS :7443. reloadxml after writes.
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                           2 / 10
-                                                                                                IMPLEMENTATION SPEC
-
-
-
-
-03 · HOURS
-
-
+Place | Ext | Register | DID member | Conc. | Password | MAC | Tested
+Front desk | 201–202 | TLS :5081 | Yes · RG 7000 | 2 | ☐ ________ | MAC ________ | ☐
+Work mobile | 211 | App + Follow Me | No · Follow Me | 1 | ☐ ________ | MAC ________ | ☐
+Administration | 221 | WSS :7443 | No · transfer | 1 | ☐ ________ | MAC ________ | ☐
+Clinical | 231 | WSS :7443 | No · internal | 1 | ☐ ________ | MAC ________ | ☐
+201 and 202 are two SIP users so both can pick up. Do not register two phones on one user. Transfer “<ext> XML <tenant>.upstateipvoice.com”. Voicemail *99<ext>. Users 2xx · TC 8xxx · RG 7xxx · IVR 9xxx. Desk TLS :5081 · computer WSS :7443. reloadxml after writes.
 Time Condition 8000.
 Type these groups. Fusion minutes are inclusive. Posted close is stored as end minus one minute.
-
-GROUP                      CLOCK (INCLUSIVE)                 MINUTES     ACTION
-
-Dates first                Nov 25, 2027                      date-only   evaluate before weekday groups · IVR 9002
-
-Skip                       Dec 25, 2027 (observe Dec         no-op       already closed — do not type
-                           24, 2027?)
-
-Mon–Thu AM                 8:00 AM–12:29 PM                  480–749     RG 7000
-
-Mon–Thu lunch              12:30 PM–1:29 PM                  750–809     lunch-closed.wav → 302
-
-Mon–Thu PM                 1:30 PM–4:59 PM                   810–1019    RG 7000
-
-Fri                        8:00 AM–1:59 PM                   480–839     RG 7000
-
-Group 999                  Nights, weekends                  catch-all   IVR 9002
-
-
-      Timezone America/New_York. TC 8000 · dialplan order 300. Minute-of-day, inclusive.
-      Do not create empty Saturday/Sunday groups. Closed days fall through to 999.
-      Lunch groups must not fall through to group 999.
-      Cutover: Destination flips to TC 8000 on opening morning. Two objects, one change.
-      Date-only groups first. Evaluate before weekday groups. Renew each year. Nov 25, 2027.
-      Dec 25, 2027 is already closed; do not type a no-op date. Observe Dec 24, 2027?
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                     3 / 10
-                                                                                              IMPLEMENTATION SPEC
-
-
-
-
-04 · RECORDINGS
-
-
+Group | Clock (inclusive) | Minutes | Action
+Dates first | Nov 25, 2027 | date-only | evaluate before weekday groups · IVR 9002
+Skip | Dec 25, 2027 (observe Dec 24, 2027?) | no-op | already closed — do not type
+Mon–Thu AM | 8:00 AM–12:29 PM | 480–749 | RG 7000
+Mon–Thu lunch | 12:30 PM–1:29 PM | 750–809 | lunch-closed.wav → 302
+Mon–Thu PM | 1:30 PM–4:59 PM | 810–1019 | RG 7000
+Fri | 8:00 AM–1:59 PM | 480–839 | RG 7000
+Group 999 | Nights, weekends | catch-all | IVR 9002
+Timezone America/New_York. TC 8000 · dialplan order 300. Minute-of-day, inclusive.
+Do not create empty Saturday/Sunday groups. Closed days fall through to 999.
+Lunch groups must not fall through to group 999.
+Cutover: Destination flips to TC 8000 on opening morning. Two objects, one change.
+Date-only groups first. Evaluate before weekday groups. Renew each year. Nov 25, 2027.
+Dec 25, 2027 is already closed; do not type a no-op date. Observe Dec 24, 2027?
 Files to record and upload.
 Apps → Recordings. Filename is the object. Wording is what to put in the file. Listen on a handset.
-
-    BEFORE-OPENING-CALLBACK.WAV
-
-    DID before open → box greeting. “Thank you for calling Chen Family Dental. We are not yet open. Please
-    leave your name, number, and a good time to reach you. We will call you back.”
-
-    LUNCH-CLOSED.WAV
-
-    TC lunch groups → box, not 999. “Thank you for calling Chen Family Dental. We are closed for lunch and
-    will return at 1:30 PM. Please leave your name, number, and reason for calling, and we will call you back.”
-
-    AFTER-HOURS-URGENT-OPTION.WAV
-
-    IVR 9002 greet_long. “You have reached Chen Family Dental after hours. If this is swelling, trauma, or
-    uncontrolled bleeding, press 9 and we will try the on-call dentist. To leave a message, press 1 or wait. We
-    return ordinary messages the next business day. If this is a life-threatening emergency, hang up and dial
-    911.”
-
-    BUSY-VOICEMAIL.WAV
-
-    Inbound RG timeout → box. “Thank you for calling Chen Family Dental. We are not able to take your call
-    right now. Please leave your name, number, and reason for calling, and we will call you back.”
-
-    GREETING_1.WAV
-
-    Box 303. “You have reached Chen Family Dental after hours. Please leave your name, number, and reason
-    for calling. We will return your call on the next business day. If this is a life-threatening emergency, hang
-    up and dial 911.”
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                   4 / 10
-                                                                                              IMPLEMENTATION SPEC
-
-
-
-
-04B · RECORDINGS
-
-
+before-opening-callback.wav DID before open → box greeting.  “Thank you for calling Chen Family Dental. We are not yet open. Please leave your name, number, and a good time to reach you. We will call you back.”
+lunch-closed.wav TC lunch groups → box, not 999.  “Thank you for calling Chen Family Dental. We are closed for lunch and will return at 1:30 PM. Please leave your name, number, and reason for calling, and we will call you back.”
+after-hours-urgent-option.wav IVR 9002 greet_long.  “You have reached Chen Family Dental after hours. If this is swelling, trauma, or uncontrolled bleeding, press 9 and we will try the on-call dentist. To leave a message, press 1 or wait. We return ordinary messages the next business day. If this is a life-threatening emergency, hang up and dial 911.”
+busy-voicemail.wav Inbound RG timeout → box.  “Thank you for calling Chen Family Dental. We are not able to take your call right now. Please leave your name, number, and reason for calling, and we will call you back.”
+greeting_1.wav Box 303.  “You have reached Chen Family Dental after hours. Please leave your name, number, and reason for calling. We will return your call on the next business day. If this is a life-threatening emergency, hang up and dial 911.”
 Recordings continued.
 Same identity. Every remaining file.
-
-    PRIORITY-MESSAGE.WAV
-
-    On-call miss → box 305. “Thank you for calling Chen Family Dental. We were not able to reach the on-call
-    clinician. Please leave your name, number, and the reason this cannot wait until the next business day.”
-
-
+priority-message.wav On-call miss → box 305.  “Thank you for calling Chen Family Dental. We were not able to reach the on-call clinician. Please leave your name, number, and the reason this cannot wait until the next business day.”
 Do not reuse lunch-closed.wav on group 999. Assign greet_long / voicemail greeting_1.wav as listed.
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                  5 / 10
-                                                                                                IMPLEMENTATION SPEC
-
-
-
-
-05 · OBJECTS
-
-
 Objects on this tenant.
-Inbound is the first-answer ring group. Other ring groups are transfer or on-call. Internal computers
-are not members.
-
-DID · before open                       Transfer *99304. Not TC 8000.
-
-DID · after open                        Cutover only. Transfer TC 8000 XML <tenant>.upstateipvoice.com.
-                                        Match Telnyx 10-digit, 11-digit, or +1.
-
-8000 · time condition                   Groups on page 03. Open → RG 7000. Lunch → lunch-closed.wav. 999 →
-                                        IVR 9002.
-
-9002 · IVR                              Closed hours. greet_long = after-hours-urgent-option.wav. Digit 1 /
-                                        timeout → box 303. Digit 9 → RG 7900 is BLOCKED until Follow Me is
-                                        populated. Do not go live.
-
-7000 · RG                               Reception · members 201, 202 · inbound simultaneous — DID rings this
-                                        group · timeout_app = transfer; timeout_data = 7001 · extension 7000,
-                                        strategy simultaneous, call timeout 25s. Member timeouts must match
-                                        this group — do not mix the on-call 30s timeout into daytime groups.
-
-7001 · RG                               Administration · members 211 · transfer target only — DID does not ring
-                                        this group · timeout_app = transfer; timeout_data = *99301 · extension
-                                        7001, strategy simultaneous, call timeout 25s. Member timeouts must
-                                        match this group — do not mix the on-call 30s timeout into daytime
-                                        groups.
-
-7900 · RG                               members none · BLOCKED until Follow Me is populated · no outside
-                                        members — Follow Me on a dedicated on-call identity, not 231 — do not
-                                        go live · timeout_app = transfer; timeout_data = *99305 (voicemail box
-                                        305)
-
-211 · Follow Me                         Work app on this extension. Fires when this extension is dialed, not when
-                                        the inbound object rings. No personal cell.
-
-Mailbox = extension. Greeting path
-/var/lib/freeswitch/storage/voicemail/default/<tenant>.upstateipvoice.com/<ext>/greeting_1.wav.
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                    6 / 10
-                                                                                         IMPLEMENTATION SPEC
-
-
-
-
-06 · BUILD
-
-
+Inbound is the first-answer ring group. Other ring groups are transfer or on-call. Internal computers are not members.
+DID · before open: Transfer *99304. Not TC 8000.
+DID · after open: Cutover only. Transfer TC 8000 XML <tenant>.upstateipvoice.com. Match Telnyx 10-digit, 11-digit, or +1.
+8000 · time condition: Groups on page 03. Open → RG 7000. Lunch → lunch-closed.wav. 999 → IVR 9002.
+9002 · IVR: Closed hours. greet_long = after-hours-urgent-option.wav. Digit 1 / timeout → box 303. Digit 9 → RG 7900 is BLOCKED until Follow Me is populated. Do not go live.
+7000 · RG: Reception · members 201, 202 · inbound simultaneous — DID rings this group · timeout_app = transfer; timeout_data = 7001 · extension 7000, strategy simultaneous, call timeout 25s. Member timeouts must match this group — do not mix the on-call 30s timeout into daytime groups.
+7001 · RG: Administration · members 211 · transfer target only — DID does not ring this group · timeout_app = transfer; timeout_data = *99301 · extension 7001, strategy simultaneous, call timeout 25s. Member timeouts must match this group — do not mix the on-call 30s timeout into daytime groups.
+7900 · RG: members none · BLOCKED until Follow Me is populated · no outside members — Follow Me on a dedicated on-call identity, not 231 — do not go live · timeout_app = transfer; timeout_data = *99305  (voicemail box 305)
+211 · Follow Me: Work app on this extension. Fires when this extension is dialed, not when the inbound object rings. No personal cell.
+Mailbox = extension. Greeting path /var/lib/freeswitch/storage/voicemail/default/<tenant>.upstateipvoice.com/<ext>/greeting_1.wav.
 Order of operations.
 Do not skip to Destinations before recordings and Time Condition groups exist.
-
-    1 · Confirm domain <tenant>.upstateipvoice.com and the portal tenant_fusion_domains row.
-    2 · Create extensions 201–202, 211, 221, 231. Confirm each is free on this domain_uuid.
-    3 · Upload greeting_1.wav, busy-voicemail.wav, priority-message.wav,
-    after-hours-urgent-option.wav, lunch-closed.wav, before-opening-callback.wav. Listen to each file
-    on a handset.
-    4 · Build ring groups. timeout_app is required. Daytime 25s. On-call 30s BLOCKED until Follow Me is
-    populated. Do not mix them.
-    5 · Build Time Condition 8000 from the page 03 table. Lunch must not fall through to 999.
-    6 · Point the DID at *99304. Not TC 8000. Flip Destinations on opening morning.
-    7 · Enable Follow Me on the work-mobile extension. Work app only. No personal cell.
-    8 · reloadxml, then run every test on page 07 on the real DID.
-
-IF YOU SKIP A STEP
-
-    Recordings before Time Condition: lunch groups play lunch-closed.wav.
-    Time Condition groups before the DID flip: empty TC 8000 is a black hole.
-    reloadxml after the last write. The planner simulator is not a DID test.
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                             7 / 10
-                                                                                                          IMPLEMENTATION SPEC
-
-
-
-
-07 · TESTS
-
-
+1 · Confirm domain <tenant>.upstateipvoice.com and the portal tenant_fusion_domains row.
+2 · Create extensions 201–202, 211, 221, 231. Confirm each is free on this domain_uuid.
+3 · Upload greeting_1.wav, busy-voicemail.wav, priority-message.wav, after-hours-urgent-option.wav, lunch-closed.wav, before-opening-callback.wav. Listen to each file on a handset.
+4 · Build ring groups. timeout_app is required. Daytime 25s. On-call 30s BLOCKED until Follow Me is populated. Do not mix them.
+5 · Build Time Condition 8000 from the page 03 table. Lunch must not fall through to 999.
+6 · Point the DID at *99304. Not TC 8000. Flip Destinations on opening morning.
+7 · Enable Follow Me on the work-mobile extension. Work app only. No personal cell.
+8 · reloadxml, then run every test on page 07 on the real DID.
+If you skip a step
+Recordings before Time Condition: lunch groups play lunch-closed.wav.
+Time Condition groups before the DID flip: empty TC 8000 is a black hole.
+reloadxml after the last write. The planner simulator is not a DID test.
 Prove it on the DID.
-reloadxml first. Owner page 06 is the same bar. If a test fails, do not hand this practice a live number.
-Empty Follow Me on digit 9 must fail.
-
-WHEN                 FILE                             OBJECT          HOP TEST
-
-Before opening       before-opening-callback.wav*99304                Before opening: DID still → *99304, not TC 8000.
-
-Open hours           busy-voicemail.wav               RG 7000         Open hours: two simultaneous calls. 201 and 202
-                                                                      both ring. No IVR.
-
-Lunch · 12:30        lunch-closed.wav                 lunch-closed.wavLunch: lunch-closed.wav, we will call you back —
-PM–1:30 PM                                            → box 301       not group 999, not on-call.
-
-After hours          —                                IVR 9002        BLOCKED: after hours digit 9 must not go live.
-                                                                      RG 7900 has no outside member. Follow Me is
-                                                                      empty — fail the install.
-
-Nobody answers       —                                RG 7001 then    Nobody answers (25s). Hear RG 7001 then box
-                                                      box 301         301.
-
-Open hours           —                                DID             Inbound DID must not ring 211, 221, 231. Transfer
-                                                                      or Follow Me only.
-
-Two calls at         —                                front-desk      Two simultaneous calls on separate front-desk
-once                                                  lines           lines.
-
-Press 9 empty        after-hours-urgent-option.wav
-                                                RG 7900               MUST FAIL. Digit 9 with Follow Me empty does
-Follow Me                                                             not connect. Do not go live.
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                                8 / 10
-                                                                                                  IMPLEMENTATION SPEC
-
-
-
-
-07B · TESTS
-
-
+reloadxml first. Owner page 06 is the same bar. If a test fails, do not hand this practice a live number. Empty Follow Me on digit 9 must fail.
+When | File | Object | Hop test | ☐
+Before opening | before-opening-callback.wav | *99304 | Before opening: DID still → *99304, not TC 8000. | ☐
+Open hours | busy-voicemail.wav | RG 7000 | Open hours: two simultaneous calls. 201 and 202 both ring. No IVR. | ☐
+Lunch · 12:30 PM–1:30 PM | lunch-closed.wav | lunch-closed.wav → box 301 | Lunch: lunch-closed.wav, we will call you back — not group 999, not on-call. | ☐
+After hours | — | IVR 9002 | BLOCKED: after hours digit 9 must not go live. RG 7900 has no outside member. Follow Me is empty — fail the install. | ☐
+Nobody answers | — | RG 7001 then box 301 | Nobody answers (25s). Hear RG 7001 then box 301. | ☐
+Open hours | — | DID | Inbound DID must not ring 211, 221, 231. Transfer or Follow Me only. | ☐
+Two calls at once | — | front-desk lines | Two simultaneous calls on separate front-desk lines. | ☐
+Press 9 empty Follow Me | after-hours-urgent-option.wav | RG 7900 | MUST FAIL. Digit 9 with Follow Me empty does not connect. Do not go live. | ☐
 Tests continued.
 Same identity. Every remaining DID hop test.
-
-WHEN                 FILE                             OBJECT   HOP TEST
-
-Install              —                                E911     E911 address on the installed system. Checking a
-                                                               box here is not a carrier filing.
-
-Owner _____________________ Date __________
-Engineer _________________ Date __________
-DID test _________________ Date __________
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                        9 / 10
-                                                                                                 IMPLEMENTATION SPEC
-
-
-
-
-08 · GUARDRAILS
-
-
+When | File | Object | Hop test | ☐
+Install | — | E911 | E911 address on the installed system. Checking a box here is not a carrier filing. | ☐
+Owner _____________________  Date __________
+Engineer _________________  Date __________
+DID test _________________  Date __________
 Do not provision these.
 A quote or a Fusion default that contradicts this page is not this plan.
-
-    Do not invent 6 room phones from room count.
-    Do not point a DID at a user extension when hours or after-hours exist.
-    Do not let lunch groups fall through to group 999.
-    Do not build an open-hours IVR or a language IVR. Spanish is staff-identified after a person answers.
-    Do not store a personal cell in Follow Me, a recording, or a wall card. Snow days use group 999 —
-    never forward the published number to a personal cell.
-    Do not enable digit 9 or go live. On-call RG has no outside member. Follow Me is empty.
-    Do not copy the on-call 30s timeout onto daytime RG 7000 (25s).
-    Do not add internal 231 to inbound ring groups.
-    Do not add 211 to inbound RG 7000. Overflow is RG 7001, which dials that extension so Follow Me can
-    fire.
-    Do not publish the DID until the before-opening recording is on the callback box.
-
-STILL OPEN
-
-On-call                                 BLOCKED. Do not go live. Clinical team has no outside identity. Follow Me
-                                        on a dedicated on-call extension. Not the internal computer. Fusion does
-                                        not rotate the roster.
-
-Spanish                                 Staff-identified during open hours. Do not build a language IVR.
-
-Fax / analog                            Insurance fax: keep on its current line or move to a separate fax DID,
-                                        never the patient DID. Two analog lines: cancel after cutover?
-
-Holiday observe                         Dec 25, 2027 is already closed. Observe Dec 24, 2027?
-
-
-
-
-DRAFT — do not build · UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                       10 / 10
-
+Do not invent 6 room phones from room count.
+Do not point a DID at a user extension when hours or after-hours exist.
+Do not let lunch groups fall through to group 999.
+Do not build an open-hours IVR or a language IVR. Spanish is staff-identified after a person answers.
+Do not store a personal cell in Follow Me, a recording, or a wall card. Snow days use group 999 — never forward the published number to a personal cell.
+Do not enable digit 9 or go live. On-call RG has no outside member. Follow Me is empty.
+Do not copy the on-call 30s timeout onto daytime RG 7000 (25s).
+Do not add internal 231 to inbound ring groups.
+Do not add 211 to inbound RG 7000. Overflow is RG 7001, which dials that extension so Follow Me can fire.
+Do not publish the DID until the before-opening recording is on the callback box.
+Still open
+On-call: BLOCKED. Do not go live. Clinical team has no outside identity. Follow Me on a dedicated on-call extension. Not the internal computer. Fusion does not rotate the roster.
+Spanish: Staff-identified during open hours. Do not build a language IVR.
+Fax / analog: Insurance fax: keep on its current line or move to a separate fax DID, never the patient DID. Two analog lines: cancel after cutover?
+Holiday observe: Dec 25, 2027 is already closed. Observe Dec 24, 2027?

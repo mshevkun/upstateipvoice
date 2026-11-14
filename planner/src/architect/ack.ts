@@ -33,7 +33,12 @@ function taken(updates: InterpreterUpdate[]) {
 }
 
 function identity(set: Record<string, InterpreterUpdate['value']>) {
-    const spec = set.specialty ? String(set.specialty).toLowerCase() : '';
+    const detail = set.specialtyDetail ? String(set.specialtyDetail).trim() : '';
+    const spec = detail
+        ? detail.toLowerCase()
+        : set.specialty === 'Other healthcare practice'
+            ? 'healthcare'
+            : set.specialty ? String(set.specialty).toLowerCase() : '';
     const city = set.cityState ? String(set.cityState) : '';
     const office = spec ? spec + ' office' : 'office';
     if (set.mode === 'opening' && spec && city)
@@ -93,7 +98,7 @@ function answering(set: Record<string, InterpreterUpdate['value']>) {
     else if (set['first.kind'] === 'menu')
         bits.push('a short phone menu first');
     else if (set['first.kind'] === 'assistant')
-        bits.push('an AI receptionist first, still proposed');
+        bits.push('an AI receptionist first — confirm before install');
     if (set['busy.kind'] === 'message')
         bits.push('a message if nobody answers during open hours');
     else if (set['busy.kind'] === 'queue')
@@ -103,15 +108,15 @@ function answering(set: Record<string, InterpreterUpdate['value']>) {
     if (set['after.kind'] === 'message')
         bits.push('voicemail after hours');
     else if (set['after.kind'] === 'service')
-        bits.push('a live answering service after hours, still proposed');
+        bits.push('a live answering service after hours — confirm the contract before install');
     else if (set['after.kind'] === 'assistant')
-        bits.push('after-hours AI, still proposed');
+        bits.push('after-hours AI — we’ll confirm this before install');
     else if (set['after.kind'] === 'information')
         bits.push('hours information after close, then the call ends');
     if (set['urgent.kind'] === 'none')
         bits.push('no live on-call transfer');
     else if (set['urgent.kind'] === 'connect')
-        bits.push('a proposed on-call path, not a verified transfer');
+        bits.push('a live on-call attempt — we’ll confirm this before install');
     else if (set['urgent.kind'] === 'priority')
         bits.push('a priority message for urgent calls');
     if (set['urgent.scope'] === 'urgent_only')
@@ -200,6 +205,8 @@ function leftover(update: InterpreterUpdate) {
         return 'the receptionist count still open';
     if (update.operation === 'skip' && update.field_id === 'urgent.kind')
         return 'on-call left undecided, not marked as none';
+    if (update.operation === 'set' && update.field_id === 'specialtyDetail' && update.value)
+        return 'treating this as a ' + String(update.value) + ' practice';
     if (GROUPED.has(update.field_id) || update.operation !== 'set' || update.value == null)
         return '';
     return '';
@@ -339,7 +346,7 @@ export const CHIP_SUBJECT: Record<string, string> = {
     'mode=adding': 'Adding a location.',
     'specialty=Dental': 'A dental practice.',
     'specialty=Eye care': 'An eye-care practice.',
-    'specialty=Other healthcare practice': 'Another kind of healthcare practice — not a dental or eye-care room layout.',
+    'specialty=Other healthcare practice': 'Another kind of healthcare practice.',
     'teams.reception.count=0': 'No one at the front desk yet.',
     'teams.reception.count=1': 'One person at the front desk.',
     'teams.reception.count=2': 'Two people at the front desk.',
@@ -355,49 +362,49 @@ export const CHIP_SUBJECT: Record<string, string> = {
     'teams.administration.count=2': 'Two people in administration.',
     'hours.preset=weekdays': 'Monday–Friday, 9 to 5, until you change a day.',
     'hours.preset=always': 'Phones covered around the clock.',
-    'hours.preset=custom': 'Hours vary by day — I will not invent a shared weekday schedule.',
+    'hours.preset=custom': 'Hours vary by day — tell me each day that matters.',
     'hours.rest_closed=closed': 'The days you did not name are closed.',
-    'hours.lunch=covered': 'Someone stays on the desk at lunch. I did not add a lunch close.',
-    'hours.lunch=closed': 'Phones close at lunch. That is not the overnight mailbox.',
+    'hours.lunch=covered': 'Someone stays on the desk at lunch.',
+    'hours.lunch=closed': 'Phones close at lunch — not the overnight mailbox.',
     'hours.lunch.time=12-1': 'Lunch close is 12–1.',
     'hours.lunch.time=12:30-13:30': 'Lunch close is 12:30–1:30.',
     'hours.lunch.time=13-14': 'Lunch close is 1–2.',
     'first.kind=human': 'A person at the front answers first, not a menu.',
     'first.kind=menu': 'A short phone menu answers first.',
-    'first.kind=assistant': 'An AI receptionist answers first — still proposed until a vendor verifies it.',
+    'first.kind=assistant': 'An AI receptionist answers first. We’ll confirm this before install.',
     'busy.kind=message': 'If nobody answers during open hours, take a message.',
     'busy.kind=queue': 'If nobody answers during open hours, callers wait briefly.',
     'busy.kind=backup': 'If nobody answers during open hours, try another team.',
-    'busy.kind=assistant': 'If nobody answers during open hours, a virtual receptionist can help — still proposed.',
+    'busy.kind=assistant': 'If nobody answers during open hours, a virtual receptionist can help. We’ll confirm this before install.',
     'after.kind=message': 'After hours, take a voicemail for the next business day.',
-    'after.kind=service': 'After hours, a live answering service — still a proposed contract, not installed.',
-    'after.kind=assistant': 'After hours, an AI receptionist — still proposed.',
+    'after.kind=service': 'After hours, a live answering service. We’ll confirm the contract before install.',
+    'after.kind=assistant': 'After hours, an AI receptionist. We’ll confirm this before install.',
     'after.kind=information': 'After hours, play information and end the call.',
     'messages.owner=reception': 'The front desk checks those messages.',
     'messages.owner=clinical': 'You check those messages.',
     'messages.owner=admin': 'The office manager checks those messages.',
     'devices.reception.sharing=separate': 'Two front-desk lines, so both can pick up.',
     'devices.reception.sharing=shared': 'One shared front-desk line — one conversation at a time.',
-    'devices.reception.kind=desk': 'Front desk answers on desk phones. Model is still a vendor choice.',
+    'devices.reception.kind=desk': 'Front desk answers on desk phones.',
     'devices.reception.kind=computer': 'Front desk answers on a computer and headset.',
     'devices.reception.kind=both': 'Front desk uses desk phones, with a computer on the same lines if needed.',
     'devices.work_mobile=none': 'Just the office phones — no work mobile overflow.',
-    'devices.work_mobile=app': 'A work phone or app can ring. We will not publish a personal cell.',
+    'devices.work_mobile=app': 'A work phone or app can ring. Personal cells stay off the greeting.',
     'busy.order=backup_then_message': "If the front is slammed, the office manager's work mobile rings, then a message.",
     'busy.order=message_only': 'If the front is slammed, take a message only.',
-    'urgent.kind=connect': 'Urgent calls get a live on-call attempt, with a backup if it is missed. Not a verified transfer.',
+    'urgent.kind=connect': 'Urgent calls get a live on-call attempt, with a backup if it is missed. We’ll confirm this before install.',
     'urgent.kind=priority': 'Urgent calls leave a priority message — not a live clinician.',
     'urgent.kind=instructions': 'Urgent calls hear instructions, not a live transfer.',
     'urgent.kind=none': 'No separate urgent path.',
     'urgent.scope=urgent_only': 'That path is only for urgent calls, not every incoming call.',
     'urgent.scope=all_calls': 'Every incoming call uses that clinician path.',
-    'urgent.roster=rotation': 'On-call rotates between your clinicians — a roster, not a verified transfer.',
-    'urgent.roster=fixed': 'One person is on call. We will not put a personal cell in the greeting.',
+    'urgent.roster=rotation': 'On-call rotates between your clinicians.',
+    'urgent.roster=fixed': 'One person is on call. Personal cells stay off the greeting.',
     'urgent.backup=message': 'If the on-call attempt is missed, take a priority message.',
     'urgent.backup=instructions': 'If the on-call attempt is missed, play instructions.',
     'beforeOpening=message': 'Before opening, take a callback. Do not advertise the number until that recording exists.',
     'beforeOpening=information': 'Before opening, play a not-open-yet recording, then end.',
-    'languages.decision=none': 'English is enough. I did not add another language.',
+    'languages.decision=none': 'English is enough.',
     'languages.spanish=true': 'Spanish coverage, only if your team can actually provide it.',
     'policy.rooms=0': 'No treatment-room count. Rooms are not phones.',
     'policy.rooms=2': 'Two treatment rooms recorded. Rooms are not phones.',
@@ -511,10 +518,10 @@ export function composeAcknowledgement(opts: {
     userText?: string;
 }): string {
     if (opts.chip?.operation === 'skip')
-        return 'Skipped. I will leave that as an open decision.';
+        return 'Skipped for now — we can come back to that.';
     if (opts.chip?.operation === 'uncertain') {
         const help = adviceFor(opts.chip.field_id);
-        return help || 'Noted as uncertain. I will not treat that as a launch choice.';
+        return help || 'Left open for now — I won’t treat that as a launch choice.';
     }
     const groq = (opts.groqAck || '').trim();
     const groqOk = groq && !thin(groq) && !UNSAFE.test(groq) && !GENERIC.test(groq);
@@ -527,7 +534,7 @@ export function composeAcknowledgement(opts: {
         ? [specific, help].filter(Boolean).join(' ')
         : specific || (groqOk ? groq : '');
     if (!text && empty && notesOnly.length)
-        text = 'Noted for the installer: ' + notesOnly.map(u => String(u.value || u.evidence)).filter(Boolean).slice(0, 2).join('; ') + '.';
+        text = 'I’ll pass this to your installer: ' + notesOnly.map(u => String(u.value || u.evidence)).filter(Boolean).slice(0, 2).join('; ') + '.';
     if (!text) {
         const topic = (opts.unmapped && opts.unmapped[0]) || '';
         const ask = opts.next?.text ? ' ' + opts.next.text : '';

@@ -12,10 +12,10 @@ const PAGE = { w: 612, h: 792 };
 const M = { l: 54, r: 54, t: 58, b: 48 };
 const CONTENT = PAGE.w - M.l - M.r;
 const ink = rgb(19 / 255, 19 / 255, 19 / 255);
-const mute = rgb(92 / 255, 99 / 255, 93 / 255);
-const faint = rgb(138 / 255, 132 / 255, 124 / 255);
+const mute = rgb(68 / 255, 74 / 255, 70 / 255);
+const faint = rgb(120 / 255, 116 / 255, 108 / 255);
 const hair = rgb(228 / 255, 223 / 255, 216 / 255);
-const wash = rgb(248 / 255, 249 / 255, 251 / 255);
+const wash = rgb(236 / 255, 242 / 255, 241 / 255);
 const paper = rgb(248 / 255, 247 / 255, 243 / 255);
 const teal = rgb(66 / 255, 110 / 255, 105 / 255);
 
@@ -73,7 +73,8 @@ catch {
     }
     catch { /* wordmark fallback */ }
     const safe = (text: string) => fallback ? text.normalize('NFKD').replace(/[^\x20-\x7E\n]/g, ' ') : text;
-    let page: PDFPage, y = 0, kind: 'owner' | 'engineer' = 'owner', freeze = false;
+    let page: PDFPage, y = 0, kind: 'owner' | 'engineer' = 'owner', freeze = false, cover = false;
+    const pageKinds: Array<'owner' | 'engineer'> = [];
     const tracked = (value: string, x: number, at: number, size: number, tracking: number, color: ReturnType<typeof rgb>) => {
         let cx = x;
         for (const ch of safe(value)) {
@@ -83,6 +84,7 @@ catch {
     };
     const add = (header = true) => {
         page = doc.addPage([PAGE.w, PAGE.h]);
+        pageKinds.push(kind);
         page.drawRectangle({ x: 0, y: 0, width: PAGE.w, height: PAGE.h, color: paper });
         page.drawRectangle({ x: 0, y: PAGE.h - 4, width: PAGE.w, height: 4, color: teal });
         if (header) {
@@ -90,7 +92,7 @@ catch {
             const label = kind === 'owner' ? 'OWNER BLUEPRINT' : 'IMPLEMENTATION SPEC';
             const lw = font.widthOfTextAtSize(label, 7.5);
             page.drawText(label, { x: PAGE.w - M.r - lw, y: PAGE.h - 34, size: 7.5, font, color: teal });
-            page.drawLine({ start: { x: M.l, y: PAGE.h - 52 }, end: { x: PAGE.w - M.r, y: PAGE.h - 52 }, thickness: 0.4, color: hair });
+            page.drawLine({ start: { x: M.l, y: PAGE.h - 52 }, end: { x: PAGE.w - M.r, y: PAGE.h - 52 }, thickness: 0.55, color: hair });
             y = PAGE.h - 78;
         }
         else
@@ -105,14 +107,15 @@ catch {
     };
     const pointWidths = (widths: number[]) => {
         const sum = widths.reduce((n, w) => n + w, 0);
-        if (sum > 0 && sum <= 120)
-            return widths.map(w => Math.round((w / sum) * CONTENT));
-        return widths;
+        if (sum <= 0)
+            return widths;
+        // Always fit the content width — raw pixel totals used to overflow and smash columns.
+        return widths.map(w => Math.max(18, Math.round((w / sum) * CONTENT)));
     };
     const wrap = (text: string, size: number, width = CONTENT) => {
         text = safe(text);
         const lines: string[] = [];
-        // Keep *.wav filenames intact so engineer tables never break mid-name (FILENAME-BROKEN).
+        // Prefer keeping *.wav intact when it fits; otherwise break so table columns never smash.
         const tokens = (block: string) => {
             const out: string[] = [];
             const re = /\S+/g;
@@ -131,7 +134,7 @@ catch {
                 }
                 if (line)
                     lines.push(line);
-                if (/\.wav$/i.test(word) || font.widthOfTextAtSize(word, size) <= width) {
+                if (font.widthOfTextAtSize(word, size) <= width) {
                     line = word;
                     continue;
                 }
@@ -178,48 +181,58 @@ catch {
             page.drawText(line, { x: M.l, y, size, font, color: ink });
             y -= size * 1.12;
         }
-        gap(4);
+        gap(kind === 'engineer' ? 8 : 6);
     };
     const table = (headers: string[], rows: string[][], widths: number[]) => {
         const cols = pointWidths(widths);
+        const shop = kind === 'engineer';
         const drawHead = () => {
-            const headH = 18;
+            const headH = shop ? 22 : 18;
             if (freeze) {
                 if (y - headH < M.b + 8)
                     throw new Error('PDF table header would print below the footer');
             }
             else if (y - headH < M.b + 28)
                 add();
-            page.drawRectangle({ x: M.l - 2, y: y - 6, width: CONTENT + 4, height: headH, color: wash });
+            page.drawRectangle({ x: M.l - 2, y: y - (shop ? 8 : 6), width: CONTENT + 4, height: headH, color: shop ? teal : wash });
             let x = M.l;
             headers.forEach((h, i) => {
-                page.drawText(safe(h).toUpperCase(), { x, y, size: 7.5, font, color: mute });
+                page.drawText(safe(h).toUpperCase(), { x, y, size: shop ? 8 : 7.5, font, color: shop ? paper : mute });
                 x += cols[i];
             });
-            y -= 16;
-            page.drawLine({ start: { x: M.l, y: y + 8 }, end: { x: PAGE.w - M.r, y: y + 8 }, thickness: 0.4, color: hair });
+            y -= shop ? 20 : 16;
+            if (!shop)
+                page.drawLine({ start: { x: M.l, y: y + 8 }, end: { x: PAGE.w - M.r, y: y + 8 }, thickness: 0.4, color: hair });
         };
         drawHead();
-        for (const r of rows) {
-            const wrapped = r.map((cell, i) => wrap(cell, 9, Math.max(24, cols[i] - 8)));
-            const h = Math.max(16, ...wrapped.map(w => w.length * 12));
+        // Directory Password/MAC write-ins need real row height; hours tables get air. Path/tests stay dense.
+        const writeIn = shop && headers.some(h => /password|mac/i.test(h));
+        const hoursLike = shop && headers.some(h => /clock|minutes/i.test(h));
+        rows.forEach((r, rowIndex) => {
+            const lineH = shop ? 13.5 : 12;
+            const cellSize = shop ? 9.5 : 9;
+            const wrapped = r.map((cell, i) => wrap(cell, cellSize, Math.max(24, cols[i] - 8)));
+            const minRow = writeIn ? 38 : (hoursLike ? 26 : (shop ? 22 : 16));
+            const h = Math.max(minRow, ...wrapped.map(w => w.length * lineH));
+            const rowPad = writeIn ? 14 : (hoursLike ? 12 : (shop ? 10 : 6));
             if (freeze) {
                 if (y - (h + 8) < M.b + 8)
                     throw new Error('PDF table row would print below the footer');
             }
-            else if (y - (h + 8) < M.b + 10) {
+            else if (y - (h + rowPad) < M.b + 10) {
                 add();
                 drawHead();
             }
             let x = M.l;
             wrapped.forEach((lines, i) => {
-                lines.forEach((line, n) => page.drawText(line, { x, y: y - n * 12, size: 9, font, color: ink }));
+                lines.forEach((line, n) => page.drawText(line, { x, y: y - n * lineH, size: cellSize, font, color: ink }));
                 x += cols[i];
             });
-            y -= h + 6;
-            page.drawLine({ start: { x: M.l, y: y + 10 }, end: { x: PAGE.w - M.r, y: y + 10 }, thickness: 0.3, color: hair });
-        }
-        gap(8);
+            y -= h + rowPad;
+            if (rowIndex < rows.length - 1 && (shop || rowIndex % 2 === 1))
+                page.drawLine({ start: { x: M.l, y: y + (shop ? 12 : 10) }, end: { x: PAGE.w - M.r, y: y + (shop ? 12 : 10) }, thickness: 0.25, color: hair });
+        });
+        gap(shop ? 12 : 8);
     };
     const drawBlock = (block: BriefBlock) => {
         if (block.kind === 'prose') {
@@ -228,54 +241,84 @@ catch {
             return;
         }
         if (block.kind === 'kicker') {
-            if (!need(22))
+            if (!need(28))
                 return;
-            gap(6);
+            // Engineer: more air before section kickers so sparse pages don't dump all empty space at the footer.
+            gap(cover ? 22 : (kind === 'owner' ? 12 : 16));
             tracked(block.text.toUpperCase(), M.l, y, 7.5, 0.3, teal);
-            y -= 18;
+            y -= cover ? 22 : (kind === 'owner' ? 20 : 18);
             return;
         }
         if (block.kind === 'note') {
+            const lines = block.text.split('\n');
+            if (lines.length > 1 && /_{6,}/.test(block.text)) {
+                for (const line of lines) {
+                    if (!need(28))
+                        return;
+                    const parts = line.split(/_{6,}/);
+                    if (parts.length === 1) {
+                        text(line, 9.5, faint);
+                        continue;
+                    }
+                    page.drawText(safe(parts[0].trimEnd()), { x: M.l, y, size: 10, font, color: mute });
+                    const labelW = font.widthOfTextAtSize(safe(parts[0].trimEnd()), 10);
+                    page.drawLine({
+                        start: { x: M.l + labelW + 8, y: y - 1 },
+                        end: { x: Math.min(PAGE.w - M.r, M.l + labelW + 210), y: y - 1 },
+                        thickness: 0.7,
+                        color: ink
+                    });
+                    const dateBit = parts[parts.length - 1].trim();
+                    if (/date/i.test(dateBit) || parts.length > 2) {
+                        const dateX = PAGE.w - M.r - 120;
+                        page.drawText('Date', { x: dateX, y, size: 10, font, color: mute });
+                        page.drawLine({ start: { x: dateX + 28, y: y - 1 }, end: { x: PAGE.w - M.r, y: y - 1 }, thickness: 0.7, color: ink });
+                    }
+                    y -= 26;
+                }
+                gap(6);
+                return;
+            }
             text(block.text, 9.5, faint);
-            gap(8);
+            gap(cover ? 16 : (kind === 'engineer' ? 12 : 8));
             return;
         }
         if (block.kind === 'stats') {
-            const n = Math.max(1, block.items.length);
-            const gutter = n === 1 ? 0 : n === 2 ? 64 : 36;
+            const n = Math.max(1, Math.min(2, block.items.length));
+            const items = block.items.slice(0, n);
+            const gutter = n === 1 ? 0 : (kind === 'engineer' ? 36 : 48);
             const col = (CONTENT - gutter * (n - 1)) / n;
-            const numSize = 40;
-            const cardH = 92;
-            if (!need(cardH + 24))
+            // Engineer path page: compact stats so the call-path table owns the page without a dead band under the numbers.
+            const numSize = freeze ? 28 : (kind === 'engineer' ? 26 : 34);
+            const cardH = freeze ? 70 : (kind === 'engineer' ? 54 : 84);
+            const labelDrop = freeze ? 30 : (kind === 'engineer' ? 28 : 36);
+            const noteDrop = freeze ? 46 : (kind === 'engineer' ? 42 : 52);
+            if (!need(cardH + 18))
                 return;
-            block.items.forEach((m, i) => {
+            items.forEach((m, i) => {
                 const x = M.l + i * (col + gutter);
                 page.drawText(safe(m.value), { x, y, size: numSize, font, color: ink });
-                wrap(m.label, 9.5, col - 12).slice(0, 1).forEach(line => {
-                    page.drawText(line, { x, y: y - 40, size: 9.5, font, color: ink });
+                wrap(m.label, 10, col - 12).slice(0, 1).forEach(line => {
+                    page.drawText(line, { x, y: y - labelDrop, size: 10, font, color: ink });
                 });
                 wrap(m.note, 8.5, col - 12).slice(0, 2).forEach((line, n) => {
-                    page.drawText(line, { x, y: y - 56 - n * 12, size: 8.5, font, color: mute });
+                    page.drawText(line, { x, y: y - noteDrop - n * 12, size: 8.5, font, color: mute });
                 });
-                if (i < block.items.length - 1) {
-                    const divX = x + col + gutter / 2;
-                    page.drawLine({ start: { x: divX, y: y - 60 }, end: { x: divX, y: y + 24 }, thickness: 0.4, color: hair });
-                }
             });
-            y -= cardH + 6;
-            page.drawLine({ start: { x: M.l, y: y + 14 }, end: { x: PAGE.w - M.r, y: y + 14 }, thickness: 0.4, color: hair });
-            y -= 16;
+            y -= cardH;
+            page.drawLine({ start: { x: M.l, y: y + 10 }, end: { x: PAGE.w - M.r, y: y + 10 }, thickness: 0.45, color: hair });
+            y -= cover ? 22 : (kind === 'engineer' ? 12 : 14);
             return;
         }
         if (block.kind === 'hours') {
             for (const row of block.items) {
-                if (!need(18))
+                if (!need(22))
                     return;
                 page.drawText(safe(row.label), { x: M.l, y, size: 10, font, color: mute });
                 page.drawText(safe(row.value), { x: M.l + 96, y, size: 10.5, font, color: ink });
-                y -= 17;
+                y -= cover ? 24 : (kind === 'owner' ? 20 : 17);
             }
-            gap(8);
+            gap(cover ? 18 : (kind === 'owner' ? 12 : 8));
             return;
         }
         if (block.kind === 'moments') {
@@ -284,86 +327,152 @@ catch {
                 if (!need(18 + body.length * 14.5 + 10))
                     return;
                 tracked(item.when.toUpperCase(), M.l, y, 7.5, 0.25, teal);
-                y -= 16;
+                y -= cover ? 18 : 16;
                 for (const line of body) {
                     page.drawText(line, { x: M.l, y, size: 10.5, font, color: ink });
-                    y -= 14.5;
+                    y -= cover ? 15.5 : 14.5;
                 }
-                gap(4);
-                page.drawLine({ start: { x: M.l, y: y + 8 }, end: { x: PAGE.w - M.r, y: y + 8 }, thickness: 0.4, color: hair });
-                y -= 8;
+                y -= cover ? 20 : (kind === 'owner' ? 14 : 8);
             }
-            gap(6);
+            gap(cover ? 10 : 6);
             return;
         }
         if (block.kind === 'scripts') {
             for (const item of block.items) {
-                // Owner pages are freeze-fit (exactly one sheet each). Prefer short hears so every
-                // callerHear row still prints — audit HEAR-NOT-IN-OWNER checks the first 60 chars.
-                let maxLines = freeze ? 2 : 4;
-                let hear = wrap(item.hear, 10, CONTENT - 22).slice(0, maxLines);
-                let h = 28 + hear.length * 13.5;
-                if (!need(h + 10) && freeze) {
-                    maxLines = 1;
-                    hear = wrap(item.hear, 9.5, CONTENT - 22).slice(0, 1);
-                    h = 22 + hear.length * 12;
-                }
-                if (!need(h + 8)) {
-                    // Last resort on a frozen owner page: still stamp when + opening of hear.
-                    if (!freeze)
+                // Engineer recordings: filename-first card — usedBy + wording, not a dump.
+                if (kind === 'engineer') {
+                    const hear = wrap(item.hear, 9.5, CONTENT - 22).slice(0, 5);
+                    const labelH = 14;
+                    const padTop = 9;
+                    const padBot = 11;
+                    const lineH = 12.8;
+                    const cardH = padTop + labelH + hear.length * lineH + padBot;
+                    if (!need(cardH + 10))
                         return;
-                    const one = wrap(item.hear, 9, CONTENT - 22).slice(0, 1);
-                    if (!need(20))
-                        continue;
-                    tracked(item.when.toUpperCase(), M.l + 16, y, 7, 0.2, teal);
-                    y -= 12;
-                    if (one[0])
-                        page.drawText(one[0], { x: M.l + 16, y, size: 9, font, color: ink });
-                    y -= 14;
+                    const top = y + 3;
+                    page.drawRectangle({
+                        x: M.l - 4,
+                        y: top - cardH + 4,
+                        width: CONTENT + 8,
+                        height: cardH,
+                        color: wash
+                    });
+                    page.drawRectangle({
+                        x: M.l - 4,
+                        y: top - cardH + 4,
+                        width: 2.5,
+                        height: cardH,
+                        color: teal
+                    });
+                    page.drawText(safe(item.when), { x: M.l + 12, y, size: 10.5, font, color: ink });
+                    y -= labelH;
+                    for (const line of hear) {
+                        page.drawText(line, { x: M.l + 12, y, size: 9.5, font, color: mute });
+                        y -= lineH;
+                    }
+                    y = top - cardH - 10;
                     continue;
                 }
-                page.drawRectangle({ x: M.l, y: y - h + 16, width: 2.2, height: h - 4, color: teal });
-                tracked(item.when.toUpperCase(), M.l + 16, y, 7.5, 0.25, teal);
-                y -= 15;
-                for (const line of hear) {
-                    page.drawText(line, { x: M.l + 16, y, size: freeze && maxLines <= 2 ? 9.5 : 10, font, color: ink });
-                    y -= freeze && maxLines <= 2 ? 12.5 : 13.5;
+                // Owner: one script card — wash + teal rule, room between moments (not a dump).
+                let size = freeze ? 9.5 : 10.5;
+                let lineH = freeze ? 12.5 : 14;
+                let maxLines = freeze ? 5 : 6;
+                let hear = wrap(item.hear, size, CONTENT - 22).slice(0, maxLines);
+                if (freeze && hear.join(' ').replace(/\s+/g, ' ').length < Math.min(60, item.hear.length)) {
+                    size = 9;
+                    lineH = 11.5;
+                    maxLines = 6;
+                    hear = wrap(item.hear, size, CONTENT - 22).slice(0, maxLines);
                 }
-                y -= freeze ? 8 : 14;
+                const padTop = 10;
+                const padBot = 12;
+                const labelH = 14;
+                let cardH = padTop + labelH + hear.length * lineH + padBot;
+                if (!need(cardH + 10) && freeze) {
+                    size = 9;
+                    lineH = 11.5;
+                    hear = wrap(item.hear, size, CONTENT - 22).slice(0, Math.max(2, Math.min(hear.length, 3)));
+                    cardH = padTop + labelH + hear.length * lineH + padBot;
+                }
+                if (!need(cardH + 6)) {
+                    if (!freeze)
+                        return;
+                    const one = wrap(item.hear, 9, CONTENT - 22).slice(0, 2);
+                    if (!need(36))
+                        continue;
+                    page.drawRectangle({ x: M.l, y: y - 28, width: 2.5, height: 30, color: teal });
+                    tracked(item.when.toUpperCase(), M.l + 12, y, 7, 0.2, teal);
+                    y -= 13;
+                    for (const line of one) {
+                        page.drawText(line, { x: M.l + 12, y, size: 9, font, color: ink });
+                        y -= 11.5;
+                    }
+                    y -= 10;
+                    continue;
+                }
+                const top = y + 4;
+                page.drawRectangle({
+                    x: M.l - 4,
+                    y: top - cardH + 6,
+                    width: CONTENT + 8,
+                    height: cardH,
+                    color: wash
+                });
+                page.drawRectangle({
+                    x: M.l - 4,
+                    y: top - cardH + 6,
+                    width: 2.5,
+                    height: cardH,
+                    color: teal
+                });
+                tracked(item.when.toUpperCase(), M.l + 12, y, freeze ? 7 : 7.5, 0.22, teal);
+                y -= labelH;
+                for (const line of hear) {
+                    page.drawText(line, { x: M.l + 12, y, size, font, color: ink });
+                    y -= lineH;
+                }
+                y = top - cardH - 8;
             }
-            gap(4);
+            gap(8);
             return;
         }
         if (block.kind === 'rows') {
-            for (const item of block.items) {
-                const labels = wrap(item.label, 9, 130);
-                const values = wrap(item.value, 10.5, CONTENT - 150);
-                const h = Math.max(labels.length * 12, values.length * 14);
-                if (!need(h + 12))
+            // Keep a fixed gutter — labels like "8000 · time condition" must never collide with values.
+            const labelCol = kind === 'engineer' ? 138 : 130;
+            const valueX = kind === 'engineer' ? 152 : 146;
+            const valueW = CONTENT - (kind === 'engineer' ? 156 : 150);
+            const valueLead = kind === 'engineer' ? 14.5 : 14;
+            block.items.forEach((item, index) => {
+                const labels = wrap(item.label, 9.5, labelCol - 6);
+                const values = wrap(item.value, 10.5, valueW);
+                const h = Math.max(labels.length * 12, values.length * valueLead);
+                const rowGap = kind === 'owner' ? 14 : 15;
+                if (!need(h + rowGap + 4))
                     return;
-                labels.forEach((line, i) => page.drawText(line, { x: M.l, y: y - i * 12, size: 9, font, color: mute }));
-                values.forEach((line, i) => page.drawText(line, { x: M.l + 146, y: y - i * 14, size: 10.5, font, color: ink }));
-                y -= h + 8;
-                page.drawLine({ start: { x: M.l, y: y + 10 }, end: { x: PAGE.w - M.r, y: y + 10 }, thickness: 0.3, color: hair });
-            }
-            gap(8);
+                labels.forEach((line, i) => page.drawText(line, { x: M.l, y: y - i * 12, size: 9.5, font, color: mute }));
+                values.forEach((line, i) => page.drawText(line, { x: valueX, y: y - i * valueLead, size: 10.5, font, color: ink }));
+                y -= h + rowGap;
+                if (index < block.items.length - 1)
+                    page.drawLine({ start: { x: M.l, y: y + rowGap - 5 }, end: { x: PAGE.w - M.r, y: y + rowGap - 5 }, thickness: 0.25, color: hair });
+            });
+            gap(kind === 'owner' ? 12 : 10);
             return;
         }
         if (block.kind === 'steps') {
             for (const item of block.items) {
                 const note = wrap(item.note, 9.5, CONTENT - 18).slice(0, 3);
-                if (!need(28 + note.length * 12.5))
+                if (!need(32 + note.length * 12.5))
                     return;
                 page.drawCircle({ x: M.l + 2.5, y: y + 3, size: 2, color: teal });
                 page.drawText(safe(item.label), { x: M.l + 14, y, size: 11, font, color: ink });
-                y -= 14;
+                y -= 15;
                 page.drawText(safe(item.window), { x: M.l + 14, y, size: 8.5, font, color: teal });
-                y -= 13;
+                y -= 14;
                 for (const line of note) {
                     page.drawText(line, { x: M.l + 14, y, size: 9.5, font, color: mute });
                     y -= 12.5;
                 }
-                y -= 8;
+                y -= kind === 'owner' ? 12 : 8;
             }
             return;
         }
@@ -372,36 +481,51 @@ catch {
             return;
         }
         if (block.kind === 'checks' || block.kind === 'list') {
+            const lead = kind === 'engineer' ? 14.5 : 14;
+            const itemGap = kind === 'owner' ? 8 : (block.kind === 'checks' ? 14 : 12);
             for (const item of block.items) {
-                const lines = wrap(item, 10.5, CONTENT - 18);
-                if (!need(lines.length * 14 + 6))
+                const lines = wrap(item, 10.5, CONTENT - 22);
+                if (!need(lines.length * lead + itemGap + 4))
                     return;
                 if (block.kind === 'checks')
-                    page.drawRectangle({ x: M.l, y: y + 1, width: 7, height: 7, borderColor: teal, borderWidth: 0.8, color: paper });
+                    page.drawRectangle({
+                        x: M.l,
+                        y: y,
+                        width: 10,
+                        height: 10,
+                        borderColor: teal,
+                        borderWidth: 1,
+                        color: paper
+                    });
                 else
                     page.drawCircle({ x: M.l + 2.5, y: y + 3, size: 2, color: teal });
                 let ly = y;
                 for (const line of lines) {
-                    page.drawText(line, { x: M.l + 16, y: ly, size: 10.5, font, color: ink });
-                    ly -= 14;
+                    page.drawText(line, { x: M.l + 18, y: ly, size: 10.5, font, color: ink });
+                    ly -= lead;
                 }
-                y = ly - 4;
+                y = ly - itemGap;
             }
-            gap(6);
+            gap(kind === 'owner' ? 8 : 8);
         }
     };
     const drawBrief = (pages: BriefPage[]) => {
         for (const pg of pages) {
+            cover = kind === 'owner' && pg.kicker.includes('01');
             add();
             kicker(pg.kicker);
-            title(pg.title, pg.kicker.includes('01') ? 26 : 22);
+            title(pg.title, cover ? 28 : (kind === 'owner' ? 20 : (pg.kicker.includes('01') ? 24 : 20)));
             if (pg.lede) {
                 text(pg.lede, 11, mute);
                 const next = pg.blocks[0]?.kind;
-                gap(next === 'stats' ? 28 : (pg.kicker.includes('01') ? 18 : 12));
+                // Engineer: slightly more title→body air so Directory / Hours / Build don't feel glued under the lede.
+                gap(next === 'stats'
+                    ? (cover ? 28 : (kind === 'engineer' ? 18 : 22))
+                    : (cover ? 18 : (kind === 'owner' ? 16 : 14)));
             }
             for (const block of pg.blocks)
                 drawBlock(block);
+            cover = false;
         }
     };
     if (part !== 'engineer') {
@@ -417,8 +541,10 @@ catch {
     }
     const pages = doc.getPages();
     pages.forEach((pg, i) => {
-        pg.drawLine({ start: { x: M.l, y: 36 }, end: { x: PAGE.w - M.r, y: 36 }, thickness: 0.4, color: hair });
-        const mark = (p.lock && p.lock.checksum === id.checksum ? 'LOCKED ' : kind === 'engineer' ? 'DRAFT — do not build · ' : 'Draft ') + stamp(p);
+        const pageKind = pageKinds[i] || kind;
+        pg.drawLine({ start: { x: M.l, y: 36 }, end: { x: PAGE.w - M.r, y: 36 }, thickness: 0.45, color: hair });
+        const locked = !!(p.lock && p.lock.checksum === id.checksum);
+        const mark = (locked ? 'LOCKED ' : pageKind === 'engineer' ? 'DRAFT — do not build · ' : 'Draft ') + stamp(p);
         pg.drawText(mark, { x: M.l, y: 22, size: 7.5, font, color: faint });
         const nums = `${i + 1}  /  ${pages.length}`;
         pg.drawText(nums, { x: PAGE.w - M.r - font.widthOfTextAtSize(nums, 8), y: 22, size: 8, font, color: faint });

@@ -1,5 +1,5 @@
 import { hasTeam, menuDigits, overflowTeams, scenarios, simulate, teamName, type Day, type Plan } from './config';
-import { lunchCallbackPhrase } from './flow';
+import { hoursSummary, lunchCallbackPhrase } from './flow';
 import { canRing, directory, publicInstructions } from './policy';
 import { provisioningMap, ringMembers } from './provisioning';
 import { queuePlan, queueAgents, urgentMechanism } from './advisor';
@@ -422,10 +422,11 @@ function afterAdvice(p: Plan) {
     if (p.after.kind === 'undecided')
         return ['After-hours is undecided. Time Condition group 999 cannot be pointed at a destination yet. Inbound after hours would hit an incomplete dialplan.'];
     if (p.after.kind === 'information') {
-        const text = publicInstructions(p.after.instructions.trim() || '');
+        const text = publicInstructions(p.after.instructions.trim() || '')
+            || `Thank you for calling ${practiceName(p)}. Our office is currently closed. Our phone hours are ${hoursSummary(p)}. Please call back during those hours. If this is a life-threatening emergency, hang up and dial 911.`;
         return [
             'Closed leaf (group 999, plus weekend groups if Saturday/Sunday are closed) plays a recording and hangs up. Use action playback on the WAV, then hangup — or a tiny IVR whose greet_long is the recording and whose exit is hangup. This is not voicemail and not a connect.',
-            text ? `Approved wording to record: “${text}”` : 'Blocked: no approved closed-hours wording. Do not provision the playback yet.',
+            `Approved wording to record: “${text}”`,
             'Do not collect a callback on this path unless you change after-hours to “take a message.”'
         ];
     }
@@ -604,12 +605,13 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
             usedBy: `IVR ${n.locIvr} greet_long`,
             script: `Thank you for calling ${name}. ${p.locations.map((l, i) => `For ${l.name}, press ${i + 1}`).join('. ')}.`
         });
-    if (p.after.kind === 'information' && p.after.instructions.trim())
+    if (p.after.kind === 'information')
         add({
             name: 'After-hours information',
             filename: 'after-hours-info.wav',
             usedBy: `Time Condition group 999 playback (or closed IVR ${n.closedIvr})`,
-            script: publicInstructions(p.after.instructions)
+            script: publicInstructions(p.after.instructions.trim())
+                || `Thank you for calling ${name}. Our office is currently closed. Our phone hours are ${hoursSummary(p)}. Please call back during those hours. If this is a life-threatening emergency, hang up and dial 911.`
         });
     if (p.after.kind === 'message')
         add({
@@ -634,10 +636,10 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
         });
     if (p.urgent.enabled && p.policy.urgentKind === 'connect' && p.policy.urgentBackup === 'message')
         add({
-            name: 'Priority message greeting',
+            name: 'If on-call is missed',
             filename: 'priority-message.wav',
             usedBy: `On-call miss → box ${mailboxExt('priority')}`,
-            script: `Thank you for calling ${name}. We were not able to reach the on-call clinician. Please leave your name, number, and the reason this cannot wait until the next business day.`
+            script: `Thank you for calling ${name}. We could not reach the on-call clinician. Leave your name, number, and why this cannot wait until the next business day.`
         });
     if (p.urgent.enabled && (p.policy.urgentKind === 'instructions' || p.policy.urgentBackup === 'instructions') && p.urgent.approved && p.urgent.instructions.trim())
         add({
@@ -652,8 +654,8 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
             filename: 'after-hours-urgent-option.wav',
             usedBy: `Closed IVR ${n.closedIvr} greet_long`,
             script: p.after.kind === 'message'
-                ? `You have reached ${name} after hours. If this is ${urgentCue(p)}, press 9 and we will try the ${onCallLabel(p)}. To leave a message, press 1 or wait. We return ordinary messages the next business day. If this is a life-threatening emergency, hang up and dial 911.`
-                : `You have reached ${name} after hours. If this is ${urgentCue(p)}, press 9 and we will try the ${onCallLabel(p)}. ${p.after.kind === 'information' ? 'Otherwise, please listen for our office information.' : 'Otherwise, please hold for assistance.'}`
+                ? `You have reached ${name} after hours. For ${urgentCue(p)}, press 9 for the ${onCallLabel(p)}. For a message, press 1 or wait — next business day. Life-threatening: hang up and dial 911.`
+                : `You have reached ${name} after hours. For ${urgentCue(p)}, press 9 for the ${onCallLabel(p)}. ${p.after.kind === 'information' ? 'Otherwise, please listen for our office information.' : 'Otherwise, please hold for assistance.'}`
         });
     const lunch = p.hours.days.find(d => d.breakStart && d.breakEnd);
     if (lunch)

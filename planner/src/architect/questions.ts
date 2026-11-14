@@ -84,7 +84,7 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
         {
             id: 'name',
             text: 'What is the practice called?',
-            detail: 'This is the name on the greeting and both PDFs. I will not guess it from an answering service or a sentence fragment.',
+            detail: 'Type the name patients will hear on the greeting and both PDFs. Skip if you do not have it yet.',
             priority: 12,
             skipAllowed: true,
             affectedFields: ['name'],
@@ -95,7 +95,7 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
         {
             id: 'specialty',
             text: 'What kind of practice is this?',
-            detail: 'Dental and eye-care rooms look different. Other specialties stay a consultation space.',
+            detail: 'Dental and eye-care rooms look different. Other specialties use a consultation layout.',
             priority: 20,
             skipAllowed: true,
             affectedFields: ['specialty'],
@@ -104,6 +104,17 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
                 chip('eye', 'Eye care', 'specialty', 'Eye care'),
                 chip('other', 'Other healthcare practice', 'specialty', 'Other healthcare practice'),
                 skipChip('specialty')
+            ]
+        },
+        {
+            id: 'specialtyDetail',
+            text: 'What kind—chiropractic, PT, family medicine?',
+            detail: 'A short label is enough. It shows on the rail and in both PDFs.',
+            priority: 21,
+            skipAllowed: true,
+            affectedFields: ['specialtyDetail'],
+            options: [
+                skipChip('specialtyDetail')
             ]
         },
         {
@@ -587,6 +598,7 @@ export function nextQuestion(p: Plan, facts: Record<string, Fact>): NextQuestion
             continue;
         return pruneChips(p, facts, question);
     }
+    // Install-only leftovers (E911, Follow Me identity, site survey) belong in stillOpen / walkthrough — never here.
     // After every ordinary question is settled, still refuse to finish with an empty inbound RG.
     if (emptyInboundRg(p)) {
         const inboundIds = ['devices.reception.kind', 'devices.reception.sharing', 'devices.clinical.area', 'devices.administration.place', 'teams.reception.count'];
@@ -613,6 +625,8 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
         return !!p.mode && !p.name.trim() && !skipped(facts, 'name');
     if (id === 'specialty')
         return !!p.mode && !p.specialty && !skipped(facts, 'specialty');
+    if (id === 'specialtyDetail')
+        return p.specialty === 'Other healthcare practice' && !String(p.specialtyDetail || '').trim() && !skipped(facts, 'specialtyDetail');
     if (id === 'teams.reception.count')
         return (roleState(p, 'reception').status === 'unanswered' || emptyReceptionDesk(p) || needsInboundDevice(id, p))
             && (!skipped(facts, 'teams.reception.count') || needsInboundDevice(id, p));
@@ -671,9 +685,12 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
     if (id === 'languages.decision')
         return p.policy.languageDecision === 'undecided' && !skipped(facts, 'languages.decision');
     if (id === 'hours.lunch.time')
-        return (confirmed(facts, 'hours.lunch') || p.hours.days.some(d => d.breakStart === '' && /\blunch phones closed\b/i.test(p.policy.notes)))
+        // Only ask a lunch-close clock when phones actually close — never after “someone stays on”.
+        return ((confirmed(facts, 'hours.lunch') && facts['hours.lunch']?.value === 'closed')
+            || /\blunch phones closed\b/i.test(p.policy.notes))
             && !p.hours.days.some(d => d.breakStart && d.breakEnd)
-            && !settled(facts, 'hours.lunch.time');
+            && !settled(facts, 'hours.lunch.time')
+            && !/\blunch phones covered\b/i.test(p.policy.notes);
     if (id === 'reasons.routing')
         return p.first.kind !== 'undecided'
             && p.reasons.some(r => !r.team)

@@ -4,25 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const ts = require('typescript');
+const { prepareBuild } = require('./planner-transpile');
 
-const srcDir = path.join(__dirname, '../planner/src');
-const outDir = path.join(__dirname, '../planner/.test-build');
-fs.mkdirSync(path.join(outDir, 'architect'), { recursive: true });
-
-function transpile(rel) {
-  let out = ts.transpile(fs.readFileSync(path.join(srcDir, rel + '.ts'), 'utf8'), {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext
-  });
-  out = out.replace(/from ['"](\.\.?\/[^'"]+)['"]/g, "from '$1.mjs'");
-  const dest = path.join(outDir, rel + '.mjs');
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, out);
-}
-
-for (const name of ['config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state', 'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract', 'architect/ack', 'architect/merge', 'architect/questions', 'architect/turn', 'provisioning', 'advisor', 'fusion', 'privacy'])
-  transpile(name);
+const { srcDir, outDir } = prepareBuild(path.basename(__filename, '.test.js'));
 
 async function load() {
   const config = await import(path.join(outDir, 'config.mjs'));
@@ -33,7 +17,8 @@ async function load() {
   const advisor = await import(path.join(outDir, 'advisor.mjs'));
   const fusion = await import(path.join(outDir, 'fusion.mjs'));
   const privacy = await import(path.join(outDir, 'privacy.mjs'));
-  return { ...config, ...flow, ...questions, ...turn, ...parse, ...advisor, ...fusion, ...privacy };
+  const readiness = await import(path.join(outDir, 'readiness.mjs'));
+  return { ...config, ...flow, ...questions, ...turn, ...parse, ...advisor, ...fusion, ...privacy, ...readiness };
 }
 
 const blank = { acknowledgement: '', intent: 'provide_information', updates: [], unmapped_facts: [], explanation_topic: null };
@@ -297,4 +282,197 @@ test('every catalog chip has a subject ack, never Noted', async () => {
     }
   }
   assert.deepEqual(missing, []);
+});
+
+test('Other specialty asks specialtyDetail and softens the Other ack', async () => {
+  const mod = await load();
+  let plan = mod.initial();
+  let facts = {};
+  const mode = mod.chipTurn({
+    plan,
+    facts,
+    chip: { id: 'opening', label: 'Opening a new practice', field_id: 'mode', value: 'opening', operation: 'set' }
+  });
+  plan = mode.plan;
+  facts = mode.facts;
+  const name = mod.chipTurn({
+    plan,
+    facts,
+    chip: { id: 'skip', label: 'Skip for now', field_id: 'name', value: null, operation: 'skip' }
+  });
+  plan = name.plan;
+  facts = name.facts;
+  assert.equal(name.follow?.id, 'specialty');
+  const other = mod.chipTurn({
+    plan,
+    facts,
+    chip: { id: 'other', label: 'Other healthcare practice', field_id: 'specialty', value: 'Other healthcare practice', operation: 'set' }
+  });
+  plan = other.plan;
+  facts = other.facts;
+  assert.match(other.ack, /another kind of healthcare practice/i);
+  assert.doesNotMatch(other.ack, /not a dental or eye-care room layout/i);
+  assert.equal(other.follow?.id, 'specialtyDetail');
+  const detail = mod.interpretTurn({
+    plan,
+    facts,
+    interpreter: blank,
+    userText: 'Family medicine',
+    question: other.follow
+  });
+  assert.equal(detail.plan.specialty, 'Other healthcare practice');
+  assert.equal(detail.plan.specialtyDetail, 'Family medicine');
+  assert.match(detail.ack, /family medicine/i);
+  assert.notEqual(detail.follow?.id, 'specialtyDetail');
+});
+
+test('adding second office keeps home city; name is not We already have…', async () => {
+  const mod = await load();
+  const text = "We already have Kingston Family Dental. We're adding a second office in New Paltz under the same number. Two receptionists at Kingston answer both. Front desk first. After hours voicemail.";
+  const turned = mod.interpretTurn({
+    plan: mod.initial(),
+    facts: {},
+    interpreter: blank,
+    userText: text,
+    question: null
+  });
+  assert.equal(turned.plan.mode, 'adding');
+  assert.match(String(turned.plan.policy.cityState), /Kingston/i);
+  assert.doesNotMatch(String(turned.plan.policy.cityState), /^New Paltz/i);
+  assert.match(turned.plan.name, /Kingston Family Dental/i);
+  assert.doesNotMatch(turned.plan.name, /^We already have/i);
+});
+
+test('after hours play hours and hang up is information, not voicemail', async () => {
+  const mod = await load();
+  const turned = mod.interpretTurn({
+    plan: mod.initial(),
+    facts: {},
+    interpreter: blank,
+    userText: 'Opening Announce Only Eye Care in Hudson May 2027. Two front desk. Front desk first. After hours just play our hours and hang up — no voicemail. New number.',
+    question: null
+  });
+  assert.equal(turned.plan.after.kind, 'information');
+});
+
+test('AnswerConnect after hours is a service, not a PMS and not the practice name', async () => {
+  const mod = await load();
+  const text = 'Bright Smiles Orthodontics in Albany. Three treatment coordinators answer. After hours we use AnswerConnect. Keep the published number. Two orthodontists.';
+  const turned = mod.interpretTurn({
+    plan: mod.initial(),
+    facts: {},
+    interpreter: blank,
+    userText: text,
+    question: null
+  });
+  assert.equal(turned.plan.name, 'Bright Smiles Orthodontics');
+  assert.equal(turned.plan.after.kind, 'service');
+  assert.notEqual(turned.plan.policy.opening.pms, 'AnswerConnect');
+  assert.doesNotMatch(turned.plan.name, /AnswerConnect/i);
+});
+
+test('city correction: actually New Paltz, not Kingston', async () => {
+  const mod = await load();
+  let plan = mod.initial();
+  let facts = {};
+  const first = mod.interpretTurn({
+    plan,
+    facts,
+    interpreter: blank,
+    userText: 'Opening a dental office in Kingston with three front desk people. Front desk answers first.',
+    question: null
+  });
+  plan = first.plan;
+  facts = first.facts;
+  assert.match(String(plan.policy.cityState), /Kingston/i);
+  assert.equal(plan.teams.find(t => t.role === 'reception')?.count, 3);
+  const fix = mod.interpretTurn({
+    plan,
+    facts,
+    interpreter: blank,
+    userText: "Actually it's New Paltz, not Kingston, and only two receptionists. After hours voicemail.",
+    question: first.follow
+  });
+  assert.match(String(fix.plan.policy.cityState), /New Paltz/i);
+  assert.doesNotMatch(String(fix.plan.policy.cityState), /^Kingston/i);
+  assert.equal(fix.plan.teams.find(t => t.role === 'reception')?.count, 2);
+});
+
+test('chip subjects stay honest without legalizing every line', async () => {
+  const mod = await load();
+  const stiff = Object.entries(mod.CHIP_SUBJECT).filter(([, line]) =>
+    /still proposed|not a verified transfer|I will not invent|I did not add a lunch close|still a proposed contract/i.test(line)
+  );
+  assert.deepEqual(stiff, []);
+  assert.match(mod.CHIP_SUBJECT['first.kind=assistant'], /confirm this before install/i);
+  assert.match(mod.CHIP_SUBJECT['after.kind=service'], /confirm the contract before install/i);
+});
+
+test('owner conversation complete leaves install leftovers in stillOpen', async () => {
+  const mod = await load();
+  let plan = mod.initial();
+  let facts = {};
+  const seed = mod.interpretTurn({
+    plan, facts, interpreter: blank,
+    userText: 'Existing dental in Albany. Albany Smile. One receptionist. Front desk answers first. After hours voicemail. Weekdays nine to five. No lunch close. Desk phone. English only. No urgent path.',
+    question: null
+  });
+  plan = seed.plan;
+  facts = seed.facts;
+  let follow = seed.follow;
+  let guard = 0;
+  while (follow && guard++ < 40) {
+    const chip = follow.options.find(o => o.operation === 'set') || follow.options[0];
+    const step = mod.chipTurn({ plan, facts, chip });
+    plan = step.plan;
+    facts = step.facts;
+    follow = step.follow;
+  }
+  assert.equal(follow, null);
+  assert.equal(mod.ownerConversationComplete(plan, facts), true);
+  assert.equal(mod.blueprintReadyForOwner(plan, facts), true);
+  const open = mod.stillOpen(plan);
+  assert.ok(open.some(x => /E911/i.test(x)));
+  assert.match(mod.walkthroughLeftoversNote(plan), /At your walkthrough we’ll still confirm/i);
+  assert.doesNotMatch(mod.walkthroughLeftoversNote(plan), /Still open at install/i);
+});
+
+test('free text answers the active follow without requiring a chip', async () => {
+  const mod = await load();
+  const mode = mod.chipTurn({
+    plan: mod.initial(),
+    facts: {},
+    chip: { id: 'opening', label: 'Opening a new practice', field_id: 'mode', value: 'opening', operation: 'set' }
+  });
+  assert.equal(mode.follow?.id, 'name');
+  const typed = mod.interpretTurn({
+    plan: mode.plan,
+    facts: mode.facts,
+    interpreter: blank,
+    userText: 'Call it Chen Family Dental.',
+    question: mode.follow
+  });
+  assert.match(typed.ack, /Chen Family Dental/i);
+  assert.equal(typed.plan.name.trim(), 'Chen Family Dental');
+  assert.notEqual(typed.follow?.id || null, 'name');
+});
+
+test('chat catalog never asks install-only leftovers', async () => {
+  const mod = await load();
+  const ids = mod.ownerQuestionCatalog(mod.initial(), {}).map(q => q.id);
+  for (const bad of ['e911', 'e911Confirmed', 'followMe', 'site.survey', 'opening.internet', 'continuity.power'])
+    assert.equal(ids.includes(bad), false, bad);
+  assert.ok(ids.includes('devices.reception.kind'));
+});
+
+test('ArchitectChat talk-first and walkthrough draft framing', async () => {
+  const ui = fs.readFileSync(path.join(srcDir, 'ArchitectChat.tsx'), 'utf8');
+  assert.match(ui, /Tell me in your own words/);
+  assert.match(ui, /Here's your practice blueprint/);
+  assert.match(ui, /Book a walkthrough/);
+  assert.match(ui, /walkthroughLeftoversNote|At your walkthrough/);
+  assert.match(ui, /Handled at your walkthrough \/ install/);
+  assert.doesNotMatch(ui, /Still open at install/);
+  assert.doesNotMatch(ui, /disabled=\{interacting \|\| !input\.trim\(\)\}/);
+  assert.match(ui, /if \(!trimmed \|\| busy \|\| typing\)/);
 });

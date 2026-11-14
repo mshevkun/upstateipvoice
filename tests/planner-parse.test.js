@@ -2,27 +2,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
 const path = require('path');
-const ts = require('typescript');
+const { prepareBuild } = require('./planner-transpile');
 
-const srcDir = path.join(__dirname, '../planner/src');
-const outDir = path.join(__dirname, '../planner/.test-build');
-fs.mkdirSync(path.join(outDir, 'architect'), { recursive: true });
-
-function transpile(rel) {
-  let out = ts.transpile(fs.readFileSync(path.join(srcDir, rel + '.ts'), 'utf8'), {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext
-  });
-  out = out.replace(/from ['"](\.\.?\/[^'"]+)['"]/g, "from '$1.mjs'");
-  const dest = path.join(outDir, rel + '.mjs');
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, out);
-}
-
-transpile('architect/parse');
-transpile('architect/scrub');
+const { outDir } = prepareBuild(path.basename(__filename, '.test.js'));
 
 test('parsers: time, city, roster, lunch, callback, PMS, holidays', async () => {
   const p = await import(path.join(outDir, 'architect/parse.mjs'));

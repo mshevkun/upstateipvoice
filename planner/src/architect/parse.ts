@@ -39,7 +39,12 @@ const STATE_NAME: Record<string, string> = {
 const HINT_CITIES = [
     'kingston', 'poughkeepsie', 'newburgh', 'middletown', 'albany', 'troy',
     'new paltz', 'beacon', 'hudson', 'catskill', 'saugerties', 'rhinebeck',
-    'buffalo', 'scranton', 'burlington', 'catskill'
+    'glens falls', 'buffalo', 'scranton', 'burlington'
+];
+
+const ANSWERING_SERVICES = [
+    'AnswerConnect', 'Answer Force', 'Ruby Receptionist', 'Ruby', 'Smith.ai', 'Patience',
+    'MedChat', 'Nexa', 'Alert Communications'
 ];
 
 const PMS_DENTAL = [
@@ -145,7 +150,9 @@ export function parseTimeRanges(text: string): TimeRange[] {
             startMin,
             endMin,
             span: m[0],
-            lunch: /lunch|break/.test(before + after) || /\bnoon\b/.test(before)
+            // Prefer "lunch" before the range. Trailing ", lunch 1–2" must not mark the weekday open span.
+            lunch: /lunch|break/.test(before) || /\bnoon\b/.test(before)
+                || ((/lunch|break/.test(after) && (endMin - startMin) <= 150))
         });
     }
     while ((m = noon.exec(src))) {
@@ -310,6 +317,22 @@ export function parseHours(text: string): LocalHint[] {
         push('hours.Friday.open', true, friClose[0]);
         push('hours.Friday.end', String(hour).padStart(2, '0') + ':' + min, friClose[0]);
     }
+    // "Actually we close at 4, not 5" / "close at 4 instead of 5"
+    const closeAt = /\b(?:we )?close(?:s)? at (\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s*,?\s*(?:not|instead of)\s+(\d{1,2}))?/i.exec(src);
+    if (closeAt && !/fridays? we close/i.test(closeAt[0])) {
+        const h = Number(closeAt[1]);
+        const min = closeAt[2] || '00';
+        const ap = (closeAt[3] || (h <= 7 ? 'pm' : '')).toLowerCase();
+        let hour = h;
+        if (ap === 'pm' && h < 12)
+            hour += 12;
+        if (ap === 'am' && h === 12)
+            hour = 0;
+        const end = String(hour).padStart(2, '0') + ':' + min;
+        push('hours.weekdays_end', end, closeAt[0], 'exact');
+        for (const day of DAYS.slice(0, 5))
+            push('hours.' + day + '.end', end, closeAt[0], 'exact');
+    }
     const weekdayStarts = DAYS.slice(0, 5).map(d => hints.find(h => h.field_id === 'hours.' + d + '.start')?.value);
     const weekdayEnds = DAYS.slice(0, 5).map(d => hints.find(h => h.field_id === 'hours.' + d + '.end')?.value);
     if (weekdayStarts.every(Boolean) && new Set(weekdayStarts).size === 1)
@@ -345,7 +368,9 @@ export function parseLunch(text: string): LocalHint[] {
         hints.push({ field_id: 'hours.lunch', value: 'closed', span: 'lunch', precision: 'exact', operation: 'set' });
     const lunchSentence = sentences(text).find(s => /lunch/i.test(s)) || text;
     const ranges = parseTimeRanges(lunchSentence).concat(parseTimeRanges(text).filter(r => r.lunch));
-    const lunchRange = ranges.find(r => r.lunch) || ranges.find(r => r.startMin >= 11 * 60 && r.startMin <= 14 * 60 && r.endMin - r.startMin <= 150);
+    const short = (r: { startMin: number; endMin: number }) => r.endMin - r.startMin <= 150;
+    const lunchRange = ranges.find(r => r.lunch && short(r))
+        || ranges.find(r => r.startMin >= 11 * 60 && r.startMin <= 14 * 60 && short(r));
     const daySpans = parseDaySpans(lunchSentence);
     const lunchDays = daySpans.length
         ? [...new Set(daySpans.flatMap(s => s.days))].filter(d => d !== 'Saturday' && d !== 'Sunday')
@@ -426,11 +451,23 @@ export function parseCity(text: string): LocalHint[] {
         out.push({ field_id: 'cityState', value, span: picked.span, precision: 'exact', operation: 'set' });
         return out;
     }
+    // Prefer an explicit correction: "it's New Paltz" / "actually New Paltz".
+    const itsCity = text.match(new RegExp("\\b(?:it'?s|actually(?: it'?s)?)\\s+(" + HINT_CITIES.join('|') + ")\\b", 'i'));
+    if (itsCity) {
+        const name = itsCity[1].toLowerCase();
+        const titled = name.replace(/\b\w/g, ch => ch.toUpperCase());
+        const st = /burlington/.test(name) ? 'VT' : /scranton/.test(name) ? 'PA' : 'NY';
+        out.push({ field_id: 'cityState', value: titled + ', ' + st, span: itsCity[0], precision: 'exact', operation: 'set' });
+        return out;
+    }
     for (const name of HINT_CITIES) {
         const re = new RegExp('\\b' + name + '\\b', 'i');
         if (!re.test(src))
             continue;
         if (new RegExp('forget (?:the )?' + name, 'i').test(text))
+            continue;
+        // "not Kingston" / "not in Kingston" is a rejection, not a choice.
+        if (new RegExp('\\bnot (?:in )?' + name + '\\b', 'i').test(text))
             continue;
         if (history.test(text) && new RegExp('(?:' + history.source + ')\\s+' + name, 'i').test(text) && !new RegExp('(?:opening|practice|office|located).{0,40}' + name, 'i').test(text))
             continue;
@@ -455,17 +492,27 @@ export function parsePracticeName(text: string): LocalHint[] {
     const m = dash.exec(cleaned) || weAre.exec(cleaned) || called.exec(cleaned) || theNameIs.exec(cleaned) || isName.exec(cleaned) || openingName.exec(cleaned.trim()) || leading.exec(cleaned.trim()) || titled.exec(cleaned);
     if (!m)
         return [];
-    const name = m[1].trim()
+    let name = m[1].trim()
         .replace(/^Opening\s+/i, '')
         .replace(/^(?:we are|we're|i am opening|i'm opening|i'm dr\.?|call it|named)\s+/i, '')
-        .replace(/^Dr\.?\s+[A-Z][a-z]+\s*,\s*/,'');
+        .replace(/^Dr\.?\s+[A-Z][a-z]+\s*,\s*/,'')
+        // "We already have Kingston Family Dental" → Kingston Family Dental
+        .replace(/^We already have\s+/i, '')
+        .replace(/^Already have\s+/i, '')
+        // "We've had Hudson Family Dental in Hudson…" → Hudson Family Dental
+        .replace(/^We(?:'ve| have) had\s+/i, '')
+        .replace(/^I(?:'ve| have) had\s+/i, '');
+    // Prefer the titled practice inside a longer accidental capture.
+    const inner = name.match(new RegExp('((?:[A-Z][A-Za-z0-9\'&]+\\s+){0,4}[A-Z][A-Za-z0-9\'&]+(?:' + NAME_SUFFIX + '))\\s*$'));
+    if (inner && /^(?:we|already|have|our|my)\b/i.test(name))
+        name = inner[1];
     if (/^(?:call it|named)\b/i.test(name))
         return [];
     if (/^(open dental|dentrix|eaglesoft|curve|denticon|answerconnect|chirotouch|webpt|dolphin)$/i.test(name))
         return [];
-    if (/^(?:moving|existing|opening|a|an|the|our|my|this|that|new|old|small)\b/i.test(name))
+    if (/^(?:moving|existing|opening|a|an|the|our|my|this|that|new|old|small|we|already|have)\b/i.test(name))
         return [];
-    if (/\b(about|answered|nobody|glasses|called about|we(?:'ll| will)|run|moving|existing)\b/i.test(name))
+    if (/\b(about|answered|nobody|glasses|called about|we(?:'ll| will)|run|moving|existing|already have)\b/i.test(name))
         return [];
     if (/practice name stays|name stays /i.test(m[0]) && !theNameIs.test(m[0]))
         return [{ field_id: 'name', value: name.replace(/^.*\b(stays\s+)/i, ''), span: m[0], precision: 'exact', operation: 'set' }];
@@ -590,8 +637,11 @@ export function parseOwnership(text: string): LocalHint[] {
         if (!/after hours/.test(t) || /missed calls|do not pick up|if they miss/.test(t))
             hints.push({ field_id: 'busy.owner', value: 'reception', span: 'front desk', precision: 'exact', operation: 'set' });
     }
-    else if (/\bi (listen|check) (to )?(them|the (voicemail|messages|inbox))/.test(t) && !/front desk|receptionist/.test(t)) {
+    else if (/\bi (listen|check) (to )?(them|the (voicemail|messages|inbox)|messages myself)/.test(t)
+        && !/(front desk|receptionist|girls) .{0,24}(check|listen|own)/.test(t)) {
         hints.push({ field_id: 'messages.owner', value: 'clinical', span: 'i listen', precision: 'exact', operation: 'set' });
+        hints.push({ field_id: 'busy.owner', value: 'clinical', span: 'i listen', precision: 'exact', operation: 'set' });
+        hints.push({ field_id: 'after.owner', value: 'clinical', span: 'i listen', precision: 'exact', operation: 'set' });
     }
     return hints;
 }
@@ -685,24 +735,36 @@ export function parseBeforeOpening(text: string): LocalHint[] {
     const t = fold(text);
     if (!/before (we |the office )?open|not open yet|advertis/.test(t))
         return [];
-    if (/callback|call back|take a (callback )?message|leave (a message|their info)/.test(t))
+    // "no callback box" is an information hangup, not a callback mailbox.
+    const wantsCallback = /callback|call back|take a (callback )?message|leave (a message|their info)/.test(t)
+        && !/\bno callback\b|\bnot a callback\b|\bwithout (a )?callback\b|\bno callback box\b/.test(t);
+    if (wantsCallback)
         return [{ field_id: 'beforeOpening', value: 'message', span: 'callback', precision: 'exact', operation: 'set' }];
-    if (/recording just announces|announces the date|play information|hours recording then (end|hang)/.test(t))
+    if (/recording just announces|announces the date|play information|hours recording then (end|hang)|not-open-yet|not open yet recording|play a .{0,40}recording/.test(t))
         return [{ field_id: 'beforeOpening', value: 'information', span: 'recording', precision: 'exact', operation: 'set' }];
-    if (/recording/.test(t) && !/callback|message/.test(t))
+    if (/recording/.test(t) && !wantsCallback)
         return [{ field_id: 'beforeOpening', value: 'information', span: 'recording', precision: 'heuristic', operation: 'set' }];
     return [];
 }
 
 export function parsePMS(text: string): LocalHint[] {
+    // Answering-service brands are never a practice-management system.
+    if (ANSWERING_SERVICES.some(name => new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(text)))
+        return [];
+    if (/after hours.{0,40}\b(?:we use|use|with)\b/i.test(text) && /answerconnect|answering service|ruby|smith\.ai/i.test(text))
+        return [];
     for (const name of [...PMS_DENTAL, ...PMS_EYE, ...PMS_OTHER]) {
         const re = new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
         if (re.test(text))
             return [{ field_id: 'opening.pms', value: name === 'CS' ? 'Carestream' : name, span: name, precision: 'exact', operation: 'set' }];
     }
     const run = /(?:we(?:ll|'ll)? run|we use|running)\s+([A-Z][A-Za-z0-9 .'-]{1,40})/.exec(text);
-    if (run)
-        return [{ field_id: 'opening.pms', value: run[1].replace(/[.,].*$/, '').trim(), span: run[0], precision: 'heuristic', operation: 'set' }];
+    if (run) {
+        const value = run[1].replace(/[.,].*$/, '').trim();
+        if (ANSWERING_SERVICES.some(name => fold(name) === fold(value)))
+            return [];
+        return [{ field_id: 'opening.pms', value, span: run[0], precision: 'heuristic', operation: 'set' }];
+    }
     return [];
 }
 
@@ -775,11 +837,23 @@ export function parseContinuity(text: string): LocalHint[] {
 }
 
 export function parseLocations(text: string): LocalHint[] {
+    const t = fold(text);
+    const hints: LocalHint[] = [];
     const m = /\b(?:two offices|both offices)[,:]?\s+([A-Z][A-Za-z' -]+?)\s+and\s+([A-Z][A-Za-z' -]+?)(?:\.|,|$)/.exec(text)
-        || /\b(?:offices in)\s+([A-Z][A-Za-z' -]+?)\s+and\s+([A-Z][A-Za-z' -]+?)(?:\.|,|$)/.exec(text);
-    if (!m)
-        return [];
-    return [{ field_id: 'locations.names', value: m[1].trim() + ', ' + m[2].trim(), span: m[0], precision: 'exact', operation: 'set' }];
+        || /\b(?:offices in)\s+([A-Z][A-Za-z' -]+?)\s+and\s+([A-Z][A-Za-z' -]+?)(?:\.|,|$)/.exec(text)
+        || /\balready have\s+([A-Z][A-Za-z' -]+?(?:Family Dental|Dental|Eye Care|Vision|Orthodontics)?)\s+and\s+we(?:'re| are) adding\s+([A-Z][A-Za-z' -]+?)(?:\s+under|\s+with|\.|\,|$)/i.exec(text)
+        || /\bpress\s*1\s+for\s+([A-Z][A-Za-z' -]+?)\s*,\s*press\s*2\s+for\s+([A-Z][A-Za-z' -]+?)(?:\.|,|$)/i.exec(text)
+        || /\bpress\s*1\s+for\s+([A-Z][A-Za-z' -]+?)\s*,\s*2\s+for\s+([A-Z][A-Za-z' -]+?)(?:\.|,|$)/i.exec(text);
+    if (m)
+        hints.push({ field_id: 'locations.names', value: m[1].trim() + ', ' + m[2].trim(), span: m[0], precision: 'exact', operation: 'set' });
+    if (/press\s*1\s+for .{0,40}press\s*2\s+for|press\s*1\s+for .{0,40},\s*2\s+for|callers should press|location menu|choose (a |the )?location/.test(t))
+        hints.push({ field_id: 'locationEntry', value: 'menu', span: 'location menu', precision: 'exact', operation: 'set' });
+    else if (/each (office|location) (keeps|has|gets) (its|their) own (published )?number|separate (published )?numbers|own published number/.test(t))
+        hints.push({ field_id: 'locationEntry', value: 'separate', span: 'separate numbers', precision: 'exact', operation: 'set' });
+    else if (/under the same (published )?number|same published number|one number for both|answer both/.test(t) && /add(ing)?|second|already have/.test(t)
+        && !hints.some(h => h.field_id === 'locationEntry'))
+        hints.push({ field_id: 'locationEntry', value: 'shared', span: 'same number', precision: 'heuristic', operation: 'set' });
+    return hints;
 }
 
 export function parseReasons(text: string): LocalHint[] {
@@ -843,13 +917,14 @@ export function parseOpening(text: string): LocalHint[] {
         hints.push({ field_id: 'opening.date', value: monthOnly[1], span: monthOnly[0], precision: 'exact', operation: 'set' });
         hints.push({ field_id: 'opening.precision', value: 'month', span: monthOnly[0], precision: 'exact', operation: 'set' });
     }
-    if (/opening a (ninth|second|third)|eight offices already|ninth office|already have .{0,20}offices|opening another|i am adding|adding the |adding a |adding one in/.test(t))
+    if (/opening a (ninth|second|third)|eight offices already|ninth office|already have .{0,20}offices|opening another|i am adding|adding the |adding a |adding one in|we(?:re| are) adding|already have .{0,60} adding /.test(t))
         hints.push({ field_id: 'mode', value: 'adding', span: 'adding', precision: 'exact', operation: 'set' });
-    else if (/\b(starting|opening) (a |my |our )?(new )?(family )?(dental|eye)|new (dental |eye |vision )?practice|new (vision|eye|dental) office|another new office|we are opening|im opening|i am opening/.test(t) && !/already open|existing|opening a (ninth|second)|opening another|do not call this a brand new|offices exist/.test(t))
+    else if (/\b(starting|opening) (a |my |our )?(new )?(family )?(dental|eye)|new (dental |eye |vision )?practice|new (vision|eye|dental) office|another new office|we are opening|im opening|i am opening/.test(t) && !/already open|existing|already have|opening a (ninth|second)|opening another|do not call this a brand new|offices exist/.test(t))
         hints.push({ field_id: 'mode', value: 'opening', span: 'opening', precision: 'exact', operation: 'set' });
-    else if (/existing|for (twenty|\d+) years|had this|been here \d|keep (our |the )?(current |published )?number|port it/.test(t))
+    else if (/existing|already have|weve had|we have had|ive had|for (twenty|thirty|forty|fifty|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|many) years|had this|been here \d|keep (our |the )?(current |published )?number|port it/.test(t)
+        && !/\bopening\b/.test(t))
         hints.push({ field_id: 'mode', value: 'improving', span: 'existing', precision: 'heuristic', operation: 'set' });
-    else if (/family dental|family dentistry/.test(t) && !/existing|had this|for .{0,12} years/.test(t))
+    else if (/family dental|family dentistry/.test(t) && !/existing|already have|had this|weve had|adding |for .{0,12} years/.test(t))
         hints.push({ field_id: 'mode', value: 'opening', span: 'family dental', precision: 'heuristic', operation: 'set' });
     if (/\bdental\b|dentist|orthodont/.test(t) && !/eye (care|office)|optometr/.test(t))
         hints.push({ field_id: 'specialty', value: 'Dental', span: 'dental', precision: 'exact', operation: 'set' });
@@ -895,9 +970,11 @@ export function parseRouting(text: string): LocalHint[] {
     }
     if (/both (receptionists|phones|lines).{0,30}ring|ring at the same time|whoever gets it|both lines should ring together/.test(t))
         add('policy.ring', 'together', 'both ring');
-    if (/two separate lines|both (can )?pick up|take two callers at once/.test(t))
+    else if (/ring .{0,40}first,? then|senior .{0,20}first|one then the other|in order(?! to)|cascade|if she misses/.test(t))
+        add('policy.ring', 'order', 'ring in order');
+    if (/two separate lines|both (can )?pick up|take two callers at once/.test(t) && !/can'?t both|cannot both|can not both|sharing one|share one/.test(t))
         add('devices.reception.sharing', 'separate', 'two separate lines');
-    else if (/share (one |a )?(phone|line)/.test(t))
+    else if (/shar(e|ing) (one |a )?(phone|line)|one (desk )?phone between|can'?t both talk|cannot both talk|one conversation at a time/.test(t))
         add('devices.reception.sharing', 'shared', 'share one');
     if (/work mobile|work phone|work cell|ring my (personal )?(cell|phone)|my personal (cell|number)/.test(t)) {
         add('devices.work_mobile', 'app', 'work mobile');
@@ -915,11 +992,12 @@ export function parseRouting(text: string): LocalHint[] {
     }
     if (/when they'?re slammed|when they are slammed|ai overflow|let the robot/.test(t) && !/work mobile|work phone/.test(t))
         add('busy.kind', 'assistant', 'ai overflow');
-    else if (/wait (a minute|sixty seconds)|let the caller wait|queue with hold|put callers in a queue|hold music/.test(t))
+    else if (/wait (about )?(a minute|sixty seconds)|let (them|the caller|callers) wait|queue with hold|put (them|callers) in a (short )?queue|hold music/.test(t))
         add('busy.kind', 'queue', 'wait');
     else if (/try the office manager next|try troy|overflow/.test(t) && /miss|busy|does not answer|thirty seconds/.test(t))
         add('busy.kind', 'backup', 'overflow');
     else if (/take a message|take a voicemail/.test(t) && /busy|with patients|if both|if nobody|already on a call|other line|slammed|misses the call|if she misses|misses it/.test(t)
+        && !/wait|queue|hold music/.test(t)
         || /missed calls?.{0,40}voicemail/.test(t)
         || /if (they|she) (are|is) busy, voicemail/.test(t)
         || /busy calls (are |go to )voicemail/.test(t)
@@ -934,13 +1012,16 @@ export function parseRouting(text: string): LocalHint[] {
     const waitMins = t.match(/(?:up to|wait(?:ing)?)\s+(\d+)\s+minutes?/);
     if (waitMins)
         add('busy.wait', Number(waitMins[1]) * 60, waitMins[0]);
+    const serviceBrand = ANSWERING_SERVICES.find(name => new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(text));
     if ((/live answering service|after hours.{0,40}answering service|answering service called|(?:^|[^.!?])\s*an answering service/.test(t)
-        || /\bafter hours answering service\b/.test(t))
+        || /\bafter hours answering service\b/.test(t)
+        || (serviceBrand && /after hours|when (we |they |the office )?clos|overnight|evenings/.test(t))
+        || /after hours we use [a-z0-9 .'-]{2,40}/.test(t) && serviceBrand)
         && !/\b(?:not|no|never|dont|don't)\b.{0,24}\banswering service\b|\banswering service\b.{0,16}\b(?:not|no)\b/.test(t))
-        add('after.kind', 'service', 'answering service');
+        add('after.kind', 'service', serviceBrand || 'answering service');
     else if (/ai receptionist.{0,40}after hours|after hours.{0,40}ai receptionist/.test(t))
         add('after.kind', 'assistant', 'ai after hours');
-    else if (/after hours.{0,60}(play information|information and hang)|play (our |the )?hours and hang|just play our hours/.test(t))
+    else if (/after hours.{0,80}(play information|information(?: recording)?(?: and| then)? hang|information then hang)|play (our |the )?hours and hang|just play our hours|after hours.{0,40}no voicemail/.test(t))
         add('after.kind', 'information', 'after hours information');
     else if ((/after hours.{0,40}(voicemail|message)|next-business-day voicemail|when (we are |they call )?closed.{0,20}(voicemail|message)/.test(t)
         || /after hours, next-business-day voicemail/.test(t)
