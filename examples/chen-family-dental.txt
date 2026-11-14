@@ -1,9 +1,5 @@
-# Chen Family Dental — live walkthrough
-source=https://upstateipvoice.com/planner/
-session=c8e4a1ae-f393-4fea-aa29-5e1e38fae62d
-identity=Draft UP-mwendv85-ziz8l1 · r10 · 5c265276
-groq=live
-enrich=none
+# Chen Family Dental — walkthrough
+planId=UP-mwf93xhv-vicpwu revision=12 checksum=bb1466ad
 
 ## Conversation
 ### 1
@@ -20,7 +16,7 @@ Architect: Mon–Thu 8 AM–5 PM. Fri 8 AM–2 PM. closed weekends. Phones close
 
 ### 4
 Owner: If both receptionists are with patients, take a message. They check the inbox first thing in the morning. They need two separate lines so they can take two callers at once. If the front is slammed, ring my husband's work mobile — a work phone, not his personal cell, and never put a personal number in a recording.
-Architect: If both are busy: message, front desk checks the inbox. Two separate lines. If slammed, your office manager's work mobile rings first — never a personal number.
+Architect: If both are busy: message, front desk checks the inbox. Two separate lines. Your office manager's work mobile rings if the front is slammed — never a personal number.
 
 ### 5
 Owner: After hours, next-business-day voicemail. Front desk owns those messages. If someone has swelling, trauma, or uncontrolled bleeding, try to reach the on-call dentist. That's only those urgent cases, not every call. If we miss it, still take a priority message. For a true emergency they should hang up and call 911. We rotate on-call between me and the associate. Do not put my cell in the greeting.
@@ -39,17 +35,46 @@ Owner: Appointments stay with the front desk. Billing and insurance go to the of
 Architect: Appointments → front desk, billing → office manager, clinical → clinical after screening. The fax stays off the patient number.
 
 ### 9
-Owner: Computer
-Architect: Noted: Computer.
+Owner: Desk phones
+Architect: Front desk answers on desk phones. Model is still a vendor choice.
 
 ### 10
+Owner: Ring office manager's work mobile, then message
+Architect: If the front is slammed, the office manager's work mobile rings, then a message.
+
+### 11
+Owner: Computer
+Architect: Your office manager answers on a computer.
+
+### 12
 Owner: One internal computer
-Architect: Noted: One internal computer.
+Architect: The clinical team shares one internal computer, not on the published number.
 
-## Stop
-That's everything I need to draw both files.
+## Glance
+Chen Family Dental
+6-room dental practice · target opening March 15, 2027.
+5 · Independent answering positions
+0 · Owner decisions remaining
+50 s · Modeled unanswered wait
 
-## Still open at install
-- on-call work identity (Follow Me)
-- E911 address on install
-- internet & power site survey
+## Insights
+NOTE Before-opening destination is recorded — Callback owner: Reception.
+CRITICAL Confirm your urgent-call handoff — After hours, callers press 9 to try the on-call dentist. During open hours, the front desk spots urgent calls after they answer. An on-call transfer is proposed but has not been tested on a real phone.
+NOTE A work mobile can ring — Use a work app or Follow Me. A personal cell number is not stored and must not be spoken in any recording.
+NOTE Lunch is a scheduled close — Phones follow the closed-hours path 12:30 PM–1:30 PM. That is not overnight voicemail, even if the recording is similar.
+
+## What a caller hears
+During phone hours, if nobody answers: Thank you for calling Chen Family Dental. We are not able to take your call right now. Please leave your name, number, and reason for calling, and we will call you back.
+After hours: You have reached Chen Family Dental after hours. If this is swelling, trauma, or uncontrolled bleeding, press 9 and we will try the on-call dentist. To leave a message, press 1 or wait. We return ordinary messages the next business day. If this is a life-threatening emergency, hang up and dial 911.
+At lunch (12:30 PM–1:30 PM): Thank you for calling Chen Family Dental. We are closed for lunch and will return at 1:30 PM. Please leave your name, number, and reason for calling, and we will call you back.
+Before opening day: Thank you for calling Chen Family Dental. We are not yet open. Please leave your name, number, and a good time to reach you. We will call you back.
+Press 9 after hours: Press 9 is part of your plan. It turns on once you give us a work on-call phone — not your personal cell.
+If the desk is slammed: A work mobile can ring. We will not put a personal number in a recording.
+
+## Buy (no invented prices)
+required ×2 Front desk — 2 independent desk phones so more than one call can be handled at once.
+required ×1 Administration — 1 mobile.
+required ×1 Administration — 1 computer position.
+required ×1 Clinical — 1 computer position.
+required ×1 After-hours coverage as specified — Owned voicemail — quote the method you chose, not a generic auto attendant.
+not-yet ×0 selected Clinical-room phones — 6 rooms to evaluate. Do not treat room count as a shopping quantity.

@@ -36,6 +36,9 @@ export const ACK_NEEDLES = [
 
 /** Remaining questions the owner did not settle in speech. Anything else asked is a failure. */
 export const CHIP_ANSWERS = {
+  'hours.rest_closed': { field_id: 'hours.rest_closed', value: 'closed', label: 'Yes — those days are closed' },
+  'devices.reception.kind': { field_id: 'devices.reception.kind', value: 'desk', label: 'Desk phones' },
+  'busy.order': { field_id: 'busy.order', value: 'backup_then_message', label: "Ring office manager's work mobile, then message" },
   'devices.administration.place': { field_id: 'devices.administration.place', value: 'computer', label: 'Computer' },
   'devices.clinical.area': { field_id: 'devices.clinical.area', value: 'internal_computer', label: 'One internal computer' }
 };
@@ -43,7 +46,10 @@ export const CHIP_ANSWERS = {
 export const STILL_OPEN_GOLD = [
   'on-call work identity (Follow Me)',
   'E911 address on install',
-  'internet & power site survey'
+  'internet & power site survey',
+  'priority message alert (who / how)',
+  'insurance fax vs analog lines after cutover',
+  'Christmas 2027 falls on Saturday — observe Fri Dec 24?'
 ];
 
 export const CHEN_GOLD = {
@@ -73,7 +79,7 @@ export const CHEN_GOLD = {
   },
   holidays: ['2027-11-25', '2027-12-25'],
   holidayPolicy: 'closed',
-  busy: { kind: 'message', owner: 'reception' },
+  busy: { kind: 'backup', backup: 'admin', owner: 'reception' },
   after: { kind: 'message', owner: 'reception' },
   urgent: {
     kind: 'connect',

@@ -1,4 +1,5 @@
 import { hasTeam, menuDigits, overflowTeams, scenarios, simulate, teamName, type Day, type Plan } from './config';
+import { lunchCallbackPhrase } from './flow';
 import { canRing, directory, publicInstructions } from './policy';
 import { provisioningMap, ringMembers } from './provisioning';
 import { queuePlan, queueAgents, urgentMechanism } from './advisor';
@@ -59,8 +60,75 @@ function urgentCue(p: Plan) {
     return 'a practice-approved urgent matter';
 }
 const FS_WDAY: Record<string, number> = { Sunday: 1, Monday: 2, Tuesday: 3, Wednesday: 4, Thursday: 5, Friday: 6, Saturday: 7 };
+const WEEKDAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+
+function isoWeekday(iso: string) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m)
+        return -1;
+    return new Date(+m[1], +m[2] - 1, +m[3]).getDay();
+}
+
+function shiftIso(iso: string, days: number) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m)
+        return '';
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    d.setDate(d.getDate() + days);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function shiftYear(iso: string, years: number) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m)
+        return '';
+    return String(+m[1] + years) + '-' + m[2] + '-' + m[3];
+}
+
+function holidayClosesAnOpenDay(p: Plan, iso: string) {
+    const w = isoWeekday(iso);
+    if (w < 0)
+        return false;
+    const day = p.hours.days.find(d => d.day === WEEKDAY_NAME[w]);
+    return !!day?.open;
+}
+
+export function observedHolidaySuggestion(iso: string) {
+    const w = isoWeekday(iso);
+    if (w === 6)
+        return shiftIso(iso, -1);
+    if (w === 0)
+        return shiftIso(iso, -2);
+    return '';
+}
+
+export function skippedHolidayDates(p: Plan): { iso: string; observed: string }[] {
+    if (p.hours.holidayPolicy !== 'closed')
+        return [];
+    return [...p.hours.holidays, ...p.policy.closures]
+        .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && !holidayClosesAnOpenDay(p, d))
+        .map(iso => ({ iso, observed: observedHolidaySuggestion(iso) }))
+        .filter(x => x.observed);
+}
+
+export function effectiveHolidayDates(p: Plan): string[] {
+    const raw = p.hours.holidayPolicy === 'closed'
+        ? [...p.hours.holidays, ...p.policy.closures]
+        : [...p.policy.closures];
+    const out: string[] = [];
+    for (const iso of raw.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))) {
+        if (holidayClosesAnOpenDay(p, iso) && !out.includes(iso))
+            out.push(iso);
+        const next = shiftYear(iso, 1);
+        if (next && holidayClosesAnOpenDay(p, next) && !out.includes(next))
+            out.push(next);
+    }
+    return out;
+}
 
 function slot(locIndex: number) {
+    // Numbering stays 2xx users, 3xx voicemail-only boxes, 5xxx queues, 61xx AI,
+    // 7xxx ring groups (7000 inbound, 7001 overflow / work-mobile), 8xxx time conditions, 9xxx IVRs.
     const i = Math.max(0, locIndex);
     return {
         i,
@@ -77,8 +145,20 @@ function slot(locIndex: number) {
         urgentRg: String(7900 + i),
         queue: String(5000 + i * 10),
         queueAt: (k: number) => String(5000 + i * 10 + k),
-        ai: String(6100 + i)
+        ai: String(6100 + i),
+        vmBusy: String(301 + i * 10),
+        vmLunch: String(302 + i * 10),
+        vmAfter: String(303 + i * 10),
+        vmBefore: String(304 + i * 10),
+        vmPriority: String(305 + i * 10)
     };
+}
+
+export type MailboxKind = 'busy' | 'lunch' | 'after' | 'before' | 'priority';
+
+export function mailboxExt(kind: MailboxKind, locIndex = 0) {
+    const n = slot(locIndex);
+    return ({ busy: n.vmBusy, lunch: n.vmLunch, after: n.vmAfter, before: n.vmBefore, priority: n.vmPriority })[kind];
 }
 
 function minute(hhmm: string) {
@@ -134,9 +214,10 @@ function ownerExt(p: Plan, id: string) {
     return extForTeam(p, id, true) || extForTeam(p, id) || '';
 }
 
-function vmTarget(p: Plan, id: string) {
-    const ext = ownerExt(p, id);
-    return ext ? `${VM(ext)}  (voicemail box ${ext} → ${teamLabel(p, id)})` : `voicemail for ${teamLabel(p, id)} (assign an extension first)`;
+function vmTarget(p: Plan, id: string, kind: MailboxKind = 'busy') {
+    void id;
+    const ext = mailboxExt(kind);
+    return `${VM(ext)}  (voicemail box ${ext})`;
 }
 
 function deviceNote(device: string, sharing: string, count: number, extensions: string[]) {
@@ -153,6 +234,8 @@ function deviceNote(device: string, sharing: string, count: number, extensions: 
         return `${many} Computer answering uses SIP.js over WSS wss://${DOMAIN}:7443. Store the same extension in the portal user_pbx_extensions row (username, pbx_host, pbx_wss_url).`;
     if (device === 'mobile')
         return `${many} Work-mobile answering is the Upstate app on the same extension, plus Follow Me if a cell should ring when the app is not registered. Do not put a personal cell in any recording.`;
+    if (device === 'undecided')
+        return `${many} Device TBD — desk phone, computer + headset, or both. REGISTER column stays blank until the owner chooses.`;
     return many;
 }
 
@@ -201,7 +284,7 @@ function busyTimeout(p: Plan, team: string, n: ReturnType<typeof slot>) {
         return XML(n.ai);
     if (p.busy.kind === 'backup' && (team === p.first.team || team === q.ringOrder[0]?.team))
         return XML(n.backupRg);
-    return XML(VM(ownerExt(p, q.teamFallbacks[team]?.owner || p.busy.owner) || '<owner>'));
+    return XML(VM(mailboxExt('busy')));
 }
 
 function specialtyNotes(p: Plan) {
@@ -313,7 +396,7 @@ function busyAdvice(p: Plan) {
     if (p.busy.kind === 'undecided')
         return ['Busy/unanswered behavior is undecided. Do not set ring_group_timeout_app until this is chosen — a missing timeout in Fusion loops or dumps to hangup.'];
     if (p.busy.kind === 'message')
-        return [`When nobody answers, the ring group (or Call Center) timeout is ${timeout}s, then transfer ${XML(VM(ownerExt(p, p.busy.owner) || '<owner-ext>'))}. Record a voicemail greeting on that box. Notification requirement: ${q.notification === 'inbox' ? 'portal shared inbox (Fusion voicemail webhook → portal)' : q.notification === 'email' ? 'Fusion voicemail email plus portal copy' : q.notification === 'practice' ? 'practice-wide notification, configured on the box and in the portal' : 'choose a notification path before go-live'}. A voicemail is not a booked appointment.`];
+        return [`When nobody answers, the ring group (or Call Center) timeout is ${timeout}s, then transfer ${XML(VM(mailboxExt('busy')))}. Record busy-voicemail.wav on box ${mailboxExt('busy')}. Notification requirement: ${q.notification === 'inbox' ? 'portal shared inbox (Fusion voicemail webhook → portal)' : q.notification === 'email' ? 'Fusion voicemail email plus portal copy' : q.notification === 'practice' ? 'practice-wide notification, configured on the box and in the portal' : 'choose a notification path before go-live'}. A voicemail is not a booked appointment.`];
     if (p.busy.kind === 'backup')
         return [`Primary ring group timeout_app transfers to the backup team’s ring group (${teamLabel(p, p.busy.backup)}), same ${timeout}s, then ${vmTarget(p, p.busy.owner)}. Do not put both teams in one simultaneous group — that is “together,” not backup.`];
     if (p.busy.kind === 'queue') {
@@ -348,7 +431,7 @@ function afterAdvice(p: Plan) {
         ];
     }
     if (p.after.kind === 'message')
-        return [`Closed leaf transfers to ${vmTarget(p, p.after.owner)}. Record greeting_1.wav on that box with next-business-day expectations. Portal voicemail webhook + transcription follow the existing Fusion path (RECORD_STOP → pbx-push-bridge → /webhooks/fusionpbx/voicemail).`];
+        return [`Closed leaf transfers to ${vmTarget(p, p.after.owner, 'after')}. Record greeting_1.wav on box ${mailboxExt('after')} with next-business-day expectations. Portal voicemail webhook + transcription follow the existing Fusion path (RECORD_STOP → pbx-push-bridge → /webhooks/fusionpbx/voicemail).`];
     if (p.after.kind === 'service')
         return [
             'Closed leaf transfers to the contracted answering service — either an external number via the Telnyx gateway (`bridge sofia/gateway/<uuid>/<number>`) or a dedicated extension the service registers. Permitted actions live in the contract, not in Fusion.',
@@ -365,11 +448,15 @@ function afterAdvice(p: Plan) {
 function identityAdvice(p: Plan) {
     const recN = p.teams.filter(t => t.role === 'reception' && t.status === 'known').reduce((n, t) => n + t.count, 0);
     const share = p.policy.placements.find(x => x.team === 'reception' && x.sharing !== 'undecided')?.sharing;
-    const groups = provisioningMap(p).groups;
     const notes = (p.policy.notes || '') + ' ' + (p.policy.continuity.notes || '');
     const lines: string[] = [];
-    if (share === 'separate' && recN > 1 && !groups.some(g => g.team === 'reception'))
-        lines.push(`Owner requires ${recN} independent reception identities so both can pick up at once. Suggest extensions ${p.policy.extensionBase} and ${p.policy.extensionBase + 1} as ring-group ${slot(0).mainRg} members once models exist. Do not create one shared SIP user. This is not a phone-per-room order.`);
+    if (p.first.kind === 'human' && ringMembers(p, p.first.team, true).length === 0)
+        lines.push(`BLOCKED: inbound ring group has no members.`
+            + (share === 'separate' && recN > 1
+                ? ` Owner requires ${recN} independent reception identities. Do not create one shared SIP user.`
+                : ' Assign outside-call devices before provisioning.'));
+    else if (share === 'separate' && recN > 1)
+        lines.push(`Owner requires ${recN} independent reception identities. Do not create one shared SIP user.`);
     else if (share === 'shared' && recN > 1)
         lines.push('Front desk shares one identity. Two people at the desk are still one concurrent call until a second identity is added.');
     if (/work mobile answering|work app \/ follow me/i.test(notes))
@@ -444,7 +531,7 @@ function modeAdvice(p: Plan, locIndex: number) {
         if (q.beforeOpening === 'information')
             return ['Before opening day, point the DID at a dedicated announcement (playback of the approved opening recording, then hangup) — not the future Time Condition. Flip Destinations to the live TC on opening morning. No opening date is inferred from this plan.'];
         if (q.beforeOpening === 'message')
-            return [`Before opening day, Destination transfers to ${vmTarget(p, q.beforeOpeningOwner || '')}. On opening morning, repoint the DID at Time Condition ${slot(locIndex).tc}.`];
+            return [`Before opening day, Destination transfers to ${vmTarget(p, q.beforeOpeningOwner || '', 'before')}. On opening morning, repoint the DID at Time Condition ${slot(locIndex).tc}.`];
         return ['BLOCKED: before-opening destination is unresolved. Do not publish the DID. Do not invent an announcement or callback. After-opening Time Condition routing is a separate configuration, applied at cutover.'];
     }
     if (p.mode === 'adding')
@@ -459,6 +546,8 @@ export function onCallUnbuilt(p: Plan) {
 
 function combinationWarnings(p: Plan) {
     const a: string[] = [];
+    if (p.first.kind === 'human' && ringMembers(p, p.first.team, true).length === 0)
+        a.push('BLOCKED: inbound ring group has no members');
     if (onCallUnbuilt(p))
         a.push('On-call RG has no outside member. Digit 9 is BLOCKED. Do not go live until Follow Me is populated.');
     if (p.locations.length > 1 && p.policy.locationEntry === 'shared' && p.first.kind !== 'human')
@@ -475,10 +564,14 @@ function combinationWarnings(p: Plan) {
         a.push('Closed path is currently “play information and end.” A live on-call connect needs a closed IVR (digit 9) or the virtual receptionist escalate tool — not a playback-then-hangup as the only leaf.');
     if (p.policy.placements.some(x => x.count > 1 && x.sharing === 'undecided' && !['none', 'undecided'].includes(x.device)))
         a.push('Sharing undecided: do not provision ring-group members until the owner chooses one shared identity or separate extensions.');
+    if (!p.name.trim())
+        a.push('BLOCKED: practice name is empty. Do not print recordings or publish the DID.');
     return a;
 }
 
 function recordings(p: Plan, locIndex = 0): FusionRecording[] {
+    if (!p.name.trim())
+        return [];
     const n = slot(locIndex);
     const name = practiceName(p);
     const out: FusionRecording[] = [];
@@ -519,11 +612,11 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
             usedBy: `Time Condition group 999 playback (or closed IVR ${n.closedIvr})`,
             script: publicInstructions(p.after.instructions)
         });
-    if (p.after.kind === 'message' && hasTeam(p, p.after.owner))
+    if (p.after.kind === 'message')
         add({
             name: 'After-hours voicemail greeting',
             filename: 'greeting_1.wav',
-            usedBy: `Voicemail box ${ownerExt(p, p.after.owner) || '(owner extension)'}`,
+            usedBy: `Voicemail box ${mailboxExt('after')}`,
             script: (() => {
                 const extra = publicInstructions(p.after.instructions);
                 if (extra && /^you have reached/i.test(extra))
@@ -533,12 +626,19 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
                 return `You have reached ${name} after hours. Please leave your name, number, and reason for calling. We will return your call on the next business day. If this is a life-threatening emergency, hang up and dial 911.`;
             })()
         });
-    if (p.busy.kind !== 'undecided' && hasTeam(p, p.busy.owner))
+    if (p.busy.kind !== 'undecided' && p.busy.kind !== 'assistant')
         add({
             name: 'Busy / unanswered voicemail greeting',
             filename: 'busy-voicemail.wav',
-            usedBy: `Timeout from the open-hours ring group / queue → box ${ownerExt(p, p.busy.owner) || '(owner)'}`,
+            usedBy: `Timeout from the open-hours ring group / queue → box ${mailboxExt('busy')}`,
             script: `Thank you for calling ${name}. We are not able to take your call right now. Please leave your name, number, and reason for calling, and we will call you back.`
+        });
+    if (p.urgent.enabled && p.policy.urgentKind === 'connect' && p.policy.urgentBackup === 'message')
+        add({
+            name: 'Priority message greeting',
+            filename: 'priority-message.wav',
+            usedBy: `On-call miss → box ${mailboxExt('priority')}`,
+            script: `Thank you for calling ${name}. We were not able to reach the on-call clinician. Please leave your name, number, and the reason this cannot wait until the next business day.`
         });
     if (p.urgent.enabled && (p.policy.urgentKind === 'instructions' || p.policy.urgentBackup === 'instructions') && p.urgent.approved && p.urgent.instructions.trim())
         add({
@@ -557,12 +657,12 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
                 : `You have reached ${name} after hours. If this is ${urgentCue(p)}, press 9 and we will try the ${onCallLabel(p)}. ${p.after.kind === 'information' ? 'Otherwise, please listen for our office information.' : 'Otherwise, please hold for assistance.'}`
         });
     const lunch = p.hours.days.find(d => d.breakStart && d.breakEnd);
-    if (lunch && hasTeam(p, p.after.owner || p.busy.owner))
+    if (lunch)
         add({
             name: 'Lunch voicemail greeting',
             filename: 'lunch-closed.wav',
-            usedBy: 'Time Condition lunch groups → the front-desk mailbox, not the overnight IVR',
-            script: `Thank you for calling ${name}. We are closed for lunch and will return at ${clock(minute(lunch.breakEnd))}. Please leave your name, number, and reason for calling, and we will call you back this afternoon.`
+            usedBy: `Time Condition lunch groups → box ${mailboxExt('lunch')} (*99${mailboxExt('lunch')}), not the overnight IVR`,
+            script: `Thank you for calling ${name}. We are closed for lunch and will return at ${clock(minute(lunch.breakEnd))}. Please leave your name, number, and reason for calling, and ${lunchCallbackPhrase(p)}.`
         });
     if (p.mode === 'opening' && p.policy.beforeOpening === 'information')
         add({
@@ -577,7 +677,7 @@ function recordings(p: Plan, locIndex = 0): FusionRecording[] {
         add({
             name: 'Before-opening callback greeting',
             filename: 'before-opening-callback.wav',
-            usedBy: `Temporary Destination → box ${ownerExt(p, p.policy.beforeOpeningOwner || p.after.owner || p.busy.owner) || '(callback owner)'}`,
+            usedBy: `Temporary Destination → box ${mailboxExt('before')}`,
             script: `Thank you for calling ${name}. We are not yet open. Please leave your name, number, and a good time to reach you. We will call you back.`
         });
     for (const l of p.languages) {
@@ -644,7 +744,7 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
                         'Cutover: on opening morning, change Destinations to the after-opening object. These are two configurations.'
                     ]
                     : [
-                        `Temporary Destination: transfer to the approved callback box ${vmTarget(p, q.beforeOpeningOwner || '')}. Not Time Condition ${tcExt}.`,
+                        `Temporary Destination: transfer to the approved callback box ${vmTarget(p, q.beforeOpeningOwner || '', 'before')}. Not Time Condition ${tcExt}.`,
                         'Cutover: on opening morning, change Destinations to the after-opening object. These are two configurations.'
                     ]
         });
@@ -680,16 +780,14 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
         : p.after.kind === 'information'
             ? XML(closedIvr)
             : p.after.kind === 'message'
-                ? XML(VM(ownerExt(p, p.after.owner) || '<owner>'))
+                ? XML(VM(mailboxExt('after')))
                 : p.after.kind === 'service'
                     ? 'bridge sofia/gateway/<telnyx-gateway>/<service-number>  (or transfer to the service’s registered extension)'
                     : p.after.kind === 'assistant'
                         ? XML(aiExt)
                         : '(undecided)';
 
-    const holidayGroups = p.hours.holidayPolicy === 'closed'
-        ? [...p.hours.holidays, ...q.closures].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))
-        : q.closures.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+    const holidayGroups = effectiveHolidayDates(p);
 
     list.push({
         kind: 'time_condition',
@@ -697,14 +795,14 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
         name: `Time Condition ${tcExt} (${locName})`,
         setup: [
             `Apps → Time Conditions (dialplan order 300, number ${tcExt}). Group rows in v_dialplan_details. FreeSWITCH wday Sunday=1 … Saturday=7. Use minute-of-day, not hour, so breaks and 5-minute opens are exact.`,
+            holidayGroups.length
+                ? `Date-only groups FIRST (evaluate before weekday groups; renew each year) (mon + mday, no wday) for ${holidayGroups.join(', ')} transfer to the closed target.`
+                : 'No holiday/closure date groups that close an otherwise-open day. Listed weekend holidays are already closed; do not type a no-op Saturday date.',
             `Open groups (one group per weekday window): ${openHoursSummary(p)}. Each open group action = transfer ${openTarget}.`,
             p.hours.days.some(d => d.breakStart && d.breakEnd)
-                ? `Lunch groups (do not fall through to group 999): ${p.hours.days.filter(d => d.open && d.breakStart && d.breakEnd).map(d => `${d.day} minute-of-day ${minute(d.breakStart)}-${Math.max(minute(d.breakStart), minute(d.breakEnd) - 1)}`).join('; ')}. Action = the front-desk mailbox with lunch-closed.wav. Not the overnight IVR. Not on-call.`
+                ? `Lunch groups (do not fall through to group 999): ${p.hours.days.filter(d => d.open && d.breakStart && d.breakEnd).map(d => `${d.day} minute-of-day ${minute(d.breakStart)}-${Math.max(minute(d.breakStart), minute(d.breakEnd) - 1)}`).join('; ')}. Action = transfer ${XML(VM(mailboxExt('lunch')))} with lunch-closed.wav on box ${mailboxExt('lunch')}. Not the overnight IVR. Not on-call.`
                 : 'No lunch breaks. Do not invent a lunch destination.',
             `Group 999 (catch-all after hours) action = transfer ${closedTarget}. Closed weekend days simply fall through to 999; do not create empty Saturday groups.`,
-            holidayGroups.length
-                ? `Date-only groups (mon + mday, no wday) for ${holidayGroups.join(', ')} transfer to the closed target. In Fusion these groups evaluate as closed, matching holidayPolicy=closed.`
-                : 'No holiday/closure date groups. Listed holidays with policy “regular hours” keep the weekday open groups.',
             `Timezone for the TC must be ${p.hours.timezone} (Fusion domain time settings). The planner’s isOpen() uses the same zone, breaks, and exclusive end time.`,
             'After writes: POST /commands/reload-xml (or GUI Apply). Portal work-hours UI can edit these groups when FUSION_TIME_CONDITION_WRITE is on.'
         ]
@@ -739,17 +837,49 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
             list.push({
                 kind: 'voicemail',
                 extension: ext,
-                name: `Voicemail box ${ext}`,
+                name: `User mailbox ${ext} (MWI only)`,
                 setup: [
-                    `Apps → Voicemail: voicemail_id ${ext} (keep mailbox = extension). Greeting files live in /var/lib/freeswitch/storage/voicemail/default/${DOMAIN}/${ext}/greeting_1.wav.`,
-                    `To send a call to this box from anywhere: transfer ${XML(VM(ext))}.`
+                    `Apps → Voicemail: voicemail_id ${ext} for message-waiting on this SIP user. Inbound context greetings do not live here.`,
+                    `To send a call to this user's personal box: transfer ${XML(VM(ext))}. Busy / lunch / after-hours / before-opening use the voicemail-only boxes below.`
                 ]
             });
     }
 
+    const contextBoxes: { kind: MailboxKind; file: string; when: string }[] = [];
+    if (p.busy.kind !== 'undecided' && p.busy.kind !== 'assistant')
+        contextBoxes.push({ kind: 'busy', file: 'busy-voicemail.wav', when: 'open-hours timeout' });
+    if (p.hours.days.some(d => d.breakStart && d.breakEnd))
+        contextBoxes.push({ kind: 'lunch', file: 'lunch-closed.wav', when: 'Time Condition lunch groups → *99' + mailboxExt('lunch') });
+    if (p.after.kind === 'message')
+        contextBoxes.push({ kind: 'after', file: 'greeting_1.wav', when: 'closed group 999' });
+    if (p.mode === 'opening' && p.policy.beforeOpening === 'message')
+        contextBoxes.push({ kind: 'before', file: 'before-opening-callback.wav', when: 'temporary Destination' });
+    if (p.urgent.enabled && p.policy.urgentKind === 'connect' && p.policy.urgentBackup === 'message')
+        contextBoxes.push({ kind: 'priority', file: 'priority-message.wav', when: 'on-call miss' });
+    const ownerTeam = p.after.owner || p.busy.owner || p.first.team;
+    const notify = dir(p).filter(d => d.team === ownerTeam).map(d => d.extension).filter(Boolean);
+    for (const box of contextBoxes) {
+        const ext = mailboxExt(box.kind);
+        list.push({
+            kind: 'voicemail',
+            extension: ext,
+            name: `Voicemail-only box ${ext} · ${box.kind}`,
+            setup: [
+                `Apps → Voicemail: voicemail_id ${ext}. This is not a user extension. Put ${box.file} on this box.`,
+                notify.length
+                    ? `Notify every ${teamLabel(p, ownerTeam)} extension (${notify.join(', ')}) so both people see the light.`
+                    : `Notify the ${teamLabel(p, ownerTeam)} team once identities exist.`,
+                `Used at ${box.when}. Transfer ${XML(VM(ext))}. Cutover: swap this greeting file, do not reuse a user mailbox.`
+            ]
+        });
+    }
+
     const teamsWithOutside = p.teams.filter(t => t.count > 0 && canRing(p, t.id, true));
     teamsWithOutside.forEach((t, i) => {
-        const members = ringMembers(p, t.id, true);
+        const rawMembers = ringMembers(p, t.id, true);
+        const members = t.id === p.busy.backup && t.id !== p.first.team
+            ? rawMembers.filter(m => m.device === 'mobile')
+            : rawMembers;
         const ext = t.id === p.first.team ? mainRg : t.id === p.busy.backup ? backupRg : n.reasonRg(i);
         const strategy = p.first.kind === 'human' && q.ring === 'order' && q.ringOrder.some(r => r.team === t.id) ? 'sequence' : 'simultaneous';
         const hop = q.ring === 'order' ? q.ringOrder.find(r => r.team === t.id)?.seconds : undefined;
@@ -760,7 +890,10 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
             name: `Ring group ${ext} · ${t.name}`,
             setup: [
                 `Apps → Ring Groups: extension ${ext}, strategy ${strategy}, call timeout ${groupTimeout}s. Member timeouts must match this group — do not mix the on-call ${p.urgent.seconds}s timeout into daytime groups.`,
-                `Members (v_ring_group_destinations): ${members.map(m => `${m.extension} (${m.device}${m.registrations > 1 ? ', ' + m.registrations + ' registrations / 1 concurrent' : ''}, delay 0, timeout ${groupTimeout})`).join('; ') || 'none — assign outside devices first'}.`,
+                `Members (v_ring_group_destinations): ${members.map(m => `${m.extension} (${m.device}${m.registrations > 1 ? ', ' + m.registrations + ' registrations / 1 concurrent' : ''}, delay 0, timeout ${groupTimeout})`).join('; ')
+                    || (t.id === p.first.team
+                        ? 'none — BLOCKED: inbound ring group has no members'
+                        : 'none — assign outside devices first')}.`,
                 `timeout_app = transfer; timeout_data = ${busyTimeout(p, t.id, n)}.`,
                 'reloadxml after member changes. Portal Call Flow can write members when the write flag is on.'
             ]
@@ -807,7 +940,7 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
                 setup: [
                     `Apps → Call Centers: queue extension ${ext}, music on hold, max wait ${queue.wait}s. This wait is only for ${queue.label}.`,
                     queue.members.length
-                        ? `Agents (must be provisioned, not inferred): ${queue.members.map(m => m.extension + ' ' + m.label).join(', ')}. Do not add other teams’ identities. Exit: ${q.queueExit === 'backup' ? XML(backupRg) : q.queueExit === 'assistant' ? XML(aiExt) : XML(VM(ownerExt(p, queue.owner) || '<owner>'))}.`
+                        ? `Agents (must be provisioned, not inferred): ${queue.members.map(m => m.extension + ' ' + m.label).join(', ')}. Do not add other teams’ identities. Exit: ${q.queueExit === 'backup' ? XML(backupRg) : q.queueExit === 'assistant' ? XML(aiExt) : XML(VM(mailboxExt('busy')))}.`
                         : 'BLOCKED: queue membership is unresolved. Do not enable this Call Center until this team has answering identities.',
                     plan.shared ? 'Single overflow queue — only one destination team is waiting.' : 'Separate from other reason queues. A caller who pressed a different digit does not land here.'
                 ]
@@ -881,7 +1014,7 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
             setup: [
                 p.after.kind === 'information' && !(p.urgent.enabled && q.urgentKind === 'connect')
                     ? 'greet_long = after-hours-info.wav; exit = hangup. No options required.'
-                    : `greet_long = after-hours-urgent-option.wav. Digit 9 → ring group ${urgentRg}${onCallUnbuilt(p) ? ' BLOCKED until Follow Me is populated. Do not go live' : ''}. Digit 1 / timeout → ${p.after.kind === 'message' ? vmTarget(p, p.after.owner) : p.after.kind === 'information' ? 'playback after-hours-info.wav then hangup' : closedTarget}.`,
+                    : `greet_long = after-hours-urgent-option.wav. Digit 9 → ring group ${urgentRg}${onCallUnbuilt(p) ? ' BLOCKED until Follow Me is populated. Do not go live' : ''}. Digit 1 / timeout → ${p.after.kind === 'message' ? vmTarget(p, p.after.owner, 'after') : p.after.kind === 'information' ? 'playback after-hours-info.wav then hangup' : closedTarget}.`,
                 `Weekend closed leaf can reuse this IVR (${weekendIvr} is only needed if weekend wording differs).`
             ]
         });
@@ -895,7 +1028,7 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
                 onCallUnbuilt(p)
                     ? `Members: none — BLOCKED. Do not go live until Follow Me on a dedicated on-call identity is populated. Not the internal computer. Group timeout ${p.urgent.seconds}s.`
                     : `Members: ${teamLabel(p, p.urgent.team)} outside devices + Follow Me. Group and member timeout ${p.urgent.seconds}s — do not copy this timeout onto daytime ring groups.`,
-                `timeout_app = transfer; timeout_data = ${q.urgentBackup === 'team' ? 'backup on-call ring group, then ' : ''}${q.urgentBackup === 'instructions' ? 'playback urgent-instructions.wav' : vmTarget(p, p.urgent.owner)}.`,
+                `timeout_app = transfer; timeout_data = ${q.urgentBackup === 'team' ? 'backup on-call ring group, then ' : ''}${q.urgentBackup === 'instructions' ? 'playback urgent-instructions.wav' : vmTarget(p, p.urgent.owner, 'priority')}.`,
                 q.urgentRoster === 'rotation' ? 'Update this group or the on-call extension’s Follow Me when the roster changes. Fusion will not rotate it.' : 'Fixed contact: keep membership stable.'
             ]
         });

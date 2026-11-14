@@ -232,6 +232,10 @@ export function updatesFromOwnerText(text: string, question: NextQuestion | null
 
     if (/work cell|work mobile/.test(t)) {
         add('devices.work_mobile', 'app');
+        if (/husband|office manager/.test(t))
+            add('devices.work_mobile.team', 'admin');
+        if (/if the front is slammed|if (the )?(front desk|desk) is (slammed|busy)/.test(t))
+            add('busy.backup', 'admin');
         if (/internet|goes out|failover|outage|die|to the work cell/.test(t))
             add('continuity.backupRouting', /forward/.test(t) ? 'forward' : 'cellular');
     }

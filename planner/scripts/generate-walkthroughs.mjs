@@ -116,6 +116,18 @@ function complete(base = initial()) {
       device: ['desk', 'computer', 'mobile'][i],
       count: [3, 2, 1][i], sharing: 'shared', access: 'outside', extension: ''
     }));
+  if (!p.hours.days.some(d => d.start)) {
+    p.hours.days = p.hours.days.map((d, i) => ({
+      ...d,
+      open: i < 5,
+      start: i < 5 ? '09:00' : '',
+      end: i < 5 ? '17:00' : '',
+      stated: true
+    }));
+    p.policy.hoursPreset = 'weekdays';
+  }
+  else
+    p.hours.days = p.hours.days.map(d => ({ ...d, stated: d.stated === true || !!(d.start && d.end) }));
   p.hours.timezone = p.hours.timezone || 'America/New_York';
   p.hours.holidayPolicy = p.hours.holidayPolicy || 'closed';
   p.policy.terminalApprovals = {

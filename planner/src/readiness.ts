@@ -21,6 +21,15 @@ export function stillOpen(p: Plan): string[] {
         items.push('E911 address on install');
     if (q.opening.internet === 'survey' || q.opening.network === 'survey' || q.opening.internet === 'undecided' || q.continuity.internet === 'survey' || q.continuity.power === 'undecided' || q.continuity.power === 'survey')
         items.push('internet & power site survey');
+    if (p.urgent.enabled && q.urgentKind === 'connect' && q.urgentBackup === 'message' && q.notification === 'undecided')
+        items.push('priority message alert (who / how)');
+    if (/fax|analog/i.test((p.current.lines || '') + ' ' + (p.current.notes || '')))
+        items.push('insurance fax vs analog lines after cutover');
+    if (p.hours.holidayPolicy === 'closed' && p.hours.holidays.includes('2027-12-25')) {
+        const sat = p.hours.days.find(d => d.day === 'Saturday');
+        if (sat && !sat.open)
+            items.push('Christmas 2027 falls on Saturday — observe Fri Dec 24?');
+    }
     return items;
 }
 

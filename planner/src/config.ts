@@ -16,6 +16,8 @@ export type Day = {
     end: string;
     breakStart: string;
     breakEnd: string;
+    /** True once the owner stated this day (open or closed). Unstated days must not print as 9–5. */
+    stated?: boolean;
 };
 export type Plan = {
     profiles: Record<string, LocalDraft>;
@@ -101,11 +103,17 @@ export type Plan = {
         notes: string;
     };
     confirmed: string[];
+    /** Server lock receipt. Must stay out of fingerprint() / identity(). */
+    lock?: {
+        revision: number;
+        checksum: string;
+        at: string;
+    };
 };
 export const key = 'upstate.practice-plan.v2';
 export const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 export function newPlanId() { return 'UP-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
-export const initial = (): Plan => ({ profiles: {}, policy: policyDefaults(), schema: 2, planId: newPlanId(), revision: 0, updatedAt: new Date().toISOString(), mode: '', name: '', specialty: '', locations: [{ id: 'location-1', name: 'Main practice' }], teams: [{ id: 'reception', name: 'Reception', role: 'reception', count: 0, status: 'unanswered' }, { id: 'clinical', name: 'Clinical team', role: 'clinical', count: 0, status: 'unanswered' }, { id: 'admin', name: 'Administration', role: 'administration', count: 0, status: 'unanswered' }], endpoints: { desk: 0, computer: 0, mobile: 0, shared: 0, undecided: true }, first: { kind: 'undecided', team: '' }, reasons: [{ id: 'appointments', label: 'Appointments and scheduling', team: '' }, { id: 'billing', label: 'Billing and insurance questions', team: '' }, { id: 'clinical-question', label: 'Clinical questions', team: '' }], busy: { kind: 'undecided', seconds: 25, wait: 90, backup: '', owner: '' }, menu: { invalid: 'message', noInput: 'message', team: '' }, languages: [], hours: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York', days: days.map((day, i) => ({ day, open: i < 5, start: '09:00', end: '17:00', breakStart: '', breakEnd: '' })), holidays: [], holidayPolicy: 'closed' }, after: { kind: 'undecided', owner: '', instructions: '' }, urgent: { enabled: false, approved: false, instructions: '', team: '', backup: '', seconds: 30, owner: '' }, followup: { owner: '', target: '', channels: [] }, current: { provider: '', monthly: '', lines: '', notes: '' }, confirmed: [] });
+export const initial = (): Plan => ({ profiles: {}, policy: policyDefaults(), schema: 2, planId: newPlanId(), revision: 0, updatedAt: new Date().toISOString(), mode: '', name: '', specialty: '', locations: [{ id: 'location-1', name: 'Main practice' }], teams: [{ id: 'reception', name: 'Reception', role: 'reception', count: 0, status: 'unanswered' }, { id: 'clinical', name: 'Clinical team', role: 'clinical', count: 0, status: 'unanswered' }, { id: 'admin', name: 'Administration', role: 'administration', count: 0, status: 'unanswered' }], endpoints: { desk: 0, computer: 0, mobile: 0, shared: 0, undecided: true }, first: { kind: 'undecided', team: '' }, reasons: [{ id: 'appointments', label: 'Appointments and scheduling', team: '' }, { id: 'billing', label: 'Billing and insurance questions', team: '' }, { id: 'clinical-question', label: 'Clinical questions', team: '' }], busy: { kind: 'undecided', seconds: 25, wait: 90, backup: '', owner: '' }, menu: { invalid: 'message', noInput: 'message', team: '' }, languages: [], hours: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York', days: days.map(day => ({ day, open: false, start: '', end: '', breakStart: '', breakEnd: '' })), holidays: [], holidayPolicy: 'closed' }, after: { kind: 'undecided', owner: '', instructions: '' }, urgent: { enabled: false, approved: false, instructions: '', team: '', backup: '', seconds: 30, owner: '' }, followup: { owner: '', target: '', channels: [] }, current: { provider: '', monthly: '', lines: '', notes: '' }, confirmed: [] });
 const kinds = ['opening', 'improving', 'adding'];
 function structural(c: unknown, template: unknown): boolean { if (Array.isArray(template))
     return Array.isArray(c); if (template !== null && typeof template === 'object')
@@ -132,7 +140,7 @@ export function read(): {
             for(const t of p.teams || []) t.status ??= t.count>0 || p.confirmed?.includes('team') ? 'known' : 'unanswered';
             p.endpoints = inventory(p);
             p.policy.cityState ??= '';
-            p.policy.hoursPreset ??= 'weekdays';
+            p.policy.hoursPreset ??= 'undecided';
             p.policy.opening.precision ??= /^\d{4}-\d{2}-\d{2}$/.test(p.policy.opening.date) ? 'day' : p.policy.opening.date ? 'month' : 'none';
         }
         if (valid(p))

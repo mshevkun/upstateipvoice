@@ -1,5 +1,7 @@
 # Practice Planner — Ship Plan
 
+> **Current work order: [FINAL-FIX-PLAN.md](FINAL-FIX-PLAN.md)** (2026-11-13). It supersedes §5–§6 below.
+
 Audience: Cursor (implementer) + Upstate. Written 2026-11-13 from reading the code, not from the roadmap.
 Every claim below was reproduced by running the code. Line numbers are against the working tree on `master` @ 283860a + uncommitted changes.
 
@@ -303,3 +305,90 @@ Note: `scripts/publish-planner.mjs` does `rm -rf <repo>/assets` and recopies pla
 ## 4. Do not add
 
 Auto-provisioning. Prices. More owner pages. A second chatbot. Groq-written copy in the Plan, PDFs, or scene. A public wizard. E911 / BAA / handoff-tested flags from chat. A personal cell anywhere. A phone per room.
+
+## 5. Post-ship audit — 2026-11-13 (read this before calling it done)
+
+Verified independently: `npm test` 101/101, `planner:eval --no-groq` 110/110, live bundle `dev-DDeeWlqK.js` = repo, offline Chen = live Chen conversation, `POST /lock` → 404. The **conversation** is right. The **files it produces are not buildable**, and no test looks at that. Fix PR 9 before PR 8 (the DID run would just discover these).
+
+### PR 9 — the blueprint must be buildable (P0)
+
+1. **The front desk has no extensions; open hours ring an empty group.**
+   Engineer p05: `7000 · RG Reception (members not assigned) · members none · inbound`. Directory p02 lists only 201 (work mobile), 211 (admin), 221 (clinical). Two hired receptionists who need "two separate lines" get zero extensions, and nothing says BLOCKED.
+   - Cause: `architect/fields.ts:1250` `setReceptionSharing` creates `reception-share` with `count: 0, device: 'undecided'`. Fusion then allocates no extension.
+   - Fix: when sharing is `separate`, count = `teams.reception.count` (Chen: 2); when `shared`, count = 1. Fusion allocates extensions for `device: 'undecided'` placements too (REGISTER column `device TBD`), and RG 7000 members = those extensions.
+   - Add `devices.reception.kind` (desk phone · computer + headset · both) to the question catalog, ready once sharing is set. The stop line cannot print while it is open.
+   - Invariant in `fusion.ts` blocked list: an inbound RG with 0 members → `BLOCKED: inbound ring group has no members`.
+2. **The owner cover tells Chen to order the wrong thing.** Cover: "1 · Answering computer", "Phones to order: 1 (0 desk + 1 work mobile)", "Reception answers on the answering computer." That one computer is the office manager's (211), which engineer p01 says is *not inbound*. Page 5: "Order … 1 answering computer."
+   - Fix (`owner-brief.ts`): the hero number is the first-answer team's lines (Chen: 2 front-desk lines). "Phones to order" includes them, labelled "model not chosen" while the kind is open. Never call the admin computer "the answering computer".
+3. **"If the front is slammed, ring my husband's work mobile" is dropped, and the two files disagree.** Plan `busy.backup: ''`. Owner p02 says "the work app can also ring". Engineer p09 says "Do not add 201 to inbound RG 7000 unless the owner confirms inbound overflow." The owner did confirm it.
+   - Fix: parse "if the front is slammed/busy, ring <X>'s work mobile" → `busy.backup = 'admin'`. Because the same turn also says "if both are with patients, take a message", ask one confirm chip, `busy.order`, with two answers: "Ring office manager's work mobile, then message" / "Message only".
+   - Fusion: RG 7000 timeout → RG 7100 (members 201 + 211; 201's Follow Me fires because the extension is dialed) → timeout → busy box. Owner p02 and the hear row come from that same callPath (PR 4 parity test must cover busy).
+4. **Every voicemail box prints as `—`.** `DID → *99— (box —)`, `busy-voicemail.wav → box —`, `timeout_data = *99<owner>`. This follows from item 1, because the box owner (reception) has no extension.
+   - Test: when `ownerQuestions` is empty, the engineer PDF text contains no `—)`, `*99—`, `box —`, `<owner>`, or `members none` outside a line that says BLOCKED.
+5. **The tests page is unreadable and the critical test rows are missing.** Engineer p07 wraps the text one character at a time. "Nobody answers" spills under the footer. "Two calls at once" and "Press 9 empty Follow Me — MUST FAIL" do not appear at all, and that MUST FAIL test is the very one PR 8 depends on.
+   - Cause: `engineer-brief.ts:786` `widths: [18, 16, 16, 42, 8]` are percentages, but `pdf.ts:163 table()` treats them as points.
+   - Fix: give point widths that sum to `CONTENT` (e.g. `[78, 112, 70, 214, 24]`). `table()` must also break pages between rows and repeat the header, and throw if `y` drops below the bottom margin.
+   - Test: `pdftotext` every engineer page and assert each test row's `Hop test` sentence is present in full, and no text sits below the footer line.
+
+### PR 10 — exact details (P1)
+
+6. **Holidays will not fire.** p03 lists `Dates Nov 25, 2027, Dec 25, 2027` *after* the weekday groups. Nov 25, 2027 is a Thursday, so if typed in table order, `Mon–Thu AM` matches first and Thanksgiving rings the desk.
+   - Fix: put date groups first with the note "evaluate before weekday groups".
+   - Dec 25, 2027 is a Saturday (already closed). Ask "Observe Fri Dec 24?" instead of printing a no-op date.
+   - Dates are 2027 only: print "renew each year" or emit 2027 + 2028.
+7. **Promises the owner never made.** The lunch recording says "we will call you back this afternoon" and p02 says "Reception calls back the same afternoon". Chen never said that. Use "we will call you back" unless a `hours.lunch.callback` answer exists. Owner p03 "computer inside the doctors' office" is an invented location; write "one clinical computer (internal)".
+8. **Priority messages after a missed on-call call land in box 221**, the internal clinical computer. Chen said the front desk owns after-hours messages and wanted "a priority message", and `policy.notification` is still undecided.
+   - Fix: send RG 7900 timeout to the after-hours box (reception) as priority. Put "Who gets alerted to a priority message, and how" in still-open (Chen) or make it an owner question.
+9. **The fax and the two analog lines are captured but never used.** `current.lines = "2 analog + fax"` appears nowhere in the engineer spec. Add a still-open item: "Insurance fax: keep on its current line or move to a separate fax DID, never the patient DID. Two analog lines: cancel after cutover?"
+10. **Insights repeat what the owner already settled.** Suppress "6 clinical rooms do not automatically need 6 phones" when `policy.roomsSpecified` is true (Chen said "treatment rooms, not phones"). The lunch insight prints `12:30–13:30`; use `formatTime`.
+11. **Acknowledgements.**
+    - Turn 4 says the work mobile "rings first", but it is overflow; say "rings if the front is slammed".
+    - Chip acks "Noted: Computer." / "Noted: One internal computer." must name the subject: "Your office manager answers on a computer." / "The clinical team shares one internal computer, not on the published number."
+12. **P2 wording.** Glance "25 · Modeled unanswered wait" needs a unit ("25 s"). The associate joins in April, after the March 15 opening, so the owner p04 note should say "On-call is Dr. Chen alone until the associate starts."
+
+### Gold additions (in `tests/planner-chen-gold.test.js`, so this cannot regress)
+
+- `fusionBuild(plan)`: inbound RG members are 2 reception extensions. The directory has 2 reception rows. No placeholder tokens (item 4). Busy path is RG 7000 → RG 7100 → box (or message-only if the chip says so).
+- Owner PDF text: "2" front-desk lines on the cover and on p03. No "answering computer" for admin. No "this afternoon" without a lunch-callback fact.
+- Engineer PDF text: every test row present, including "MUST FAIL"; holiday groups listed before weekday groups.
+- Stop rule: `ownerQuestions` is not empty while `devices.reception.kind` or `busy.order` is open.
+- Re-run the live Chen walk only after these pass, then recommit `examples/`.
+
+### API deploy — do not run the command in the report as written
+
+`~/Documents/upstateipv` is on branch `receptionist/pass3` with 96 uncommitted changes under `sms-portal/`. `deploy-fast.sh` runs `gcloud builds submit .`, which uploads **the working tree**. Run from there, it would ship receptionist work-in-progress to production and *not* PR #1 (`planner/ship-lock`). Migration 317 is also only in PR #1, yet the live API already serves sessions, so the live revision was built from a tree that is not `main`.
+
+1. `gcloud run revisions list --service <svc>`: find which commit or image is live, and whether it carries receptionist changes that are not on `main`.
+2. `git worktree add ../upstateipv-ship planner/ship-lock` (rebase it onto whatever is live if needed). Run the API tests there.
+3. Confirm migrations 317 + 333 run on deploy (or apply them first), then `./scripts/deploy-fast.sh` **from that worktree**.
+4. Then: `POST /lock` → 200, a locked session prints `LOCKED`, and `planner_messages` rows hold no phone/email.
+
+## 6. Second audit — 2026-11-13, after PR 9/10 (uncommitted)
+
+Re-verified: 101/101, 110/110 offline. Chen offline → stop line, 0 owner decisions. §5 items 1, 2, 4, 5, 7, 9, 10, 11, 12 are **fixed**. 3, 6, 8 are fixed with the caveats below. The engineer tests page is readable, and MUST FAIL is present.
+
+### PR 11 — voicemail must be buildable (P0, blocks the DID proof)
+
+1. **Four greetings, one mailbox.** `fusion.ts:597–659` points `greeting_1.wav` (after hours), `busy-voicemail.wav`, `lunch-closed.wav` and `before-opening-callback.wav` all at `ownerExt(reception)` = **box 201**. A Fusion mailbox plays one active greeting. So:
+   - At 10 AM, RG 7001 timeout → `*99201` plays "You have reached Chen Family Dental **after hours**". `busy-voicemail.wav` is never played; owner p02 promises wording the caller never hears.
+   - Lunch: "TC lunch groups → lunch-closed.wav → box 201". A Time Condition destination is one object; play-then-voicemail is not a TC action, so the engineer cannot type it.
+   - Before opening: box 201's greeting must be before-opening-callback.wav, then swapped at cutover. No build step says swap.
+   - Fix: one voicemail-only box per greeting context, owned by the message owner, e.g. 290 before-opening, 291 busy, 292 lunch, 293 after-hours. Each has its own greeting_1.wav and Forward Destinations / notify → the owner team's extensions. TC lunch → `*99292`; RG 7001 timeout → `*99291`; IVR 9002 digit 1 → `*99293`; DID before open → `*99290`; RG 7900 timeout → `*99293` (priority). Directory p02 lists these boxes; build step 3 assigns each file to its box.
+   - Gold test: every recording in `fusionBuild(plan).recordings` maps to a distinct box, and no two greeting files share a box.
+2. **Two receptionists, one inbox.** "Reception owns that inbox" = box 201 only; receptionist 202 never sees the messages. Use the per-context boxes with forward destinations 201 and 202 (or one shared team box). Owner p02 must say "both front-desk phones see the message light".
+3. **Overflow rings a computer the owner never mentioned.** RG 7001 members are `211, 221` (work mobile **and** the admin computer). Chen said "ring my husband's work mobile". Engineer p07 says "Inbound DID must not ring 211, 221, 231", and owner p03 says that computer "is not inbound". Overflow members = the work-mobile extension only, unless the owner says otherwise.
+
+### Small (fix in the same PR)
+
+- **The owner's live tests lost the two core calls.** "Call during hours: a person picks up" and "Let it ring: office manager's work mobile rings, then a message" are gone from owner p06. Add them back; the overflow is new and untested on the owner page.
+- **Engineer p07 has duplicate rows.** "Open hours: two simultaneous calls" (with File = busy-voicemail.wav, which is wrong) and "Two calls at once" are the same test. Keep one, with File `—`.
+- **Holiday dates.** `Dec 25, 2028` is printed beside `Nov 25, 2027`, and Thanksgiving 2028 (Nov 23) is missing. Either print one year (2027) + "renew each year", or a full 2028 set.
+- **Lunch hop text** `box 201. we will call you back.` starts a sentence with a lowercase letter. `7900 · RG members none · BLOCKED · BLOCKED` repeats a word.
+- **File column breaks filenames** (`before-opening-callbac / k.wav`, `after-hours-urgent-opti / on.wav`). Widen the File column or never break inside a filename. An engineer types these.
+- **Glance "5 · Independent answering positions"** counts the internal clinical computer and the not-inbound admin computer. Count only positions that can receive the published number (Chen: 2 desk + 1 work mobile = 3).
+- **Owner p03 grammar.** "1 computer at the Administration" → "The office manager's computer is not on the published number." "one clinical computer (internal)" → a full sentence.
+
+### Release blockers that are not code
+
+- **Nothing is committed.** `prompt.ts` changed (`api-source.hash` f5c055… → 521ebc…), but `planner:sync-api` was not run, so PR #1 still carries the **old** prompt and allowlist. Groq cannot set `devices.reception.kind` or `busy.backup` on the server; only the local parsers catch Chen's phrasing. Run `npm run planner:sync-api`, commit to `planner/ship-lock`, and make the API test check the same hash.
+- **Order:** PR 11 → commit → sync-api → API deploy (per §5, from a clean worktree) → `planner:build` + deploy → `verify:live` → live Chen walk → recommit `examples/` → DID proof (PR 8).

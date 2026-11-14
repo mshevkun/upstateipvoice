@@ -1,1 +1,1 @@
-export const PRIVACY_COPY = "Your plan saves to a private link only you and Upstate can open. We don't store personal phone numbers.";
+export const PRIVACY_COPY = "Your plan saves to an unlisted link. Anyone with the link can open it. We don't store personal phone numbers.";

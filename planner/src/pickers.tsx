@@ -187,7 +187,7 @@ export function HoursEditor({ p, onChange }: {
     p: Plan;
     onChange: (hours: Plan['hours'], preset: 'weekdays' | 'always' | 'custom' | 'undecided') => void;
 }) {
-    const preset = p.policy.hoursPreset || 'weekdays';
+    const preset = p.policy.hoursPreset || 'undecided';
     const [custom, setCustom] = useState(preset === 'custom');
     function setDays(days: Day[], next = 'custom' as const) {
         onChange({ ...p.hours, days }, next);

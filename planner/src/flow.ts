@@ -98,30 +98,41 @@ export function sceneChapter(id: string, step: number) {
     return 2;
 }
 
+export function dayIsStated(d: Plan['hours']['days'][number]) {
+    return d.stated === true || !!(d.start && d.end);
+}
+
 export function applyHoursPreset(days: Plan['hours']['days'], preset: 'weekdays' | 'always' | 'custom' | 'undecided') {
     if (preset === 'always')
-        return days.map(d => ({ ...d, open: true, start: '00:00', end: '24:00', breakStart: '', breakEnd: '' }));
-    if (preset === 'weekdays' || preset === 'undecided')
+        return days.map(d => ({ ...d, open: true, start: '00:00', end: '24:00', breakStart: '', breakEnd: '', stated: true }));
+    if (preset === 'weekdays')
         return days.map((d, i) => ({
             ...d,
             open: i < 5,
-            start: '09:00',
-            end: '17:00',
+            start: i < 5 ? '09:00' : '',
+            end: i < 5 ? '17:00' : '',
             breakStart: i < 5 ? d.breakStart : '',
-            breakEnd: i < 5 ? d.breakEnd : ''
+            breakEnd: i < 5 ? d.breakEnd : '',
+            stated: true
         }));
+    if (preset === 'undecided')
+        return days.map(d => ({ ...d, open: false, start: '', end: '', breakStart: '', breakEnd: '', stated: false }));
     return days;
 }
 
 export function hoursSummary(p: Plan) {
-    const open = p.hours.days.filter(d => d.open);
+    const known = p.hours.days.filter(dayIsStated);
+    if (!known.length)
+        return 'Hours not given yet';
+    const open = known.filter(d => d.open);
     if (!open.length)
         return 'Closed all week';
     if (open.length === 7 && open.every(d => d.start === '00:00' && (d.end === '24:00' || d.end === '23:59')))
         return '24-hour phone coverage';
     const same = open.every(d => d.start === open[0].start && d.end === open[0].end);
-    const closed = p.hours.days.filter(d => !d.open).map(d => d.day.slice(0, 3)).join(', ');
-    if (same && open.length === 5 && p.hours.days.filter((d, i) => d.open === (i < 5)).every(Boolean))
+    const closed = known.filter(d => !d.open).map(d => d.day.slice(0, 3)).join(', ');
+    const weekdaysStatedOpen = p.hours.days.slice(0, 5).every(d => dayIsStated(d) && d.open);
+    if (same && open.length === 5 && weekdaysStatedOpen)
         return 'Mon–Fri · ' + formatTime(open[0].start) + '–' + formatTime(open[0].end) + (open[0].breakStart && open[0].breakEnd ? ' · lunch ' + formatTime(open[0].breakStart) + '–' + formatTime(open[0].breakEnd) : '');
     if (same)
         return open.map(d => d.day.slice(0, 3)).join(', ') + ' · ' + formatTime(open[0].start) + '–' + formatTime(open[0].end) + (open[0].breakStart && open[0].breakEnd ? ' · lunch ' + formatTime(open[0].breakStart) + '–' + formatTime(open[0].breakEnd) : '') + (closed ? ' · Closed ' + closed : '');
@@ -129,6 +140,13 @@ export function hoursSummary(p: Plan) {
         const lunch = d.breakStart && d.breakEnd ? ' lunch ' + formatTime(d.breakStart) + '–' + formatTime(d.breakEnd) : '';
         return d.day.slice(0, 3) + ' ' + formatTime(d.start) + '–' + formatTime(d.end) + lunch;
     }).join(' · ') + (closed ? ' · Closed ' + closed : '');
+}
+
+export function lunchCallbackPhrase(p: Plan, kind: 'script' | 'brief' = 'script') {
+    const afternoon = /lunch callback this afternoon/i.test(p.policy.notes || '');
+    if (kind === 'brief')
+        return afternoon ? 'calls back the same afternoon' : 'calls back';
+    return afternoon ? 'we will call you back this afternoon' : 'we will call you back';
 }
 
 export function formatTime(value: string) {

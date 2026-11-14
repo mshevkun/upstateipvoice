@@ -103,6 +103,12 @@ catch {
             add();
         return true;
     };
+    const pointWidths = (widths: number[]) => {
+        const sum = widths.reduce((n, w) => n + w, 0);
+        if (sum > 0 && sum <= 120)
+            return widths.map(w => Math.round((w / sum) * CONTENT));
+        return widths;
+    };
     const wrap = (text: string, size: number, width = CONTENT) => {
         text = safe(text);
         const lines: string[] = [];
@@ -161,24 +167,40 @@ catch {
         gap(4);
     };
     const table = (headers: string[], rows: string[][], widths: number[]) => {
-        const headH = 18;
-        need(headH + 24);
-        page.drawRectangle({ x: M.l - 2, y: y - 6, width: CONTENT + 4, height: headH, color: wash });
-        let x = M.l;
-        headers.forEach((h, i) => {
-            page.drawText(safe(h).toUpperCase(), { x, y, size: 7.5, font, color: mute });
-            x += widths[i];
-        });
-        y -= 16;
-        page.drawLine({ start: { x: M.l, y: y + 8 }, end: { x: PAGE.w - M.r, y: y + 8 }, thickness: 0.4, color: hair });
+        const cols = pointWidths(widths);
+        const drawHead = () => {
+            const headH = 18;
+            if (freeze) {
+                if (y - headH < M.b + 8)
+                    throw new Error('PDF table header would print below the footer');
+            }
+            else if (y - headH < M.b + 28)
+                add();
+            page.drawRectangle({ x: M.l - 2, y: y - 6, width: CONTENT + 4, height: headH, color: wash });
+            let x = M.l;
+            headers.forEach((h, i) => {
+                page.drawText(safe(h).toUpperCase(), { x, y, size: 7.5, font, color: mute });
+                x += cols[i];
+            });
+            y -= 16;
+            page.drawLine({ start: { x: M.l, y: y + 8 }, end: { x: PAGE.w - M.r, y: y + 8 }, thickness: 0.4, color: hair });
+        };
+        drawHead();
         for (const r of rows) {
-            const wrapped = r.map((cell, i) => wrap(cell, 9, Math.max(24, widths[i] - 8)));
+            const wrapped = r.map((cell, i) => wrap(cell, 9, Math.max(24, cols[i] - 8)));
             const h = Math.max(16, ...wrapped.map(w => w.length * 12));
-            need(h + 8);
-            x = M.l;
+            if (freeze) {
+                if (y - (h + 8) < M.b + 8)
+                    throw new Error('PDF table row would print below the footer');
+            }
+            else if (y - (h + 8) < M.b + 10) {
+                add();
+                drawHead();
+            }
+            let x = M.l;
             wrapped.forEach((lines, i) => {
                 lines.forEach((line, n) => page.drawText(line, { x, y: y - n * 12, size: 9, font, color: ink }));
-                x += widths[i];
+                x += cols[i];
             });
             y -= h + 6;
             page.drawLine({ start: { x: M.l, y: y + 10 }, end: { x: PAGE.w - M.r, y: y + 10 }, thickness: 0.3, color: hair });
@@ -335,7 +357,6 @@ catch {
         }
     };
     const drawBrief = (pages: BriefPage[]) => {
-        freeze = true;
         for (const pg of pages) {
             add();
             kicker(pg.kicker);
@@ -345,26 +366,25 @@ catch {
                 const next = pg.blocks[0]?.kind;
                 gap(next === 'stats' ? 28 : (pg.kicker.includes('01') ? 18 : 12));
             }
-            for (const block of pg.blocks) {
-                if (y < M.b + 40)
-                    break;
+            for (const block of pg.blocks)
                 drawBlock(block);
-            }
         }
-        freeze = false;
     };
     if (part !== 'engineer') {
         kind = 'owner';
+        freeze = true;
         drawBrief(ownerBrief(p));
+        freeze = false;
     }
     if (part !== 'owner') {
         kind = 'engineer';
+        freeze = false;
         drawBrief(engineerBrief(p));
     }
     const pages = doc.getPages();
     pages.forEach((pg, i) => {
         pg.drawLine({ start: { x: M.l, y: 36 }, end: { x: PAGE.w - M.r, y: 36 }, thickness: 0.4, color: hair });
-        const mark = (p.confirmed.includes('locked') ? 'LOCKED ' : kind === 'engineer' ? 'DRAFT — do not build · ' : 'Draft ') + stamp(p);
+        const mark = (p.lock && p.lock.checksum === id.checksum ? 'LOCKED ' : kind === 'engineer' ? 'DRAFT — do not build · ' : 'Draft ') + stamp(p);
         pg.drawText(mark, { x: M.l, y: 22, size: 7.5, font, color: faint });
         const nums = `${i + 1}  /  ${pages.length}`;
         pg.drawText(nums, { x: PAGE.w - M.r - font.widthOfTextAtSize(nums, 8), y: 22, size: 8, font, color: faint });

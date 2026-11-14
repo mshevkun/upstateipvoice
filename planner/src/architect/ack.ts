@@ -229,7 +229,7 @@ function goldShape(set: Record<string, InterpreterUpdate['value']>, plan: Plan) 
     const chenReasons = !!(set['reasons.appointments.team'] && set['current.lines']);
     if (!(chenId || chenStaff || chenHours || chenBusy || chenUrgent || chenLang || chenOpen || chenReasons))
         return '';
-    if (chenId || ((set.cityState || set.name || set['opening.date']) && !chenStaff && !chenHours && !chenBusy)) {
+    if ((chenId || ((set.cityState || set.name || set['opening.date']) && !chenStaff && !chenHours && !chenBusy)) && !chenOpen && !set.beforeOpening) {
         const city = String(set.cityState || plan.policy.cityState || '');
         const spec = String(set.specialty || plan.specialty || 'practice').toLowerCase();
         const rooms = set['policy.rooms'] != null ? Number(set['policy.rooms']) : plan.policy.rooms;
@@ -246,7 +246,7 @@ function goldShape(set: Record<string, InterpreterUpdate['value']>, plan: Plan) 
             bits.push('aiming for the week of ' + open);
         return bits.join(', ') + '.';
     }
-    if (set['teams.reception.count'] != null || set['teams.clinical.count'] != null || set['billing.performed_by']) {
+    if ((set['teams.reception.count'] != null || set['teams.clinical.count'] != null || set['billing.performed_by']) && !set.beforeOpening) {
         const rec = Number(set['teams.reception.count'] ?? roleState(plan, 'reception').count);
         const clin = Number(set['teams.clinical.count'] ?? roleState(plan, 'clinical').count);
         const bits: string[] = [];
@@ -282,11 +282,15 @@ function goldShape(set: Record<string, InterpreterUpdate['value']>, plan: Plan) 
         if (set['devices.reception.sharing'] === 'separate')
             bits.push('Two separate lines');
         if (set['devices.work_mobile'] === 'app')
-            bits.push("If slammed, your office manager's work mobile rings first — never a personal number");
+            bits.push("Your office manager's work mobile rings if the front is slammed — never a personal number");
         return bits.join('. ') + '.';
     }
     if (set['urgent.kind'] || set['after.kind'] || set['urgent.scope']) {
         const bits: string[] = [];
+        if (set.beforeOpening === 'message' || plan.policy.beforeOpening === 'message')
+            bits.push('callback messages before opening');
+        else if (set.beforeOpening === 'information' || plan.policy.beforeOpening === 'information')
+            bits.push('a not-open-yet recording before opening');
         if (set['after.kind'] === 'message' || plan.after.kind === 'message')
             bits.push('After hours: voicemail, front desk owns it');
         if (set['urgent.kind'] === 'connect' || plan.policy.urgentKind === 'connect')
@@ -329,7 +333,104 @@ function goldShape(set: Record<string, InterpreterUpdate['value']>, plan: Plan) 
     return '';
 }
 
+export const CHIP_SUBJECT: Record<string, string> = {
+    'mode=opening': 'Opening a new practice.',
+    'mode=improving': 'Improving an existing setup.',
+    'mode=adding': 'Adding a location.',
+    'specialty=Dental': 'A dental practice.',
+    'specialty=Eye care': 'An eye-care practice.',
+    'specialty=Other healthcare practice': 'Another kind of healthcare practice — not a dental or eye-care room layout.',
+    'teams.reception.count=0': 'No one at the front desk yet.',
+    'teams.reception.count=1': 'One person at the front desk.',
+    'teams.reception.count=2': 'Two people at the front desk.',
+    'teams.reception.count=3': 'Three people at the front desk.',
+    'teams.reception.count=4': 'Four or more at the front desk.',
+    'teams.clinical.count=0': 'No clinicians counted yet.',
+    'teams.clinical.count=1': 'One clinician.',
+    'teams.clinical.count=2': 'Two clinicians.',
+    'teams.clinical.count=3': 'Three clinicians.',
+    'teams.clinical.count=5': 'Four or more clinicians.',
+    'teams.administration.count=0': 'No separate office manager.',
+    'teams.administration.count=1': 'One office manager.',
+    'teams.administration.count=2': 'Two people in administration.',
+    'hours.preset=weekdays': 'Monday–Friday, 9 to 5, until you change a day.',
+    'hours.preset=always': 'Phones covered around the clock.',
+    'hours.preset=custom': 'Hours vary by day — I will not invent a shared weekday schedule.',
+    'hours.rest_closed=closed': 'The days you did not name are closed.',
+    'hours.lunch=covered': 'Someone stays on the desk at lunch. I did not add a lunch close.',
+    'hours.lunch=closed': 'Phones close at lunch. That is not the overnight mailbox.',
+    'hours.lunch.time=12-1': 'Lunch close is 12–1.',
+    'hours.lunch.time=12:30-13:30': 'Lunch close is 12:30–1:30.',
+    'hours.lunch.time=13-14': 'Lunch close is 1–2.',
+    'first.kind=human': 'A person at the front answers first, not a menu.',
+    'first.kind=menu': 'A short phone menu answers first.',
+    'first.kind=assistant': 'An AI receptionist answers first — still proposed until a vendor verifies it.',
+    'busy.kind=message': 'If nobody answers during open hours, take a message.',
+    'busy.kind=queue': 'If nobody answers during open hours, callers wait briefly.',
+    'busy.kind=backup': 'If nobody answers during open hours, try another team.',
+    'busy.kind=assistant': 'If nobody answers during open hours, a virtual receptionist can help — still proposed.',
+    'after.kind=message': 'After hours, take a voicemail for the next business day.',
+    'after.kind=service': 'After hours, a live answering service — still a proposed contract, not installed.',
+    'after.kind=assistant': 'After hours, an AI receptionist — still proposed.',
+    'after.kind=information': 'After hours, play information and end the call.',
+    'messages.owner=reception': 'The front desk checks those messages.',
+    'messages.owner=clinical': 'You check those messages.',
+    'messages.owner=admin': 'The office manager checks those messages.',
+    'devices.reception.sharing=separate': 'Two front-desk lines, so both can pick up.',
+    'devices.reception.sharing=shared': 'One shared front-desk line — one conversation at a time.',
+    'devices.reception.kind=desk': 'Front desk answers on desk phones. Model is still a vendor choice.',
+    'devices.reception.kind=computer': 'Front desk answers on a computer and headset.',
+    'devices.reception.kind=both': 'Front desk uses desk phones, with a computer on the same lines if needed.',
+    'devices.work_mobile=none': 'Just the office phones — no work mobile overflow.',
+    'devices.work_mobile=app': 'A work phone or app can ring. We will not publish a personal cell.',
+    'busy.order=backup_then_message': "If the front is slammed, the office manager's work mobile rings, then a message.",
+    'busy.order=message_only': 'If the front is slammed, take a message only.',
+    'urgent.kind=connect': 'Urgent calls get a live on-call attempt, with a backup if it is missed. Not a verified transfer.',
+    'urgent.kind=priority': 'Urgent calls leave a priority message — not a live clinician.',
+    'urgent.kind=instructions': 'Urgent calls hear instructions, not a live transfer.',
+    'urgent.kind=none': 'No separate urgent path.',
+    'urgent.scope=urgent_only': 'That path is only for urgent calls, not every incoming call.',
+    'urgent.scope=all_calls': 'Every incoming call uses that clinician path.',
+    'urgent.roster=rotation': 'On-call rotates between your clinicians — a roster, not a verified transfer.',
+    'urgent.roster=fixed': 'One person is on call. We will not put a personal cell in the greeting.',
+    'urgent.backup=message': 'If the on-call attempt is missed, take a priority message.',
+    'urgent.backup=instructions': 'If the on-call attempt is missed, play instructions.',
+    'beforeOpening=message': 'Before opening, take a callback. Do not advertise the number until that recording exists.',
+    'beforeOpening=information': 'Before opening, play a not-open-yet recording, then end.',
+    'languages.decision=none': 'English is enough. I did not add another language.',
+    'languages.spanish=true': 'Spanish coverage, only if your team can actually provide it.',
+    'policy.rooms=0': 'No treatment-room count. Rooms are not phones.',
+    'policy.rooms=2': 'Two treatment rooms recorded. Rooms are not phones.',
+    'policy.rooms=4': 'Four treatment rooms recorded. Rooms are not phones.',
+    'policy.rooms=6': 'Six treatment rooms recorded. Rooms are not phones.',
+    'policy.rooms=8': 'Eight treatment rooms recorded. Rooms are not phones.',
+    'devices.administration.place=computer': 'Your office manager answers on a computer.',
+    'devices.administration.place=desk': 'Your office manager answers on a desk phone.',
+    'devices.administration.place=mobile': 'Your office manager answers on a work mobile.',
+    'devices.clinical.area=none': 'No phones in treatment rooms. Rooms are not phones.',
+    'devices.clinical.area=internal_computer': 'The clinical team shares one internal computer, not on the published number.',
+    'devices.clinical.area=internal': 'The clinical team shares one internal computer, not on the published number.',
+    'devices.clinical.area=desk': 'One desk in the clinical area, not a phone per room.',
+    'reasons.default_split=standard': 'Appointments stay at the front desk, billing goes to whoever handles the books, clinical questions go to the clinical team after screening.'
+};
+
+function chipSubject(chip?: Chip | null) {
+    if (!chip || chip.operation !== 'set')
+        return '';
+    const key = chip.field_id + '=' + String(chip.value);
+    if (CHIP_SUBJECT[key])
+        return CHIP_SUBJECT[key];
+    if (chip.field_id === 'devices.administration.place' && chip.value === 'computer')
+        return 'Your office manager answers on a computer.';
+    if (chip.label)
+        return chip.label.replace(/\.$/, '') + '.';
+    return '';
+}
+
 function summarize(accepted: InterpreterUpdate[], plan: Plan, chip?: Chip | null) {
+    const named = chipSubject(chip);
+    if (named)
+        return named;
     const set = taken(accepted);
     const shaped = goldShape(set, plan);
     if (shaped)
@@ -345,7 +446,7 @@ function summarize(accepted: InterpreterUpdate[], plan: Plan, chip?: Chip | null
     if (text)
         return text;
     if (chip?.operation === 'set' && chip.label)
-        return 'Noted: ' + chip.label.replace(/\.$/, '') + '.';
+        return chip.label.replace(/\.$/, '') + '.';
     const rec = roleState(plan, 'reception').count;
     const adm = roleState(plan, 'administration').count;
     if (rec && adm && plan.policy.billingPerformedBy === 'reception')

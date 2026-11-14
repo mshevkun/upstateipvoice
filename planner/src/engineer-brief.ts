@@ -1,15 +1,13 @@
 import { menuDigits, type Day, type Plan } from './config';
-import { formatTime } from './flow';
+import { formatTime, lunchCallbackPhrase } from './flow';
 import { buySummary, identity, providerRequirements, testsBeforeOpen, workMobileNoted } from './advisor';
 import { directory } from './policy';
 import { ringMembers } from './provisioning';
-import { fusionBuild, onCallUnbuilt, type FusionBuild, type FusionKind } from './fusion';
+import { effectiveHolidayDates, fusionBuild, mailboxExt, onCallUnbuilt, skippedHolidayDates, type FusionBuild, type FusionKind } from './fusion';
 import { type BriefMoment, type BriefPage, type BriefRow, type BriefScript, type BriefStat } from './owner-brief';
 
-function boxFor(p: Plan, teamId: string) {
-    const row = directory(p).find(d => d.team === teamId && d.access === 'outside')
-        || directory(p).find(d => d.team === teamId);
-    return row?.extension || '—';
+function boxFor(kind: 'busy' | 'lunch' | 'after' | 'before' | 'priority' = 'after') {
+    return mailboxExt(kind);
 }
 
 function findObj(b: FusionBuild, kind: FusionKind, re: RegExp) {
@@ -122,7 +120,7 @@ function closedAction(p: Plan, b: FusionBuild) {
     if (closedIvr && p.urgent.enabled && p.policy.urgentKind === 'connect')
         return 'IVR ' + closedIvr.extension;
     if (p.after.kind === 'message')
-        return 'box ' + boxFor(p, p.after.owner);
+        return 'box ' + boxFor('after');
     if (closedIvr)
         return 'IVR ' + closedIvr.extension;
     return 'undecided';
@@ -154,9 +152,9 @@ export function callPath(p: Plan, b: FusionBuild): CallHop[] {
     const urgentRg = findObj(b, 'ring_group', /on-call/i);
     const closedIvr = findObj(b, 'ivr', /after hours/i);
     const members = ringMembers(p, p.first.team, true).map(m => m.extension).filter(Boolean);
-    const box = boxFor(p, p.busy.owner || p.first.team);
-    const afterBox = boxFor(p, p.after.owner);
-    const beforeBox = boxFor(p, p.policy.beforeOpeningOwner || p.after.owner || p.busy.owner);
+    const box = boxFor('busy');
+    const afterBox = boxFor('after');
+    const beforeBox = boxFor('before');
     const hops: CallHop[] = [];
     if (p.mode === 'opening' && p.policy.beforeOpening === 'information')
         hops.push({
@@ -250,8 +248,8 @@ export function callPath(p: Plan, b: FusionBuild): CallHop[] {
             id: 'lunch',
             when: 'Lunch · ' + formatTime(lunch.breakStart) + '–' + formatTime(lunch.breakEnd),
             object: 'lunch-closed.wav → box ' + box,
-            happen: 'TC lunch groups → lunch-closed.wav → box ' + box + '. Same afternoon. Not group 999. Not on-call.',
-            test: 'Lunch: lunch-closed.wav, callback this afternoon — not group 999, not on-call.'
+            happen: 'TC lunch groups → lunch-closed.wav → box ' + box + '. ' + lunchCallbackPhrase(p) + '. Not group 999. Not on-call.',
+            test: 'Lunch: lunch-closed.wav, ' + lunchCallbackPhrase(p) + ' — not group 999, not on-call.'
         });
     if (alwaysOn(p))
         hops.push({
@@ -314,6 +312,7 @@ export function callPath(p: Plan, b: FusionBuild): CallHop[] {
             happen: 'TC group 999 → box ' + afterBox + '. No live connect.',
             test: 'After hours: box ' + afterBox + '. Next-business-day handling.'
         });
+    const overflowConfirmed = p.busy.kind === 'backup' && !!p.busy.backup;
     const mobileOverflow = directory(p).some(d => d.device === 'mobile' && !inboundExts(p).includes(d.extension));
     hops.push({
         id: 'busy',
@@ -325,7 +324,9 @@ export function callPath(p: Plan, b: FusionBuild): CallHop[] {
                 ? openAction(p, b)
                 : 'RG ' + (dayRg?.extension || '7000'))
             + ' timeout ' + p.busy.seconds + 's → ' + busyAction(p, b) + '.'
-            + (mobileOverflow ? ' Follow Me on a work-mobile extension does not fire: the DID never dialed that extension.' : ''),
+            + (overflowConfirmed
+                ? ' Overflow RG dials the work-mobile extension so Follow Me can fire.'
+                : mobileOverflow ? ' Follow Me on a work-mobile extension does not fire: the DID never dialed that extension.' : ''),
         test: p.busy.kind === 'queue'
             ? 'Nobody answers (' + p.busy.seconds + 's): enter ' + busyAction(p, b) + '.'
             : 'Nobody answers (' + p.busy.seconds + 's). Hear ' + busyAction(p, b) + '.'
@@ -334,13 +335,13 @@ export function callPath(p: Plan, b: FusionBuild): CallHop[] {
 }
 
 function busyAction(p: Plan, b: FusionBuild) {
-    const box = boxFor(p, p.busy.owner || p.first.team);
+    const box = boxFor('busy');
     if (p.busy.kind === 'queue') {
         const q = b.objects.find(o => o.kind === 'call_center');
         return 'Call Center ' + (q?.extension || '5000') + ' (' + p.busy.wait + 's) then box ' + box;
     }
     if (p.busy.kind === 'backup')
-        return 'backup RG then box ' + box;
+        return 'RG ' + (b.objects.find(o => o.kind === 'ring_group' && o.extension === '7001')?.extension || '7001') + ' then box ' + box;
     if (p.busy.kind === 'assistant') {
         const ai = b.objects.find(o => o.kind === 'ai_bridge');
         return 'AI ' + (ai?.extension || '6100');
@@ -359,10 +360,10 @@ function ivrValue(p: Plan, b: FusionBuild, o: { name: string; extension?: string
         const urgentRg = findObj(b, 'ring_group', /on-call/i);
         if (onCallUnbuilt(p))
             return 'Closed hours. greet_long = after-hours-urgent-option.wav. Digit 1 / timeout → box '
-                + boxFor(p, p.after.owner) + '. Digit 9 → RG ' + (urgentRg?.extension || '7900')
+                + boxFor('after') + '. Digit 9 → RG ' + (urgentRg?.extension || '7900')
                 + ' is BLOCKED until Follow Me is populated. Do not go live.';
         return 'Closed hours. greet_long = after-hours-urgent-option.wav. Digit 9 → RG '
-            + (urgentRg?.extension || '7900') + '. Digit 1 / timeout → box ' + boxFor(p, p.after.owner) + '.';
+            + (urgentRg?.extension || '7900') + '. Digit 1 / timeout → box ' + boxFor('after') + '.';
     }
     if (/ · language$/i.test(o.name))
         return 'Open-hours language menu. greet_long = ivr-language.wav. ' + (digitBit || 'Digit 1 English. Digit 2 Spanish. Timeout → English reason IVR.');
@@ -496,7 +497,7 @@ function directoryTable(p: Plan, b: FusionBuild): { headers: string[]; rows: str
 }
 
 function fusionGroupTable(p: Plan, b: FusionBuild): { headers: string[]; rows: string[][]; widths: number[] } {
-    const box = boxFor(p, p.after.owner || p.busy.owner);
+    const box = boxFor(p.hours.days.some(d => d.breakStart && d.breakEnd) ? 'lunch' : 'after');
     const closed = closedAction(p, b);
     const open = openAction(p, b);
     const short = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -511,6 +512,12 @@ function fusionGroupTable(p: Plan, b: FusionBuild): { headers: string[]; rows: s
             groups.push({ start: i, end: i, key });
     });
     const rows: string[][] = [];
+    const holidayDates = effectiveHolidayDates(p);
+    if (holidayDates.length)
+        rows.push(['Dates first', holidayDates.map(prettyDay).join(', '), 'date-only', 'evaluate before weekday groups · ' + closed]);
+    const skipped = skippedHolidayDates(p);
+    if (skipped.length)
+        rows.push(['Skip', skipped.map(s => prettyDay(s.iso) + ' (observe ' + prettyDay(s.observed) + '?)').join(', '), 'no-op', 'already closed — do not type']);
     for (const g of groups) {
         const d = days[g.start];
         const label = g.start === g.end ? short[g.start] : short[g.start] + '–' + short[g.end];
@@ -532,9 +539,6 @@ function fusionGroupTable(p: Plan, b: FusionBuild): { headers: string[]; rows: s
             ? 'Outside open windows'
             : 'Nights, weekends';
     rows.push(['Group 999', catchClock, 'catch-all', closed]);
-    const holidays = p.hours.holidays.filter(Boolean);
-    if (holidays.length && p.hours.holidayPolicy === 'closed')
-        rows.push(['Dates', holidays.map(prettyDay).join(', '), 'date-only', closed]);
     return {
         headers: ['Group', 'Clock (inclusive)', 'Minutes', 'Action'],
         rows,
@@ -561,6 +565,12 @@ function hourNotes(p: Plan, b: FusionBuild): string[] {
         items.push('No lunch close. Do not invent a lunch group.');
     if (p.mode === 'opening')
         items.push('Cutover: Destination flips to TC ' + (tc?.extension || '8000') + ' on opening morning. Two objects, one change.');
+    const holidayDates = effectiveHolidayDates(p);
+    if (holidayDates.length)
+        items.push('Date-only groups first. Evaluate before weekday groups. Renew each year. ' + holidayDates.map(prettyDay).join(', ') + '.');
+    const skipped = skippedHolidayDates(p);
+    if (skipped.length)
+        items.push(skipped.map(s => prettyDay(s.iso) + ' is already closed; do not type a no-op date. Observe ' + prettyDay(s.observed) + '?').join(' '));
     return items;
 }
 
@@ -633,7 +643,7 @@ function objectRows(p: Plan, b: FusionBuild): BriefRow[] {
                     ? 'Playback before-opening.wav then hangup. Not TC 8000. Not a mailbox.'
                     : p.policy.beforeOpening === 'undecided'
                         ? 'BLOCKED. Do not publish the DID.'
-                        : 'Transfer *99' + boxFor(p, p.policy.beforeOpeningOwner || p.after.owner || p.busy.owner) + '. Not TC 8000.'
+                        : 'Transfer *99' + boxFor('before') + '. Not TC 8000.'
             });
         else
             rows.push({ label: 'DID', value: stripGui(o.setup[0] || o.name) });
@@ -692,7 +702,7 @@ function objectRows(p: Plan, b: FusionBuild): BriefRow[] {
             : 'timeout_app MISSING — do not go live';
         rows.push({
             label: (o.extension || '') + ' · RG',
-            value: [shown, memberExts.length ? 'members ' + memberExts.join(', ') : 'members none', role, timeoutLine, objectFields(o)]
+            value: [shown, memberExts.length ? 'members ' + memberExts.join(', ') : (/^BLOCKED/.test(role) ? 'members none' : 'members none · BLOCKED'), role, timeoutLine, objectFields(o)]
                 .filter(Boolean)
                 .join(' · ')
         });
@@ -733,7 +743,7 @@ function buildOrder(p: Plan, b: FusionBuild): string[] {
     else if (p.mode === 'opening' && p.policy.beforeOpening === 'undecided')
         items.push('6 · Do not publish the DID. Before-opening destination is unresolved.');
     else if (p.mode === 'opening')
-        items.push('6 · Point the DID at *99' + boxFor(p, p.policy.beforeOpeningOwner || p.after.owner || p.busy.owner) + '. Not TC ' + (tc?.extension || '8000') + '. Flip Destinations on opening morning.');
+        items.push('6 · Point the DID at *99' + boxFor('before') + '. Not TC ' + (tc?.extension || '8000') + '. Flip Destinations on opening morning.');
     else
         items.push('6 · Point the DID at Time Condition ' + (tc?.extension || '8000') + '. Never a user extension.');
     if (workMobileNoted(p))
@@ -783,7 +793,7 @@ function liveTestTable(p: Plan, b: FusionBuild) {
             rows.push(['Install', '—', 'E911', 'E911 address on the installed system. Checking a box here is not a carrier filing.', '☐']);
     return {
         headers: ['When', 'File', 'Object', 'Hop test', '☐'],
-        widths: [18, 16, 16, 42, 8],
+        widths: [78, 112, 70, 220, 24],
         rows
     };
 }
@@ -815,7 +825,9 @@ function guardrails(p: Plan, b: FusionBuild): string[] {
         items.push('Do not add internal ' + internal.map(d => d.extension).join(', ') + ' to inbound ring groups.');
     const mobile = directory(p).filter(d => d.device === 'mobile').map(d => d.extension);
     if (mobile.length && p.first.kind === 'human')
-        items.push('Do not add ' + mobile.join(', ') + ' to inbound RG ' + (inboundRg(p, b)?.extension || '7000') + ' unless the owner confirms inbound overflow. Follow Me does not fire when that group rings.');
+        items.push(p.busy.kind === 'backup' && p.busy.backup
+            ? 'Do not add ' + mobile.join(', ') + ' to inbound RG ' + (inboundRg(p, b)?.extension || '7000') + '. Overflow is RG 7001, which dials that extension so Follow Me can fire.'
+            : 'Do not add ' + mobile.join(', ') + ' to inbound RG ' + (inboundRg(p, b)?.extension || '7000') + ' unless the owner confirms inbound overflow. Follow Me does not fire when that group rings.');
     if (p.mode === 'opening' && p.policy.beforeOpening === 'information')
         items.push('Do not publish the DID until before-opening.wav is on the temporary Destination.');
     else if (p.mode === 'opening' && p.policy.beforeOpening === 'undecided')
@@ -858,6 +870,16 @@ function unresolved(p: Plan): BriefRow[] {
         rows.push({ label: 'Site', value: site.join('. ') + '.' });
     if (p.languages.some(l => l.mechanism === 'staff'))
         rows.push({ label: 'Spanish', value: 'Staff-identified during open hours. Do not build a language IVR.' });
+    if (/fax|analog/i.test((p.current.lines || '') + ' ' + (p.current.notes || '')))
+        rows.push({
+            label: 'Fax / analog',
+            value: 'Insurance fax: keep on its current line or move to a separate fax DID, never the patient DID. Two analog lines: cancel after cutover?'
+        });
+    for (const s of skippedHolidayDates(p))
+        rows.push({
+            label: 'Holiday observe',
+            value: prettyDay(s.iso) + ' is already closed. Observe ' + prettyDay(s.observed) + '?'
+        });
     return rows;
 }
 
@@ -887,7 +909,7 @@ export function engineerBrief(p: Plan): BriefPage[] {
     pages.push({
         kicker: '01  ·  Path',
         title: p.name.trim() || 'Implementation spec',
-        lede: (p.confirmed.includes('locked') ? 'LOCKED ' : 'DRAFT — do not build. ') + 'Must match owner ' + id.planId + ' · r' + id.revision + ' · ' + id.checksum + '. Nothing here is provisioned.',
+        lede: (p.lock && p.lock.checksum === id.checksum ? 'LOCKED ' : 'DRAFT — do not build. ') + 'Must match owner ' + id.planId + ' · r' + id.revision + ' · ' + id.checksum + '. Nothing here is provisioned.',
         blocks: [
             { kind: 'stats', items: provisionStats(p) },
             { kind: 'note', text: loc + (tz ? ' · ' + tz : '') + '. Transfer data is always “<ext> XML ' + b.domain + '”.' },

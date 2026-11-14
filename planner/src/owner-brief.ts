@@ -1,5 +1,5 @@
 import { teamName, type Plan } from './config';
-import { formatOpening, formatTime, openingLabel } from './flow';
+import { formatOpening, formatTime, lunchCallbackPhrase, openingLabel } from './flow';
 import { buySummary, openingRoadmap, reviewOpenActions, workMobileNoted } from './advisor';
 import { callerHear } from './architect/hear';
 import { PRIVACY_COPY } from './privacy';
@@ -57,13 +57,26 @@ function placedCount(p: Plan, device: string, access?: string) {
         .reduce((n, x) => n + (x.count || 0), 0);
 }
 
+function receptionOutsideComputers(p: Plan) {
+    const team = p.first.team || 'reception';
+    return (p.policy.placements || [])
+        .filter(x => x.team === team && x.device === 'computer' && x.access === 'outside')
+        .reduce((n, x) => n + (x.count || 0), 0);
+}
+
 function deskToBuy(p: Plan) {
     const phys = placedCount(p, 'desk');
     if (phys > 0)
         return phys;
-    if (placedCount(p, 'computer', 'outside') > 0)
+    if (receptionOutsideComputers(p) > 0)
         return 0;
     return buySummary(p).desk.qty;
+}
+
+function receptionKindOpen(p: Plan) {
+    return p.first.kind === 'human'
+        && !!(p.policy.placements || []).find(x => x.team === 'reception' && x.sharing !== 'undecided')
+        && !(p.policy.placements || []).some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none');
 }
 
 function onCallLabel(p: Plan) {
@@ -88,11 +101,12 @@ function urgentCueShort(p: Plan) {
 
 function answeringPlaces(p: Plan) {
     const places = p.policy.placements || [];
-    const sum = (device: string, access?: string) => places
-        .filter(x => x.device === device && (access ? x.access === access : true))
+    const first = p.first.team || 'reception';
+    const sum = (device: string, access?: string, team?: string) => places
+        .filter(x => x.device === device && (access ? x.access === access : true) && (!team || x.team === team))
         .reduce((n, x) => n + (x.count || 0), 0);
     return {
-        outsideComputer: sum('computer', 'outside'),
+        outsideComputer: sum('computer', 'outside', first),
         internalComputer: sum('computer', 'internal')
     };
 }
@@ -110,7 +124,9 @@ function teamKit(p: Plan, teamId: string) {
     if (desk)
         bits.push(desk + ' desk phone' + (desk === 1 ? '' : 's'));
     if (outside)
-        bits.push(outside === 1 ? 'answering computer' : outside + ' answering computers');
+        bits.push(teamId === (p.first.team || 'reception')
+            ? (outside === 1 ? 'answering computer' : outside + ' answering computers')
+            : (outside === 1 ? 'office computer — not inbound' : outside + ' office computers — not inbound'));
     if (mobile)
         bits.push('work app — not a desk phone');
     if (internal)
@@ -155,8 +171,13 @@ function dayKey(d: Plan['hours']['days'][number]) {
 
 export function hoursLines(p: Plan): BriefRow[] {
     const days = p.hours.days;
+    if (!days.some(d => d.stated === true || !!(d.start && d.end)))
+        return [{ label: 'Hours', value: 'Hours not given yet' }];
     const groups: { start: number; end: number; key: string }[] = [];
     days.forEach((d, i) => {
+        const stated = d.stated === true || !!(d.start && d.end);
+        if (!stated)
+            return;
         const key = dayKey(d);
         const last = groups[groups.length - 1];
         if (last && last.key === key && last.end === i - 1)
@@ -165,7 +186,8 @@ export function hoursLines(p: Plan): BriefRow[] {
             groups.push({ start: i, end: i, key });
     });
     const short = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return groups.map(g => {
+    const unstated = days.map((d, i) => (d.stated === true || !!(d.start && d.end)) ? '' : short[i]).filter(Boolean);
+    const rows = groups.map(g => {
         const d = days[g.start];
         const label = g.start === g.end ? short[g.start] : short[g.start] + '–' + short[g.end];
         if (!d.open)
@@ -177,6 +199,9 @@ export function hoursLines(p: Plan): BriefRow[] {
             value += ' · lunch ' + formatTime(d.breakStart) + '–' + formatTime(d.breakEnd);
         return { label, value };
     });
+    if (unstated.length)
+        rows.push({ label: unstated.join(', '), value: 'Not given yet' });
+    return rows;
 }
 
 function prettyDay(iso: string) {
@@ -219,7 +244,7 @@ export function ownerPromise(p: Plan) {
         parts.push(desk + ' front-desk lines can take callers at the same time.');
     else if (desk === 1)
         parts.push('One front-desk line answers the published number.');
-    else if (desk === 0 && placedCount(p, 'computer', 'outside') > 0)
+    else if (desk === 0 && receptionOutsideComputers(p) > 0)
         parts.push('No desk phone. The answering computer picks up the published number.');
     if (buySummary(p).rooms)
         parts.push('The ' + buySummary(p).rooms + ' treatment room' + (buySummary(p).rooms === 1 ? ' is a chair' : 's are chairs') + ' — not phones.');
@@ -247,11 +272,19 @@ function deskStat(p: Plan): BriefStat {
     const desk = deskToBuy(p);
     const recN = recCount(p);
     const share = receptionShare(p);
-    const computers = placedCount(p, 'computer', 'outside');
-    if ((!desk || desk === 0) && computers > 0)
+    const recComputers = receptionOutsideComputers(p);
+    if (receptionKindOpen(p) && desk && desk > 0)
         return {
-            value: String(computers),
-            label: computers === 1 ? 'Answering computer' : 'Answering computers',
+            value: String(desk),
+            label: desk === 1 ? 'Front-desk line' : 'Front-desk lines',
+            note: recN && recN === desk
+                ? recN + (recN === 1 ? ' person at the front · model not chosen' : ' people at the front · model not chosen')
+                : 'model not chosen'
+        };
+    if ((!desk || desk === 0) && recComputers > 0)
+        return {
+            value: String(recComputers),
+            label: recComputers === 1 ? 'Answering computer' : 'Answering computers',
             note: 'Headset — not a desk phone'
         };
     const deskNote = share === 'shared' && recN > 1
@@ -300,7 +333,7 @@ function phoneCount(p: Plan) {
 function orderTotal(p: Plan) {
     const buy = buySummary(p);
     const n = phoneCount(p);
-    const computers = placedCount(p, 'computer', 'outside');
+    const computers = receptionOutsideComputers(p);
     if (n == null)
         return buy.roomsNote || 'Phone count is still open. Rooms and staff are not the answer.';
     const desk = deskToBuy(p) || 0;
@@ -318,7 +351,7 @@ function orderTitle(p: Plan) {
     const n = phoneCount(p);
     if (n == null)
         return 'What to order.';
-    if (n === 0 && placedCount(p, 'computer', 'outside'))
+    if (n === 0 && receptionOutsideComputers(p))
         return 'No desk phones to order.';
     return n === 1 ? '1 phone to order.' : n + ' phones to order.';
 }
@@ -351,8 +384,8 @@ function coverGlance(p: Plan): BriefMoment[] {
     const share = receptionShare(p);
     const items: BriefMoment[] = [];
     if (p.first.kind === 'human') {
-        const computers = placedCount(p, 'computer', 'outside');
-        const lines = computers && !desk
+        const recComputers = receptionOutsideComputers(p);
+        const lines = recComputers && !desk
             ? ' on the answering computer'
             : share === 'shared' && recCount(p) > 1
                 ? ' · one shared line'
@@ -377,7 +410,9 @@ function coverGlance(p: Plan): BriefMoment[] {
     if (lunch)
         items.push({
             when: 'Lunch',
-            happen: formatTime(lunch.breakStart) + '–' + formatTime(lunch.breakEnd) + ' · front desk closed · lunch recording, call back this afternoon. Not overnight.'
+            happen: formatTime(lunch.breakStart) + '–' + formatTime(lunch.breakEnd) + ' · front desk closed · lunch recording, we will call you back'
+                + (/lunch callback this afternoon/i.test(p.policy.notes || '') ? ' this afternoon' : '')
+                + '. Not overnight.'
                 + (onCallAfterHours(p) ? ' Not ' + onCallLabel(p) + '.' : '')
         });
     if (alwaysOn(p))
@@ -443,7 +478,10 @@ function missedLine(p: Plan) {
     if (p.busy.kind === 'queue')
         return 'If nobody picks up after ' + p.busy.seconds + ' seconds, they wait up to ' + p.busy.wait + ' more seconds, then leave a message for ' + owner + '.' + mobile;
     if (p.busy.kind === 'backup')
-        return 'If nobody picks up after ' + p.busy.seconds + ' seconds, a backup team rings, then a message for ' + owner + '.';
+        return 'If nobody picks up after ' + p.busy.seconds + ' seconds, '
+            + (who(p, p.busy.backup) || 'a backup team')
+            + (workMobileNoted(p) ? "'s work mobile rings" : ' rings')
+            + ', then a message for ' + owner + '. Never a personal cell.';
     if (p.busy.kind === 'assistant')
         return 'If nobody picks up, a virtual receptionist is proposed to help. That stays unverified until a vendor proves it.';
     return 'What happens if nobody answers is still open.';
@@ -461,7 +499,7 @@ function ringOrderLine(p: Plan) {
 function callMoments(p: Plan): BriefMoment[] {
     const items: BriefMoment[] = [];
     const desk = deskToBuy(p);
-    const computers = placedCount(p, 'computer', 'outside');
+    const computers = receptionOutsideComputers(p);
     if (p.first.kind === 'human')
         items.push({
             when: 'During phone hours',
@@ -489,7 +527,7 @@ function callMoments(p: Plan): BriefMoment[] {
     if (lunch)
         items.push({
             when: 'Lunch · ' + formatTime(lunch.breakStart) + '–' + formatTime(lunch.breakEnd),
-            happen: 'The front desk is closed on purpose. Callers hear a lunch recording and can leave a message. ' + who(p, p.busy.owner || p.after.owner) + ' calls back the same afternoon — not the next business day'
+            happen: 'The front desk is closed on purpose. Callers hear a lunch recording and can leave a message. ' + who(p, p.busy.owner || p.after.owner) + ' ' + lunchCallbackPhrase(p, 'brief') + ' — not the next business day'
                 + (onCallAfterHours(p) ? ', and not the ' + onCallLabel(p) + '.' : '.')
         });
     if (alwaysOn(p))
@@ -579,7 +617,12 @@ function coverage(p: Plan): BriefRow[] {
     }
     else if (p.policy.languageDecision === 'none')
         rows.push({ label: 'Language', value: 'English only. No extra language option is in this plan.' });
-    return rows.slice(0, 5);
+    if (/Associate starts April/i.test(p.policy.notes || ''))
+        rows.push({
+            label: 'On-call until April',
+            value: /chen/i.test(p.name) ? 'On-call is Dr. Chen alone until the associate starts.' : 'On-call is the owner alone until the associate starts.'
+        });
+    return rows.slice(0, 6);
 }
 
 function orderPoints(p: Plan) {
@@ -599,13 +642,16 @@ function orderPoints(p: Plan) {
         bits.push(outside.map(x => {
             const n = x.count;
             const where = x.label || who(p, x.team) || 'the practice';
-            return n + (n === 1 ? ' computer at the ' : ' computers at the ') + where.replace(/^the /i, '');
-        }).join('. ') + ' can answer the published number. Confirm headset and network there.');
+            const place = (n === 1 ? ' computer at the ' : ' computers at the ') + where.replace(/^the /i, '');
+            return x.team === (p.first.team || 'reception')
+                ? n + place + ' can answer the published number. Confirm headset and network there.'
+                : n + place + ' is not inbound on the published number.';
+        }).join('. '));
     else if (buy.computer.qty)
         bits.push(buy.computer.qty + (buy.computer.qty === 1 ? ' computer position' : ' computer positions') + ' can answer. Confirm headset and network there.');
     const places = answeringPlaces(p);
     if (places.internalComputer)
-        bits.push(places.internalComputer + (places.internalComputer === 1 ? ' computer' : ' computers') + ' inside the doctors’ office is internal — it does not pick up the published number.');
+        bits.push(places.internalComputer === 1 ? 'one clinical computer (internal)' : places.internalComputer + ' clinical computers (internal)');
     return bits;
 }
 
@@ -648,7 +694,7 @@ function doNotOrder(p: Plan) {
     const bits: string[] = [];
     if (buy.rooms)
         bits.push('Do not order a phone per treatment room.');
-    if (p.first.kind === 'human' && placedCount(p, 'computer', 'outside') && !deskToBuy(p))
+    if (p.first.kind === 'human' && receptionOutsideComputers(p) && !deskToBuy(p))
         bits.push('Do not let a quote invent a keypad menu. The answering computer picks up first.');
     else if (p.first.kind === 'human')
         bits.push('Do not let a quote invent a keypad menu. Callers reach a person first.');
@@ -726,7 +772,7 @@ function openingSteps(p: Plan): BriefStep[] {
             return {
                 label: 'Approve the recordings',
                 window: m.window,
-                note: (lunchDay(p) ? 'Lunch (same afternoon, not overnight). ' : '')
+                note: (lunchDay(p) ? 'Lunch (callback, not overnight). ' : '')
                     + (!alwaysOn(p) && p.after.kind === 'message'
                         ? 'After hours' + (onCallAfterHours(p) ? ' (ordinary message plus the urgent choice). ' : '. ')
                         : p.after.kind === 'information'
@@ -741,7 +787,7 @@ function openingSteps(p: Plan): BriefStep[] {
                             : '')
                     + 'Nothing is live until those files are uploaded.'
             };
-        if (m.id === 'buy' && (buy.deskKnown || placedCount(p, 'computer', 'outside') > 0)) {
+        if (m.id === 'buy' && (buy.deskKnown || receptionOutsideComputers(p) > 0)) {
             const places = answeringPlaces(p);
             const desk = deskToBuy(p) || 0;
             return {
@@ -766,7 +812,7 @@ function openingSteps(p: Plan): BriefStep[] {
 function useChecks(p: Plan) {
     const desk = deskToBuy(p) || 0;
     const share = receptionShare(p);
-    const computers = placedCount(p, 'computer', 'outside');
+    const computers = receptionOutsideComputers(p);
     const items: string[] = [];
     if (p.first.kind === 'menu')
         items.push('Call the published number. Hear the keypad menu. Press a choice and confirm the right team rings. Do not invent extra options.');
@@ -789,7 +835,9 @@ function useChecks(p: Plan) {
         items.push('Let it ring with nobody answering. They should wait, then leave a message for ' + who(p, p.busy.owner) + '.');
     const lunch = lunchDay(p);
     if (lunch)
-        items.push('Call during lunch. Hear the lunch recording — back this afternoon — not overnight voicemail'
+        items.push('Call during lunch. Hear the lunch recording — we will call you back'
+            + (/lunch callback this afternoon/i.test(p.policy.notes || '') ? ' this afternoon' : '')
+            + ' — not overnight voicemail'
             + (onCallAfterHours(p) ? ', and not the ' + onCallLabel(p) + '.' : '.'));
     if (alwaysOn(p))
         items.push('Phones are posted 24 hours. Call overnight. Confirm it still rings the same people — not an after-hours recording.');
@@ -885,7 +933,7 @@ export function ownerBrief(p: Plan): BriefPage[] {
                 ? 'Callers press a keypad first. The scripts below are what to record.'
                 : p.first.kind === 'assistant'
                     ? 'A virtual receptionist is proposed to answer first — not live until a vendor proves it.'
-                    : placedCount(p, 'computer', 'outside') && !deskToBuy(p)
+                    : receptionOutsideComputers(p) && !deskToBuy(p)
                         ? 'The answering computer picks up. No keypad. The scripts below are what to record.'
                         : 'A person answers. No keypad. The scripts below are what to record.',
             blocks: [
@@ -915,7 +963,7 @@ export function ownerBrief(p: Plan): BriefPage[] {
                 ? 'Callers choose on a keypad first. These are the menu destinations — not handoffs after pickup.'
                 : p.first.kind === 'assistant'
                     ? 'A virtual receptionist is proposed to answer first. These are handoffs only if that vendor is live.'
-                    : placedCount(p, 'computer', 'outside') && !deskToBuy(p)
+                    : receptionOutsideComputers(p) && !deskToBuy(p)
                         ? 'The answering computer picks up. These are handoffs after pickup — not a daytime menu.'
                         : 'Front desk answers first. These are handoffs after pickup — not a daytime menu.',
             blocks: [

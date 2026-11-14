@@ -1,5 +1,5 @@
 import type { Plan } from '../config';
-import { hoursSummary } from '../flow';
+import { dayIsStated, hoursSummary } from '../flow';
 import { roleState } from '../team-state';
 import type { Chip, Fact, NextQuestion } from './types';
 
@@ -12,7 +12,8 @@ function confirmed(facts: Record<string, Fact>, id: string) {
 }
 
 function settled(facts: Record<string, Fact>, id: string) {
-    return ['skipped', 'confirmed', 'proposed'].includes(facts[id]?.status || '');
+    // proposed ("Help me decide") must not dismiss the question — owners still need a real choice.
+    return ['skipped', 'confirmed'].includes(facts[id]?.status || '');
 }
 
 function chip(id: string, label: string, field_id: string, value: string | number | boolean | null, operation: Chip['operation'] = 'set'): Chip {
@@ -22,6 +23,31 @@ function chip(id: string, label: string, field_id: string, value: string | numbe
 const skipChip = (field_id: string): Chip => chip('skip', 'Skip for now', field_id, null, 'skip');
 const unsureChip = (field_id: string): Chip => chip('unsure', "I'm not sure yet", field_id, null, 'uncertain');
 const helpChip = (field_id: string): Chip => chip('help', 'Help me decide', field_id, null, 'uncertain');
+
+function restClosedDays(p: Plan) {
+    return p.hours.days.filter(d => !dayIsStated(d)).map(d => d.day.slice(0, 3));
+}
+
+function restClosedText(p: Plan) {
+    const days = restClosedDays(p);
+    if (!days.length)
+        return 'Are the remaining days closed?';
+    if (days.length === 1)
+        return 'Is ' + days[0] + ' closed?';
+    return 'Are ' + days.slice(0, -1).join(', ') + ', and ' + days[days.length - 1] + ' closed?';
+}
+
+function reasonsSplitDetail(p: Plan) {
+    const rec = roleState(p, 'reception').count > 0;
+    const adm = roleState(p, 'administration').count > 0;
+    const clin = roleState(p, 'clinical').count > 0;
+    const bits = [
+        'Appointments stay at the front desk',
+        adm ? 'billing to the office manager' : rec ? 'billing stays with the front desk' : 'billing with whoever answers',
+        clin ? 'clinical questions to the clinical team after screening' : 'clinical questions stay with whoever answers'
+    ];
+    return bits.join('; ') + '. One choice sets all three. You can still type a different split.';
+}
 
 function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
     return [
@@ -52,6 +78,17 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
                 chip('adding', 'Adding a location', 'mode', 'adding'),
                 unsureChip('mode'),
                 skipChip('mode')
+            ]
+        },
+        {
+            id: 'name',
+            text: 'What is the practice called?',
+            detail: 'This is the name on the greeting and both PDFs. I will not guess it from an answering service or a sentence fragment.',
+            priority: 12,
+            skipAllowed: true,
+            affectedFields: ['name'],
+            options: [
+                skipChip('name')
             ]
         },
         {
@@ -127,6 +164,18 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
                 chip('custom', 'Different hours by day', 'hours.preset', 'custom'),
                 unsureChip('hours.preset'),
                 skipChip('hours.preset')
+            ]
+        },
+        {
+            id: 'hours.rest_closed',
+            text: restClosedText(p),
+            detail: 'I will not fill Monday–Friday 9–5 for days you did not name.',
+            priority: 41,
+            skipAllowed: true,
+            affectedFields: ['hours.rest_closed'],
+            options: [
+                chip('closed', 'Yes — those days are closed', 'hours.rest_closed', 'closed'),
+                skipChip('hours.rest_closed')
             ]
         },
         {
@@ -219,6 +268,21 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
             ]
         },
         {
+            id: 'devices.reception.kind',
+            text: 'What does the front desk answer on?',
+            detail: 'That is a model question, not a phone-per-room order. Separate lines still need a device type.',
+            priority: 75,
+            skipAllowed: true,
+            affectedFields: ['devices.reception.kind'],
+            options: [
+                chip('desk', 'Desk phones', 'devices.reception.kind', 'desk'),
+                chip('computer', 'Computer + headset', 'devices.reception.kind', 'computer'),
+                chip('both', 'Both', 'devices.reception.kind', 'both'),
+                helpChip('devices.reception.kind'),
+                skipChip('devices.reception.kind')
+            ]
+        },
+        {
             id: 'devices.work_mobile',
             text: 'If the front desk cannot pick up, should a work mobile ring?',
             detail: 'A work app is fine. We will not put a personal cell number in a recording or on a wall card.',
@@ -230,6 +294,20 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
                 chip('app', 'Yes, a work phone or app', 'devices.work_mobile', 'app'),
                 helpChip('devices.work_mobile'),
                 skipChip('devices.work_mobile')
+            ]
+        },
+        {
+            id: 'busy.order',
+            text: 'If the front is slammed, should we ring the office manager’s work mobile first, then take a message — or just take a message?',
+            detail: 'You said both. I will not guess the order.',
+            priority: 77,
+            skipAllowed: true,
+            affectedFields: ['busy.order'],
+            options: [
+                chip('backup_then_message', "Ring office manager's work mobile, then message", 'busy.order', 'backup_then_message'),
+                chip('message_only', 'Message only', 'busy.order', 'message_only'),
+                helpChip('busy.order'),
+                skipChip('busy.order')
             ]
         },
         {
@@ -318,14 +396,12 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
         {
             id: 'reasons.routing',
             text: 'Where should appointments, billing, and clinical questions go?',
-            detail: 'With a person first these are handoffs, not a menu. You can change any row.',
+            detail: reasonsSplitDetail(p),
             priority: 55,
             skipAllowed: true,
-            affectedFields: ['reasons.appointments.team', 'reasons.billing.team', 'reasons.clinical-question.team'],
+            affectedFields: ['reasons.default_split', 'reasons.appointments.team', 'reasons.billing.team', 'reasons.clinical-question.team'],
             options: [
-                chip('appt-front', 'Appointments stay at the front desk', 'reasons.appointments.team', 'reception'),
-                chip('bill-admin', 'Billing to the office manager', 'reasons.billing.team', 'admin'),
-                chip('clin-clinical', 'Clinical questions to the clinical team', 'reasons.clinical-question.team', 'clinical'),
+                chip('use-split', 'Use this split', 'reasons.default_split', 'standard'),
                 skipChip('reasons.appointments.team')
             ]
         },
@@ -386,13 +462,41 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
     ];
 }
 
+function pruneChips(p: Plan, facts: Record<string, Fact>, question: NextQuestion): NextQuestion {
+    const options = question.options.filter(chip => {
+        if (chip.operation !== 'set')
+            return true;
+        if (settled(facts, chip.field_id) && String(facts[chip.field_id]?.value) === String(chip.value))
+            return false;
+        const team = String(chip.value);
+        const role = team === 'admin' || team === 'administration' ? 'administration' : team === 'reception' ? 'reception' : team === 'clinical' ? 'clinical' : '';
+        if (role && /(?:^|\.)(team|place)$/.test(chip.field_id) && roleState(p, role).count === 0)
+            return false;
+        if (chip.field_id === 'messages.owner' && role && roleState(p, role).count === 0 && role !== 'clinical')
+            return false;
+        return true;
+    });
+    return options.length ? { ...question, options } : question;
+}
+
+function rankedCatalog(p: Plan, facts: Record<string, Fact>) {
+    return questionCatalog(p, facts).slice().sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
+}
+
+function emptyReceptionDesk(p: Plan) {
+    return p.first.kind === 'human' && (p.first.team === 'reception' || !p.first.team)
+        && roleState(p, 'reception').count === 0
+        && !p.policy.placements.some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none');
+}
+
 export function nextQuestion(p: Plan, facts: Record<string, Fact>): NextQuestion | null {
-    for (const question of questionCatalog(p, facts)) {
-        if (question.affectedFields.every(id => settled(facts, id)))
+    for (const question of rankedCatalog(p, facts)) {
+        const reopenReception = question.id === 'teams.reception.count' && emptyReceptionDesk(p) && !skipped(facts, 'teams.reception.count');
+        if (!reopenReception && question.affectedFields.every(id => settled(facts, id)))
             continue;
         if (!ready(question.id, p, facts))
             continue;
-        return question;
+        return pruneChips(p, facts, question);
     }
     return null;
 }
@@ -402,18 +506,22 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
         return !!p.policy.pendingClinicianRoute && !confirmed(facts, 'urgent.scope') && !skipped(facts, 'urgent.scope');
     if (id === 'mode')
         return !p.mode && !skipped(facts, 'mode');
+    if (id === 'name')
+        return !!p.mode && !p.name.trim() && !skipped(facts, 'name');
     if (id === 'specialty')
         return !!p.mode && !p.specialty && !skipped(facts, 'specialty');
     if (id === 'teams.reception.count')
-        return roleState(p, 'reception').status === 'unanswered' && !skipped(facts, 'teams.reception.count');
+        return (roleState(p, 'reception').status === 'unanswered' || emptyReceptionDesk(p)) && !skipped(facts, 'teams.reception.count');
     if (id === 'teams.clinical.count')
         return roleState(p, 'reception').status !== 'unanswered' && roleState(p, 'clinical').status === 'unanswered' && !skipped(facts, 'teams.clinical.count');
     if (id === 'teams.administration.count')
         return roleState(p, 'clinical').status !== 'unanswered' && roleState(p, 'administration').status === 'unanswered' && !skipped(facts, 'teams.administration.count') && !confirmed(facts, 'billing.performed_by');
     if (id === 'hours.preset')
-        return !p.confirmed.includes('hours') && !skipped(facts, 'hours.preset') && !confirmed(facts, 'hours.preset') && !p.hours.days.some(d => d.start && d.open);
+        return !p.confirmed.includes('hours') && !skipped(facts, 'hours.preset') && !confirmed(facts, 'hours.preset') && !p.hours.days.some(dayIsStated);
+    if (id === 'hours.rest_closed')
+        return p.hours.days.some(dayIsStated) && restClosedDays(p).length > 0 && !settled(facts, 'hours.rest_closed') && !skipped(facts, 'hours.preset');
     if (id === 'hours.lunch')
-        return (confirmed(facts, 'hours.preset') || confirmed(facts, 'hours.weekdays_start') || p.confirmed.includes('hours'))
+        return (confirmed(facts, 'hours.preset') || confirmed(facts, 'hours.weekdays_start') || p.confirmed.includes('hours') || p.hours.days.some(dayIsStated))
             && !settled(facts, 'hours.lunch')
             && !skipped(facts, 'hours.preset')
             && !p.hours.days.some(d => d.breakStart && d.breakEnd)
@@ -431,10 +539,20 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
     }
     if (id === 'devices.reception.sharing')
         return roleState(p, 'reception').count >= 2 && p.first.kind === 'human' && !settled(facts, 'devices.reception.sharing') && !p.policy.placements.some(x => x.team === 'reception' && x.sharing !== 'undecided');
+    if (id === 'devices.reception.kind')
+        return p.first.kind === 'human'
+            && roleState(p, 'reception').count > 0
+            && !settled(facts, 'devices.reception.kind')
+            && !p.policy.placements.some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none');
     if (id === 'devices.work_mobile')
         return p.first.kind !== 'undecided' && !settled(facts, 'devices.work_mobile')
             && !p.policy.placements.some(x => x.device === 'mobile' && x.count > 0)
             && !/work mobile answering|work app \/ follow me/i.test((p.policy.notes || '') + ' ' + (p.policy.continuity.notes || ''));
+    if (id === 'busy.order')
+        return p.first.kind === 'human'
+            && !!p.busy.backup
+            && p.busy.kind === 'message'
+            && !settled(facts, 'busy.order');
     if (id === 'urgent.kind')
         return !p.policy.pendingClinicianRoute && p.policy.urgentKind === 'undecided' && !skipped(facts, 'urgent.kind') && !skipped(facts, 'urgent.scope') && !p.confirmed.includes('urgent');
     if (id === 'opening.date')
@@ -450,7 +568,12 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
             && !p.hours.days.some(d => d.breakStart && d.breakEnd)
             && !settled(facts, 'hours.lunch.time');
     if (id === 'reasons.routing')
-        return p.first.kind !== 'undecided' && p.reasons.some(r => !r.team) && !skipped(facts, 'reasons.appointments.team');
+        return p.first.kind !== 'undecided'
+            && p.reasons.some(r => !r.team)
+            && !skipped(facts, 'reasons.appointments.team')
+            && !skipped(facts, 'reasons.default_split')
+            && !confirmed(facts, 'reasons.default_split')
+            && !(p.reasons.every(r => r.team));
     if (id === 'urgent.roster')
         return p.policy.urgentKind === 'connect' && p.policy.urgentRoster === 'undecided' && !skipped(facts, 'urgent.roster');
     if (id === 'urgent.miss')
@@ -463,18 +586,21 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
 }
 
 export function ownerQuestions(p: Plan, facts: Record<string, Fact> = {}) {
-    return questionCatalog(p, facts).filter(question => {
-        if (question.affectedFields.every(id => settled(facts, id)))
+    return rankedCatalog(p, facts).filter(question => {
+        const reopenReception = question.id === 'teams.reception.count' && emptyReceptionDesk(p) && !skipped(facts, 'teams.reception.count');
+        if (!reopenReception && question.affectedFields.every(id => settled(facts, id)))
             return false;
         return ready(question.id, p, facts);
-    });
+    }).map(question => pruneChips(p, facts, question));
 }
+
+export { questionCatalog as ownerQuestionCatalog };
 
 export function questionById(id: string, p: Plan, facts: Record<string, Fact>) {
     return questionCatalog(p, facts).find(question => question.id === id) || null;
 }
 
-export { composeAcknowledgement } from './ack';
+export { composeAcknowledgement, CHIP_SUBJECT } from './ack';
 export function acknowledgementFor(p: Plan, text: string, future: string[]) {
     void p;
     void future;

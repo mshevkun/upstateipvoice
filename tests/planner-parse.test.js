@@ -85,10 +85,39 @@ test('parsers: time, city, roster, lunch, callback, PMS, holidays', async () => 
   const first = p.parseRouting('The front desk person answers first. Whoever is at the front should answer.');
   assert.equal(first.find(h => h.field_id === 'first.kind').value, 'human');
 
+  const slam = p.parseRouting("If both receptionists are with patients, take a message. If the front is slammed, ring my husband's work mobile.");
+  assert.equal(slam.find(h => h.field_id === 'busy.kind').value, 'message');
+  assert.equal(slam.find(h => h.field_id === 'busy.backup').value, 'admin');
+  assert.equal(slam.find(h => h.field_id === 'devices.work_mobile.team').value, 'admin');
+
   const openingName = p.parsePracticeName('Opening Poughkeepsie Vision North, an eye care office in Poughkeepsie, New York.');
   assert.equal(openingName[0].value, 'Poughkeepsie Vision North');
   const smile = p.parsePracticeName('New dental practice in Albany, New York. Call it Albany Smile.');
   assert.equal(smile[0].value, 'Albany Smile');
+
+  const noLunch = p.parseLunch('Closed Sunday. No lunch close.');
+  assert.equal(noLunch.find(h => h.field_id === 'hours.lunch').value, 'covered');
+  const spanishNo = p.parseLanguages('Spanish would be nice but we do not have anyone who speaks it.');
+  assert.equal(spanishNo.find(h => h.field_id === 'languages.decision').value, 'none');
+  const ortho = p.parsePracticeName('We are Bright Smiles Orthodontics. After hours we use an answering service called AnswerConnect.');
+  assert.equal(ortho[0].value, 'Bright Smiles Orthodontics');
+  const kingston = p.parsePracticeName('Kingston Eye Associates, existing optometry office. Yesterday patient John Smith called about his glasses and nobody answered.');
+  assert.equal(kingston[0].value, 'Kingston Eye Associates');
+  const chiro = p.parseOpening('Existing chiropractic office in Saratoga Springs.');
+  assert.equal(chiro.find(h => h.field_id === 'specialty').value, 'Other healthcare practice');
+  assert.equal(chiro.find(h => h.field_id === 'specialtyDetail').value, 'Chiropractic');
+  const mixed = p.parseHours('Monday, Wednesday, Friday 7:30 to 6:30, Tuesday and Thursday 2 to 7, Saturday 8 to noon.');
+  assert.equal(mixed.find(h => h.field_id === 'hours.Monday.start').value, '07:30');
+  assert.equal(mixed.find(h => h.field_id === 'hours.Tuesday.start').value, '14:00');
+  assert.equal(mixed.find(h => h.field_id === 'hours.Saturday.end').value, '12:00');
+  assert.equal(mixed.some(h => h.field_id === 'hours.Friday.start' && h.value === '09:00'), false);
+  const queue = p.parseRouting('If both front desk are busy, put callers in a queue with hold music for up to 2 minutes, then voicemail.');
+  assert.equal(queue.find(h => h.field_id === 'busy.kind').value, 'queue');
+  assert.equal(queue.find(h => h.field_id === 'busy.wait').value, 120);
+  const service = p.parseRouting('after hours answering service');
+  assert.equal(service.find(h => h.field_id === 'after.kind').value, 'service');
+  const billing = p.parseRoster('Three receptionists, one billing person, four providers.');
+  assert.equal(billing.find(h => h.field_id === 'teams.administration.count').value, 1);
 });
 
 test('scrub removes patient name, phone, email, DOB', async () => {

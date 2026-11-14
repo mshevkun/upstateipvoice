@@ -1,8 +1,8 @@
 export { INTERPRETER_SYSTEM_PROMPT } from './prompt';
 export { interpreterResponseSchema } from './schema';
-export { fields, catalog, allowedFieldIds, fieldById, isBlockedField, BLOCKED_FIELD_IDS, normalizeMode, normalizeSpecialty, normalizeEnum, updatesFromOwnerText, detectIntent, clinicianRouteAmbiguous, mergeInterpreterUpdates } from './fields';
+export { fields, catalog, relevantCatalog, allowedFieldIds, fieldById, isBlockedField, BLOCKED_FIELD_IDS, normalizeMode, normalizeSpecialty, normalizeEnum, updatesFromOwnerText, detectIntent, clinicianRouteAmbiguous, mergeInterpreterUpdates } from './fields';
 export { applyUpdates, applyChip, emptyFacts } from './merge';
-export { nextQuestion, questionById, composeAcknowledgement, ownerQuestions } from './questions';
+export { nextQuestion, questionById, composeAcknowledgement, ownerQuestions, ownerQuestionCatalog, CHIP_SUBJECT } from './questions';
 export { scrubPii, scrubAckNotice } from './scrub';
 export { interpretTurn, chipTurn } from './turn';
 export { sceneFromPlan, headerChapter, chapterForQuestion, QUESTION_CHAPTER } from './scene-from-plan';

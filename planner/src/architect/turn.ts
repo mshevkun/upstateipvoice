@@ -65,13 +65,22 @@ export function chipTurn(opts: {
     future?: string[];
     correcting?: boolean;
 }) {
+    const prior = opts.facts[opts.chip.field_id];
+    // Re-asking reception after "0 + human first" must replace the confirmed zero without a Correct tap.
+    const reopenReception = opts.chip.field_id === 'teams.reception.count'
+        && opts.chip.operation === 'set'
+        && prior?.status === 'confirmed'
+        && Number(prior.value) === 0
+        && Number(opts.chip.value) > 0;
+    const chipCorrects = !!opts.correcting || reopenReception;
     const merged = applyUpdates(opts.plan, opts.facts, [{
         field_id: opts.chip.field_id,
         operation: opts.chip.operation,
         value: opts.chip.operation === 'set' ? opts.chip.value : null,
         evidence: opts.chip.label,
-        needs_confirmation: false
-    }], opts.correcting ? 'correct_information' : opts.chip.operation === 'skip' ? 'skip_current' : 'provide_information', [], { correcting: !!opts.correcting });
+        needs_confirmation: false,
+        precision: reopenReception ? 'exact' : undefined
+    }], chipCorrects ? 'correct_information' : opts.chip.operation === 'skip' ? 'skip_current' : 'provide_information', [], { correcting: chipCorrects });
     const nextPlan = merged.changed ? merged.plan : opts.plan;
     const follow = nextQuestion(nextPlan, merged.facts);
     const ack = composeAcknowledgement({

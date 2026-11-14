@@ -173,7 +173,7 @@ export function Wizard() {
         if (nextPlan !== p)
             update(nextPlan);
         go(step + 1);
-    }}>{id === 'current' ? 'See your blueprint' : 'Continue'} <Arrow /></button> : <button className="primary" disabled={pdfBusy} onClick={() => pdf('owner')}>{pdfBusy ? 'Creating…' : 'Download blueprint'} ↓</button>}</>}</div></section><Scene p={p} simulation={trace?.trace[Math.min(shown - 1, (trace?.trace.length || 1) - 1)]?.label || ''} mode={sceneMode} chapter={sceneChapterNum} badge={sceneBadge} indexLabel={step < 0 ? 'A PLAN THAT FITS' : String(step + 1).padStart(2, '0') + ' / ' + steps.length} sceneClass={id === 'kind' ? 'specialty-scene' : id === 'team' ? 'team-scene' : ''} showTeamLegend={id === 'team'} showSpecialtyCaption={id === 'kind'} showEarlyFacts={step < 2}/></main></div>;
+    }}>{id === 'current' ? 'See your blueprint' : 'Continue'} <Arrow /></button> : <button className="primary" disabled={pdfBusy} onClick={() => pdf('owner')}>{pdfBusy ? 'Creating…' : 'Download blueprint'} ↓</button>}</>}</div></section><Scene p={p} simulation={trace?.trace[Math.min(shown - 1, (trace?.trace.length || 1) - 1)]?.label || ''} mode={sceneMode} chapter={sceneChapterNum} badge={sceneBadge} indexLabel={step < 0 ? 'A PLAN THAT FITS' : String(step + 1).padStart(2, '0') + ' / ' + steps.length} sceneClass={id === 'kind' ? 'specialty-scene' : id === 'team' ? 'team-scene' : ''} showTeamLegend={id === 'team'} showSpecialtyCaption={id === 'kind'}/></main></div>;
 }
 
 export default function App() {

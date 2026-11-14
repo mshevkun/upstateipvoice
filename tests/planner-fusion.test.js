@@ -65,6 +65,16 @@ function complete(base) {
   };
   p.urgent.enabled = true;
   p.followup = { owner: 'reception', target: 'By the next business day', channels: ['Phone callback'] };
+  if (!p.hours.days.some(d => d.start)) {
+    p.hours.days = p.hours.days.map((d, i) => ({
+      ...d,
+      open: i < 5,
+      start: i < 5 ? '09:00' : '',
+      end: i < 5 ? '17:00' : '',
+      stated: true
+    }));
+    p.policy.hoursPreset = 'weekdays';
+  }
   p.confirmed = ['hours', 'urgent', 'team', 'positions'];
   p.policy.notification = 'inbox';
   p.policy.languageDecision = p.languages.length ? 'selected' : 'none';
@@ -363,7 +373,8 @@ test('lunch is its own recording, not overnight IVR or on-call', async () => {
   const b = fusionBuild(p);
   const lunch = b.recordings.find(r => r.filename === 'lunch-closed.wav');
   assert(lunch);
-  assert.match(lunch.script, /this afternoon/i);
+  assert.match(lunch.script, /we will call you back/i);
+  assert.doesNotMatch(lunch.script, /this afternoon/i);
   assert.doesNotMatch(lunch.script, /next business day/i);
   const tc = b.objects.find(o => o.kind === 'time_condition');
   assert(tc.setup.some(s => /Lunch groups/.test(s) && /not the overnight/i.test(s)));

@@ -29,7 +29,7 @@ for (const name of [
   'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract', 'architect/ack',
   'architect/merge', 'architect/questions', 'architect/turn', 'architect/scene-from-plan',
   'architect/hear', 'architect/scrub', 'provisioning', 'bom', 'opening', 'status', 'readiness',
-  'advisor', 'privacy', 'owner-brief', 'fusion', 'engineer-brief'
+  'advisor', 'privacy', 'owner-brief', 'fusion', 'engineer-brief', 'provisioning'
 ]) {
   const file = path.join(srcDir, name + '.ts');
   if (fs.existsSync(file))
@@ -52,7 +52,9 @@ async function load() {
   const eng = await import(path.join(outDir, 'engineer-brief.mjs'));
   const advisor = await import(path.join(outDir, 'advisor.mjs'));
   const readiness = await import(path.join(outDir, 'readiness.mjs'));
-  return { ...config, ...turn, ...questions, ...brief, ...eng, ...advisor, ...readiness };
+  const fusion = await import(path.join(outDir, 'fusion.mjs'));
+  const provisioning = await import(path.join(outDir, 'provisioning.mjs'));
+  return { ...config, ...turn, ...questions, ...brief, ...eng, ...advisor, ...readiness, ...fusion, ...provisioning };
 }
 
 function day(plan, name) {
@@ -100,7 +102,8 @@ function assertGold(plan) {
   assert.ok(plan.hours.holidays.includes('2027-11-25'));
   assert.ok(plan.hours.holidays.includes('2027-12-25'));
   assert.equal(plan.hours.holidayPolicy, 'closed');
-  assert.equal(plan.busy.kind, 'message');
+  assert.equal(plan.busy.kind, 'backup');
+  assert.equal(plan.busy.backup, 'admin');
   assert.equal(plan.busy.owner, 'reception');
   assert.equal(plan.after.kind, 'message');
   assert.equal(plan.after.owner, 'reception');
@@ -136,6 +139,8 @@ function assertGold(plan) {
   const recPlace = plan.policy.placements.find(x => x.team === 'reception');
   assert.ok(recPlace);
   assert.equal(recPlace.sharing, 'separate');
+  assert.equal(recPlace.count, 2);
+  assert.equal(recPlace.device, 'desk');
   const clinComp = plan.policy.placements.find(x => x.team === 'clinical' && x.device === 'computer');
   assert.equal(clinComp.access, 'internal');
 }
@@ -169,8 +174,9 @@ async function play(mod, interpreters) {
     for (const n of needles.mustNot)
       assert.doesNotMatch(turned.ack, new RegExp(n, 'i'), 'turn ' + (i + 1) + ' ack has ' + n + ': ' + turned.ack);
   }
+  const pendingAfterSpeech = (typeof mod.ownerQuestions === 'function' ? mod.ownerQuestions(plan, facts) : []).map(q => q.id);
   let guard = 0;
-  while (follow && guard++ < 8) {
+  while (follow && guard++ < 12) {
     const answer = CHIP_ANSWERS[follow.id];
     if (!answer)
       assert.fail('unexpected question after Chen speech: ' + follow.id + ' — ' + follow.text);
@@ -186,13 +192,15 @@ async function play(mod, interpreters) {
     facts = turned.facts;
     follow = turned.follow;
   }
-  return { plan, facts, follow, turns };
+  return { plan, facts, follow, turns, pendingAfterSpeech };
 }
 
 test('Chen gold conversation without enrich produces the Chen plan (offline)', async () => {
   const mod = await load();
-  const { plan, follow } = await play(mod, CONVERSATION.map(() => blank));
+  const { plan, follow, pendingAfterSpeech } = await play(mod, CONVERSATION.map(() => blank));
   assert.equal(follow, null);
+  assert.ok(pendingAfterSpeech.includes('devices.reception.kind'), 'kind stays an owner question until the chip: ' + pendingAfterSpeech.join(','));
+  assert.ok(pendingAfterSpeech.includes('busy.order'), 'busy.order stays an owner question until the chip: ' + pendingAfterSpeech.join(','));
   if (typeof mod.ownerQuestions === 'function')
     assert.equal(mod.ownerQuestions(plan).length, 0);
   if (typeof mod.stillOpen === 'function') {
@@ -206,10 +214,41 @@ test('Chen gold conversation without enrich produces the Chen plan (offline)', a
   assert.ok(engPages.length >= 8);
   const id = mod.identity(plan);
   assert.ok(id.planId && id.checksum);
-  assert.match(mod.engineerBriefText(plan), /BLOCKED/);
-  assert.match(mod.engineerBriefText(plan), /digit 9/i);
-  assert.match(mod.engineerBriefText(plan), /MUST FAIL/);
-  assert.match(mod.engineerBriefText(plan), /Follow Me empty/i);
+  const identities = mod.provisioningMap(plan).identities.filter(x => x.team === 'reception');
+  assert.equal(identities.length, 2);
+  const build = mod.fusionBuild(plan);
+  const inbound = build.objects.find(o => o.kind === 'ring_group' && /Reception/i.test(o.name) && !/on-call/i.test(o.name));
+  assert.ok(inbound);
+  assert.match(inbound.setup.join(' '), /201 \(desk/);
+  assert.match(inbound.setup.join(' '), /202 \(desk/);
+  assert.doesNotMatch(inbound.setup.join(' '), /Members: none|members none/i);
+  assert.ok(build.blockers.every(x => !/inbound ring group has no members/i.test(x)));
+  const backup = build.objects.find(o => o.kind === 'ring_group' && o.extension === '7001');
+  assert.ok(backup, 'overflow RG 7001');
+  assert.match(inbound.setup.join(' '), /7001|backup/i);
+  const ownerText = mod.ownerBriefText(plan);
+  assert.match(ownerText, /2 (front-desk lines|desk phone|people at the front|independent line)/i);
+  assert.doesNotMatch(ownerText, /Reception answers on the answering computer/i);
+  assert.doesNotMatch(ownerText, /this afternoon/i);
+  assert.doesNotMatch(ownerText, /answering computer/i);
+  assert.match(ownerText, /On-call is Dr\. Chen alone until the associate starts/i);
+  const engText = mod.engineerBriefText(plan);
+  assert.match(engText, /BLOCKED/);
+  assert.match(engText, /digit 9/i);
+  assert.match(engText, /MUST FAIL/);
+  assert.match(engText, /Follow Me empty/i);
+  assert.match(engText, /Two calls at once/);
+  const hourTable = engPages.flatMap(pg => pg.blocks).find(b => b.kind === 'table' && b.headers && b.headers[0] === 'Group');
+  assert.ok(hourTable);
+  assert.match(hourTable.rows[0].join(' '), /Dates|Nov 25|holiday/i);
+  assert.match(engText, /evaluate before weekday/i);
+  assert.match(engText, /fax/i);
+  assert.match(engText, /analog/i);
+  for (const line of engText.split('\n')) {
+    if (/BLOCKED/.test(line))
+      continue;
+    assert.doesNotMatch(line, /members none|\*99—|box —|<owner>/, line);
+  }
 });
 
 test('Chen gold with recorded Groq replies produces the Chen plan', async () => {

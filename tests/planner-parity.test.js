@@ -45,8 +45,8 @@ function complete(base) {
   p.busy = { kind: p.busy.kind === 'undecided' ? 'message' : p.busy.kind, seconds: 25, wait: 90, backup: '', owner: 'reception' };
   p.after = { kind: p.after.kind === 'undecided' ? 'message' : p.after.kind, owner: 'reception', instructions: p.after.instructions || '' };
   p.hours.days = p.hours.days.map((d, i) => i < 5
-    ? { ...d, open: true, start: '08:00', end: '17:00', breakStart: i < 4 ? '12:30' : '', breakEnd: i < 4 ? '13:30' : '' }
-    : { ...d, open: false });
+    ? { ...d, open: true, start: '08:00', end: '17:00', breakStart: i < 4 ? '12:30' : '', breakEnd: i < 4 ? '13:30' : '', stated: true }
+    : { ...d, open: false, stated: true });
   p.policy.beforeOpening = 'message';
   p.policy.opening = { ...p.policy.opening, date: '2027-03-15', precision: 'day', numbers: 'new' };
   return p;

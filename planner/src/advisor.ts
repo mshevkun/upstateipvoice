@@ -1,5 +1,5 @@
 import { decisions, journeySeconds, menuDigits, overflowTeams, teamName, urgentMechanism, type Plan } from './config';
-import { formatOpening, hoursSummary } from './flow';
+import { formatOpening, formatTime, hoursSummary } from './flow';
 import { inventory } from './policy';
 import { provisioningMap, ringMembers } from './provisioning';
 import { unapprovedTerminals } from './status';
@@ -92,6 +92,10 @@ export function fingerprint(p: Plan) {
 
 export function identity(p: Plan) {
     return { planId: p.planId, revision: p.revision, checksum: fingerprint(p) };
+}
+
+export function isLocked(p: Plan) {
+    return !!p.lock && p.lock.checksum === fingerprint(p);
 }
 
 export function queuePlan(p: Plan) {
@@ -232,9 +236,7 @@ export function insights(p: Plan): Insight[] {
         list.push({ id: 'work-mobile', severity: 'note', category: 'owner', title: 'A work mobile can ring', detail: 'Use a work app or Follow Me. A personal cell number is not stored and must not be spoken in any recording.' });
     const lunch = p.hours.days.find(d => d.breakStart && d.breakEnd);
     if (lunch)
-        list.push({ id: 'lunch', severity: 'note', category: 'owner', title: 'Lunch is a scheduled close', detail: 'Phones follow the closed-hours path ' + lunch.breakStart + '–' + lunch.breakEnd + '. That is not overnight voicemail, even if the recording is similar.' });
-    if (q.roomsSpecified && q.rooms > 0)
-        list.push({ id: 'rooms', severity: 'high', category: 'owner', title: q.rooms + ' clinical rooms do not automatically need ' + q.rooms + ' phones', detail: 'Ask whether each room needs a direct line, intercom, emergency communication, or nothing. Do not order from room count.' });
+        list.push({ id: 'lunch', severity: 'note', category: 'owner', title: 'Lunch is a scheduled close', detail: 'Phones follow the closed-hours path ' + formatTime(lunch.breakStart) + '–' + formatTime(lunch.breakEnd) + '. That is not overnight voicemail, even if the recording is similar.' });
     const extra = billOfMaterials(p).warnings;
     for (const w of extra.slice(0, 2))
         list.push({ id: 'bom-' + w.slice(0, 12), severity: 'high', category: 'owner', title: 'Check this against any quote', detail: w });
@@ -255,7 +257,7 @@ export function purchaseBands(p: Plan) {
     const inv = inventory(p);
     const map = provisioningMap(p);
     const rooms = p.policy.roomsSpecified ? p.policy.rooms : 0;
-    const required = map.groups.filter(g => g.device !== 'none' && g.concurrent > 0).map(g => ({
+    const required = map.groups.filter(g => g.device !== 'none' && g.device !== 'undecided' && g.concurrent > 0).map(g => ({
         item: g.label,
         qty: String(g.deviceCount),
         purpose: g.sharing === 'separate'
@@ -399,7 +401,7 @@ export function glance(p: Plan) {
         metrics: [
             { value: positions ? String(positions) : '—', label: independent ? 'Independent answering positions' : positions ? 'Independent lines required' : 'Independent answering positions' },
             { value: String(remaining), label: remaining === 1 ? 'Owner decision remaining' : 'Owner decisions remaining' },
-            { value: String(j.total || p.busy.seconds), label: 'Modeled unanswered wait' }
+            { value: String(j.total || p.busy.seconds) + ' s', label: 'Modeled unanswered wait' }
         ],
         waitNote: j.total
             ? j.parts.map(x => x.seconds + 's ' + x.label).join(' + ') + ', excluding greeting and menu time.'

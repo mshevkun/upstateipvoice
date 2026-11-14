@@ -4,6 +4,7 @@ import { teamSummary } from '../team-state';
 
 export const QUESTION_CHAPTER: Record<string, number> = {
     mode: 0,
+    name: 0,
     specialty: 0,
     'opening.date': 0,
     'policy.rooms': 0,
@@ -11,6 +12,7 @@ export const QUESTION_CHAPTER: Record<string, number> = {
     'teams.clinical.count': 1,
     'teams.administration.count': 1,
     'hours.preset': 1,
+    'hours.rest_closed': 1,
     'hours.lunch': 1,
     'first.kind': 2,
     'busy.kind': 2,
@@ -20,6 +22,7 @@ export const QUESTION_CHAPTER: Record<string, number> = {
     'urgent.scope': 3,
     'languages.decision': 3,
     'devices.reception.sharing': 4,
+    'devices.reception.kind': 4,
     'devices.work_mobile': 4,
     beforeOpening: 0
 };

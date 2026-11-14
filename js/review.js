@@ -365,7 +365,7 @@
       loadingEl.classList.add("is-hidden");
       page.classList.remove("is-hidden");
       if (plannerParams.planId && fields.business_name && !fields.business_name.value)
-        fields.business_name.placeholder = plannerParams.planId;
+        fields.business_name.placeholder = 'Practice name';
       render();
       return;
     }

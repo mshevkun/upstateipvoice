@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Review } from './Review';
 import { Scene } from './ScenePanel';
 import { Note } from './components';
-import { buySummary, identity, purchaseBands } from './advisor';
+import { buySummary, identity, isLocked, purchaseBands } from './advisor';
 import { read, commit, initial, key, scenarios, simulate, valid, type Plan } from './config';
-import { chapterIndex, chapters, formatOpening, help, hoursSummary } from './flow';
+import { chapterIndex, chapters, dayIsStated, formatOpening, help, hoursSummary } from './flow';
 import { stillOpen } from './readiness';
 import { PRIVACY_COPY } from './privacy';
 import {
@@ -15,6 +15,10 @@ import type { Chip, ConversationRecord, Fact, InterpreterResponse, NextQuestion 
 
 const EXAMPLE = "I'm opening a dental practice in New York next March. We're planning six operatories, two receptionists, a dentist, three assistants, and an office manager. I want patients to reach the front desk first, but we need help after hours. I don't know how many phones to buy.";
 const GREETING = "Describe your practice in your own words. I will collect what I can and only ask what still changes the plan.";
+
+function blueprintReady(p: Plan) {
+    return !!p.name.trim() && p.hours.days.some(dayIsStated) && p.first.kind !== 'undecided';
+}
 const EXAMPLE_INTERPRETER: InterpreterResponse = {
     acknowledgement: 'Opening a dental practice in New York with six operatories and a front-desk-first plan. I left phones unset, and after-hours is still open.',
     intent: 'provide_information',
@@ -74,13 +78,14 @@ function BlueprintRail({
     ].filter(Boolean).slice(0, 6);
     const open = stillOpen(p);
     const hours = hoursSummary(p);
+    const hoursKnown = p.hours.days.some(dayIsStated);
     return <aside className="blueprint-rail" aria-label="Blueprint">
         <p className="blueprint-kicker">Blueprint</p>
         <h2 className="blueprint-name">{p.name.trim() || 'Your practice'}</h2>
         <p className="blueprint-meta">{[p.policy.cityState, formatOpening(p)].filter(Boolean).join(' · ') || 'City and opening still open'}</p>
         <p className="blueprint-id">{locked ? 'LOCKED' : 'Draft'} {id.planId} · r{id.revision} · {id.checksum}</p>
-        {hours && <p className="blueprint-hours">{hours}</p>}
-        {order.length > 0 && <div className="blueprint-order">
+        <p className="blueprint-hours">{hoursKnown ? hours : 'Hours not given yet'}</p>
+        {order.length > 0 && blueprintReady(p) && <div className="blueprint-order">
             <p className="blueprint-label">What to order</p>
             <p>{order.join(' · ')}</p>
             <p className="blueprint-hint">Do not order a phone per room.</p>
@@ -94,9 +99,9 @@ function BlueprintRail({
             <ul>{open.map(item => <li key={item}>{item}</li>)}</ul>
         </div>}
         <div className="blueprint-actions">
-            <button type="button" className="primary" disabled={pdfBusy} onClick={() => onPdf('owner')}>{pdfBusy ? 'Creating…' : 'Download owner blueprint'}</button>
+            <button type="button" className="primary" disabled={pdfBusy || !blueprintReady(p)} onClick={() => onPdf('owner')}>{pdfBusy ? 'Creating…' : 'Download owner blueprint'}</button>
             <button type="button" className="secondary" onClick={onBook}>Book a time with Upstate</button>
-            <button type="button" className="text-button" disabled={pdfBusy} onClick={() => onPdf('engineer')}>For your installer: technical spec</button>
+            <button type="button" className="text-button" disabled={pdfBusy || !blueprintReady(p)} onClick={() => onPdf('engineer')}>For your installer: technical spec</button>
             {sessionId && <button type="button" className="text-button" onClick={onCopy}>Copy my plan link</button>}
             {labMode() && sessionId && !locked && <button type="button" className="text-button" onClick={onLock}>Lock this revision</button>}
         </div>
@@ -586,22 +591,33 @@ export function Architect() {
         catch (err) {
             if (epoch.current !== token)
                 return;
-            if (trimmed === EXAMPLE) {
-                applyInterpreter(p, facts, EXAMPLE_INTERPRETER, outbound, { question: targetQuestion, correcting: !!correcting });
+            let applied: ReturnType<typeof applyInterpreter> | null = null;
+            if (trimmed === EXAMPLE)
+                applied = applyInterpreter(p, facts, EXAMPLE_INTERPRETER, outbound, { question: targetQuestion, correcting: !!correcting });
+            else {
+                const hinted = updatesFromOwnerText(outbound, targetQuestion, facts);
+                if (hinted.length)
+                    applied = applyInterpreter(p, facts, {
+                        acknowledgement: scrubbed.removed ? scrubAckNotice(scrubbed.kinds) : '',
+                        intent: correcting ? 'correct_information' : 'provide_information',
+                        updates: hinted,
+                        unmapped_facts: [],
+                        explanation_topic: null
+                    }, outbound, { question: targetQuestion, correcting: !!correcting });
+            }
+            if (applied) {
+                try {
+                    const remote = sessionIdRef.current
+                        ? { id: sessionIdRef.current, revision: remoteRevRef.current }
+                        : await ensureSession(applied.plan);
+                    if (epoch.current !== token)
+                        return;
+                    await syncPlan(applied.plan, applied.facts, applied.future, remote.id, remoteRevRef.current);
+                }
+                catch { /* local plan still saved */ }
                 return;
             }
-            const hinted = updatesFromOwnerText(outbound, targetQuestion, facts);
-            if (hinted.length) {
-                applyInterpreter(p, facts, {
-                    acknowledgement: scrubbed.removed ? scrubAckNotice(scrubbed.kinds) : '',
-                    intent: correcting ? 'correct_information' : 'provide_information',
-                    updates: hinted,
-                    unmapped_facts: [],
-                    explanation_topic: null
-                }, outbound, { question: targetQuestion, correcting: !!correcting });
-                return;
-            }
-            const code = (err as Error).message;
+            const code = (err as Error).name === 'TimeoutError' || (err as Error).name === 'AbortError' ? 'groq' : (err as Error).message;
             const assistant: ChatMessage = { id: newId(), role: 'assistant', content: code === 'rate' ? 'Too many messages. Please wait a few minutes.' : 'The planning assistant is temporarily unavailable. Your plan is unchanged. You can still choose an option below.', questionId: targetQuestion?.id || null };
             setFreshId(assistant.id);
             setMessages(m => [...m, assistant]);
@@ -758,8 +774,8 @@ export function Architect() {
                     <Review p={p} pdfBusy={pdfBusy} notice={notice} onNotice={setNotice} onPdf={k => pdf(k)} onJump={id => goChapter(chapterIndex(id))} run={run} trace={trace} shown={shown} paused={paused} setPaused={setPaused} scenario={scenario} setScenario={setScenario} testPreset={testPreset} setTestPreset={setTestPreset} customDate={customDate} setCustomDate={setCustomDate} customTime={customTime} setCustomTime={setCustomTime} callerReason={callerReason} setCallerReason={setCallerReason} callerLanguage={callerLanguage} setCallerLanguage={setCallerLanguage} assistantRequest={assistantRequest} setAssistantRequest={setAssistantRequest} humanRequest={humanRequest} setHumanRequest={setHumanRequest}/>
                 </div> : <>
                     <div className="form-scroll architect-log" ref={log}>
-                        <div className="eyebrow"><span>Practice architect</span><span className="saved-pill">Saved</span></div>
-                        {welcome && <><h1>Design your practice, naturally.</h1><p className="supporting">Tell me how your office works. I will fill in what I can and ask only what still changes the plan.</p></>}
+                        <div className="eyebrow"><span>Practice architect</span><span className="saved-pill">{sessionId ? 'Saved' : 'Not saved yet'}</span></div>
+                        {welcome && <h1>Design your practice, naturally.</h1>}
                         {p.mode && p.name.trim() && <p className="architect-live-title">{p.name.trim()}</p>}
                         <ol className="chat-log">
                             {messages.filter(m => !isHearDump(m) && (m.id !== 'greet' || !messages.some(x => x.role === 'user'))).map((m: ChatMessage) => <li key={m.id} id={'msg-' + m.id} className={'chat-turn ' + m.role + (m.id === freshId ? ' fresh' : '') + (m.id === highlightId || m.id === correcting?.id ? ' target' : '')}>
@@ -817,7 +833,7 @@ export function Architect() {
                             {showHear && <HearPanel rows={hear}/>}
                             <div className="chat-choices">
                                 <div className="chat-chips stack">
-                                    <button type="button" className="chat-chip" disabled={pdfBusy} onClick={() => pdf('owner')}>Download owner blueprint</button>
+                                    <button type="button" className="chat-chip" disabled={pdfBusy || !blueprintReady(p)} onClick={() => pdf('owner')}>Download owner blueprint</button>
                                     <button type="button" className="chat-chip quiet" onClick={() => {
                                         const book = 'https://upstateipvoice.com/review/?plan=' + encodeURIComponent(p.planId) + (sessionId ? '&s=' + encodeURIComponent(sessionId) : '');
                                         window.open(book, '_blank', 'noopener');
@@ -850,12 +866,12 @@ export function Architect() {
             <div className={'scene-panel blueprint-column' + (sheetOpen ? ' sheet-open' : '')}>
                 <p className="scene-illustration-caption">Illustration — rooms are not phones</p>
                 <div className="blueprint-scene">
-                    <Scene p={p} simulation={simulation} mode={view.mode} chapter={view.chapter} badge={view.badge} indexLabel={view.indexLabel} sceneClass={view.sceneClass} showTeamLegend={p.teams.some(t => t.status === 'known')} showSpecialtyCaption={!!p.specialty && view.chapter === 1} showEarlyFacts={view.chapter < 2}/>
+                    <Scene p={p} simulation={simulation} mode={view.mode} chapter={view.chapter} badge={view.badge} indexLabel={view.indexLabel} sceneClass={view.sceneClass} showTeamLegend={p.teams.some(t => t.status === 'known')} showSpecialtyCaption={!!p.specialty && view.chapter === 1}/>
                 </div>
-                <BlueprintRail
+                {sheetOpen && <BlueprintRail
                     p={p}
                     sessionId={sessionId}
-                    locked={locked || p.confirmed.includes('locked')}
+                    locked={locked || isLocked(p)}
                     hear={hear}
                     pdfBusy={pdfBusy}
                     onPdf={kind => pdf(kind)}
@@ -871,8 +887,15 @@ export function Architect() {
                     onLock={async () => {
                         try {
                             const id = identity(p);
-                            await lockRemoteSession(sessionId, p.revision, id.checksum);
-                            const next = { ...p, confirmed: [...new Set([...p.confirmed, 'locked'])] };
+                            const lockedRemote = await lockRemoteSession(sessionId, remoteRevRef.current, id.checksum);
+                            const next = {
+                                ...p,
+                                lock: {
+                                    revision: lockedRemote.lockedRevision,
+                                    checksum: lockedRemote.lockedChecksum,
+                                    at: new Date().toISOString()
+                                }
+                            };
                             writePlan(next);
                             setLocked(true);
                             setNotice('Locked ' + id.planId + ' · r' + id.revision + ' · ' + id.checksum);
@@ -881,8 +904,8 @@ export function Architect() {
                             setError('Could not lock this revision. The checksum did not match the server copy.');
                         }
                     }}
-                />
-                <button type="button" className="blueprint-sheet-toggle" onClick={() => setSheetOpen(v => !v)}>Blueprint{stillOpen(p).length ? ' · ' + stillOpen(p).length : ''}</button>
+                />}
+                <button type="button" className="blueprint-sheet-toggle" aria-expanded={sheetOpen} onClick={() => setSheetOpen(v => !v)}>{sheetOpen ? 'Hide blueprint' : 'Blueprint'}{!sheetOpen && stillOpen(p).length ? ' · ' + stillOpen(p).length : ''}</button>
             </div>
         </main>
     </div>;

@@ -28,6 +28,8 @@ EXTRACTION RULES
 - Use the current question to resolve short responses such as "two", "yes", or "the second option".
 - Only extract information explicitly stated or unambiguously entailed by the user.
 - Never invent an opening date, business hours, phone quantity, location, staff count, cost, vendor, or technical capability.
+- Do not fill Monday–Friday 9–5 unless the owner said those hours or picked that chip. Unnamed days stay unknown.
+- Extract practice name only from name anchors (we are / called / named / the practice is). Never use an answering-service name.
 - Do not equate employees with devices, devices with extensions, or extensions with confirmed concurrency.
 - Do not infer a phone for every clinical room.
 - Do not infer that appointments can be booked merely because the user wants an AI receptionist.
@@ -58,6 +60,8 @@ EXTRACTION RULES
 - Future-only ideas such as "AI later when we grow" go in unmapped_facts and must not set after.kind or first.kind to assistant.
 - Who checks voicemail/messages maps to messages.owner: reception, clinical, or admin. Do not invent an owner.
 - Two people at the front who can both pick up maps to devices.reception.sharing "separate". Sharing one phone maps to "shared". Do not invent a phone count from staff or rooms.
+- Desk phone vs computer + headset at the front maps to devices.reception.kind. Do not invent it.
+- "If the front is slammed, ring the office manager / husband's work mobile" maps to busy.backup "admin". Do not change busy.kind to backup until the owner confirms busy.order.
 - Work cell / work mobile / ring my cell maps to devices.work_mobile "app". Never store a personal phone number. Internet-outage forwarding to a work cell also maps to continuity.backupRouting cellular or forward.
 - Before the office opens: callback/message → beforeOpening "message". A not-open-yet recording → "information". This is not the after-hours path.
 

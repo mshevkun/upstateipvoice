@@ -7,6 +7,7 @@ import ts from 'typescript';
 import { shortScenarios } from './gold-short.mjs';
 import { fullScenarios } from './gold-full.mjs';
 import { dumpScenarios } from './gold-dump.mjs';
+import { adversarialScenarios } from './gold-adversarial.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const srcDir = path.join(root, 'planner/src');
@@ -82,29 +83,7 @@ const groqEnv = loadGroqEnv();
 if (useGroq && !groqEnv.present)
   console.error('GROQ_API_KEY is missing; running local hints only.');
 
-const compactRegistry = [
-  { id: 'mode', type: 'enum', enum: ['opening', 'improving', 'adding'] },
-  { id: 'specialty', type: 'enum', enum: ['Dental', 'Eye care', 'Other healthcare practice'] },
-  { id: 'cityState', type: 'string' },
-  { id: 'opening.date', type: 'string' },
-  { id: 'opening.precision', type: 'enum', enum: ['day', 'month', 'none'] },
-  { id: 'teams.reception.count', type: 'number' },
-  { id: 'teams.clinical.count', type: 'number' },
-  { id: 'teams.administration.count', type: 'number' },
-  { id: 'billing.performed_by', type: 'enum', enum: ['reception', 'administration', 'clinical', 'split', 'undecided'] },
-  { id: 'first.kind', type: 'enum', enum: ['human', 'menu', 'assistant', 'undecided'] },
-  { id: 'first.team', type: 'string' },
-  { id: 'busy.kind', type: 'enum', enum: ['message', 'queue', 'backup', 'assistant', 'undecided'] },
-  { id: 'busy.wait', type: 'number' },
-  { id: 'after.kind', type: 'enum', enum: ['information', 'message', 'service', 'assistant', 'undecided'] },
-  { id: 'urgent.kind', type: 'enum', enum: ['connect', 'priority', 'instructions', 'none', 'undecided'] },
-  { id: 'urgent.team', type: 'string' },
-  { id: 'urgent.coverage', type: 'enum', enum: ['always', 'closed', 'open', 'selected', 'undecided'] },
-  { id: 'urgent.scope', type: 'enum', enum: ['urgent_only', 'all_calls', 'undecided'] },
-  { id: 'hours.preset', type: 'enum', enum: ['weekdays', 'always', 'custom', 'undecided'] },
-  { id: 'policy.rooms', type: 'number' },
-  { id: 'future.ai_receptionist', type: 'string' }
-];
+const { relevantCatalog } = await import(path.join(buildDir, 'architect/fields.mjs'));
 
 const emptyInterpreter = {
   acknowledgement: 'Got it!',
@@ -282,7 +261,10 @@ async function groqInterpret(context) {
     response_format: {
       type: 'json_schema',
       json_schema: { name: 'practice_interpreter_v1', strict: true, schema: interpreterResponseSchema }
-    }
+    },
+    reasoning_effort: 'low',
+    max_completion_tokens: 1200,
+    max_tokens: 1200
   };
   const cacheKey = createHash('sha256').update(JSON.stringify({ model: groqEnv.model, payload: payload.messages })).digest('hex');
   const cacheFile = path.join(cacheDir, cacheKey + '.json');
@@ -343,7 +325,7 @@ async function runScenario(scenario, kind) {
       latest_user_message: text,
       current_question_id: follow?.id || null,
       current_question: follow ? { id: follow.id, text: follow.text } : null,
-      canonical_field_registry: compactRegistry,
+      canonical_field_registry: relevantCatalog(follow?.id, Object.entries(facts).filter(([, f]) => !['confirmed', 'skipped'].includes(f.status)).map(([id]) => id)),
       currently_confirmed_field_values: confirmed(facts),
       relevant_recent_conversation_history: history.slice(-8),
       existing_unresolved_conflicts: {},
@@ -435,6 +417,8 @@ if (suite !== 'short')
   selected.push(...fullScenarios.map(s => ({ ...s, kind: 'full' })));
 if (suite !== 'short')
   selected.push(...dumpScenarios.map(s => ({ ...s, kind: 'dump' })));
+if (suite !== 'short' && suite !== 'full')
+  selected.push(...adversarialScenarios.map(s => ({ ...s, kind: 'adversarial', title: s.id })));
 const filtered = selected.filter(s => !idFilter || s.id === idFilter || s.id.startsWith(idFilter));
 const work = limitArg ? filtered.slice(0, limitArg) : filtered;
 

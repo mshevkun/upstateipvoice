@@ -120,6 +120,15 @@ const ENUM_ALIASES: Record<string, Record<string, string[]>> = {
         separate: ['both can pick up', 'can both pick up', 'two lines', 'separate phones', 'independently'],
         shared: ['share one phone', 'one desk phone', 'one line']
     },
+    'devices.reception.kind': {
+        desk: ['desk phone', 'desk phones', 'handset'],
+        computer: ['computer', 'headset', 'softphone'],
+        both: ['desk and computer', 'phone and computer', 'both']
+    },
+    'busy.order': {
+        backup_then_message: ['ring the work mobile then message', 'overflow then voicemail', 'slammed then message'],
+        message_only: ['message only', 'just take a message', 'voicemail only']
+    },
     'devices.work_mobile': {
         app: ['work cell', 'work mobile', 'work app', 'ring my cell'],
         none: ['office phones only', 'no cell', 'do not ring a mobile']
@@ -229,7 +238,17 @@ function teamCount(p: Plan, role: Role, operation: FieldOperation, value: Scalar
     const n = asNumber(value);
     if (n == null || n < 0 || n > 9999)
         return p;
-    return setRole(p, role, 'known', Math.floor(n));
+    let next = setRole(p, role, 'known', Math.floor(n));
+    if (role === 'reception') {
+        const sharing = next.policy.placements.find(x => x.team === 'reception' && (x.sharing === 'shared' || x.sharing === 'separate'))?.sharing;
+        if (sharing === 'shared' || sharing === 'separate')
+            next = setReceptionSharing(next, sharing);
+        else if (n === 1 && !next.policy.placements.some(x => x.team === 'reception'))
+            next = setReceptionSharing(next, 'shared');
+        if (n > 0 && next.first.kind === 'human' && !next.first.team)
+            next = { ...next, first: { ...next.first, team: 'reception' } };
+    }
+    return next;
 }
 
 function setDay(p: Plan, day: string, patch: Partial<Plan['hours']['days'][number]>): Plan {
@@ -237,7 +256,7 @@ function setDay(p: Plan, day: string, patch: Partial<Plan['hours']['days'][numbe
         ...p,
         hours: {
             ...p.hours,
-            days: p.hours.days.map(d => d.day === day ? { ...d, ...patch } : d)
+            days: p.hours.days.map(d => d.day === day ? { ...d, ...patch, stated: true } : d)
         },
         policy: { ...p.policy, hoursPreset: p.policy.hoursPreset === 'always' ? 'always' : 'custom' }
     };
@@ -395,7 +414,7 @@ export const fields: FieldDef[] = [
     {
         id: 'name',
         type: 'string',
-        description: 'Practice name. Optional.',
+        description: 'Practice name. Required before recordings or a published DID. Parse only from name anchors, never from an answering-service name.',
         confirmStep: 'practice',
         read: p => p.name,
         apply(p, operation, value) {
@@ -456,6 +475,9 @@ export const fields: FieldDef[] = [
             let next = { ...p, first: { ...p.first, kind: kind as Plan['first']['kind'], team } };
             if (kind === 'human' && next.policy.ring === 'undecided')
                 next = policy(next, { ring: 'together' });
+            if (kind === 'human' && next.first.team === 'reception' && receptionKnownCount(next) === 1
+                && !next.policy.placements.some(x => x.team === 'reception'))
+                next = setReceptionSharing(next, 'shared');
             return next;
         }
     },
@@ -834,6 +856,64 @@ export const fields: FieldDef[] = [
         const preset = value as Plan['policy']['hoursPreset'];
         return { ...p, hours: { ...p.hours, days: applyHoursPreset(p.hours.days, preset) }, policy: { ...p.policy, hoursPreset: preset } };
     }, 'hours'),
+    enumField('hours.rest_closed', ['closed', 'undecided'], 'Confirm that weekdays or weekend days the owner did not name are closed. Do not fill 9–5 for unnamed days.', p => {
+        const open = p.hours.days.filter(d => !(d.stated || (d.start && d.end)));
+        return open.length ? null : 'closed';
+    }, (p, value) => {
+        if (value !== 'closed')
+            return p;
+        return {
+            ...p,
+            hours: {
+                ...p.hours,
+                days: p.hours.days.map(d => (d.stated || (d.start && d.end)) ? d : { ...d, open: false, start: '', end: '', stated: true })
+            }
+        };
+    }, 'hours'),
+    {
+        id: 'reasons.default_split',
+        type: 'enum',
+        enum: ['standard'],
+        description: 'Apply the usual split: appointments to the front desk, billing to administration when that team exists, clinical questions to clinical.',
+        confirmStep: 'routing',
+        read: p => p.reasons.every(r => r.team) ? 'standard' : null,
+        apply(p, operation) {
+            if (operation !== 'set')
+                return p;
+            const rec = p.teams.some(t => t.role === 'reception' && t.count > 0);
+            const adm = p.teams.some(t => t.role === 'administration' && t.count > 0);
+            const clin = p.teams.some(t => t.role === 'clinical' && t.count > 0);
+            const front = rec ? 'reception' : (p.first.team || 'reception');
+            const bill = adm ? 'admin' : front;
+            const clinical = clin ? 'clinical' : front;
+            return {
+                ...p,
+                reasons: p.reasons.map(r => r.id === 'appointments' ? { ...r, team: r.team || front }
+                    : r.id === 'billing' ? { ...r, team: r.team || bill }
+                    : r.id === 'clinical-question' ? { ...r, team: r.team || clinical }
+                    : r)
+            };
+        }
+    },
+    {
+        id: 'locations.names',
+        type: 'string',
+        description: 'Comma-separated office names when the practice has more than one location.',
+        confirmStep: 'practice',
+        read: p => p.locations.length > 1 ? p.locations.map(l => l.name).join(', ') : null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const names = asString(value).split(',').map(s => s.trim()).filter(Boolean);
+            if (names.length < 2)
+                return p;
+            return {
+                ...p,
+                locations: names.map((name, i) => ({ id: p.locations[i]?.id || 'location-' + (i + 1), name })),
+                policy: { ...p.policy, locationEntry: p.policy.locationEntry === 'undecided' ? 'shared' : p.policy.locationEntry }
+            };
+        }
+    },
     {
         id: 'hours.timezone',
         type: 'string',
@@ -865,9 +945,19 @@ export const fields: FieldDef[] = [
             const start = normalizeTime(value);
             if (!start)
                 return p;
+            const someWeekdayStated = p.hours.days.slice(0, 5).some(d => d.stated === true || !!(d.start && d.end));
             return {
                 ...p,
-                hours: { ...p.hours, days: p.hours.days.map((d, i) => i < 5 ? { ...d, open: true, start } : d) },
+                hours: {
+                    ...p.hours,
+                    days: p.hours.days.map((d, i) => {
+                        if (i >= 5)
+                            return d;
+                        if (someWeekdayStated && !(d.stated || (d.start && d.end)))
+                            return d;
+                        return { ...d, open: true, start, stated: true };
+                    })
+                },
                 policy: { ...p.policy, hoursPreset: p.policy.hoursPreset === 'always' ? 'always' : p.policy.hoursPreset === 'weekdays' ? 'weekdays' : 'custom' }
             };
         }
@@ -884,9 +974,19 @@ export const fields: FieldDef[] = [
             const end = normalizeTime(value);
             if (!end)
                 return p;
+            const someWeekdayStated = p.hours.days.slice(0, 5).some(d => d.stated === true || !!(d.start && d.end));
             return {
                 ...p,
-                hours: { ...p.hours, days: p.hours.days.map((d, i) => i < 5 ? { ...d, open: true, end } : d) },
+                hours: {
+                    ...p.hours,
+                    days: p.hours.days.map((d, i) => {
+                        if (i >= 5)
+                            return d;
+                        if (someWeekdayStated && !(d.stated || (d.start && d.end)))
+                            return d;
+                        return { ...d, open: true, end, stated: true };
+                    })
+                },
                 policy: { ...p.policy, hoursPreset: p.policy.hoursPreset === 'always' ? 'always' : p.policy.hoursPreset === 'weekdays' ? 'weekdays' : 'custom' }
             };
         }
@@ -1028,6 +1128,83 @@ export const fields: FieldDef[] = [
             if (sharing !== 'shared' && sharing !== 'separate')
                 return p;
             return setReceptionSharing(p, sharing);
+        }
+    },
+    {
+        id: 'devices.reception.kind',
+        type: 'enum',
+        enum: ['desk', 'computer', 'both'],
+        description: 'What the front desk answers on. desk is a desk phone. computer is a headset computer. both is desk phones with optional WSS on the same identities. Do not invent a count from rooms.',
+        confirmStep: 'positions',
+        read: p => {
+            const row = p.policy.placements.find(x => x.team === 'reception' && x.count > 0);
+            if (!row || row.device === 'undecided' || row.device === 'none')
+                return null;
+            if (row.device === 'computer')
+                return 'computer';
+            if (/computer \+ headset on the same lines/i.test(p.policy.notes || ''))
+                return 'both';
+            return 'desk';
+        },
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const v = asString(value);
+            if (v !== 'desk' && v !== 'computer' && v !== 'both')
+                return p;
+            return setReceptionKind(p, v);
+        }
+    },
+    {
+        id: 'busy.backup',
+        type: 'string',
+        description: 'Team that rings if the front desk does not pick up. Usually administration. Not inbound unless busy.order confirms overflow.',
+        confirmStep: 'busy',
+        read: p => p.busy.backup || null,
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const team = resolveTeam(p, asString(value));
+            return team ? { ...p, busy: { ...p.busy, backup: team } } : p;
+        }
+    },
+    {
+        id: 'busy.order',
+        type: 'enum',
+        enum: ['backup_then_message', 'message_only'],
+        description: 'When the front is slammed: ring the backup work mobile then take a message, or message only.',
+        confirmStep: 'busy',
+        read: p => {
+            if (p.busy.kind === 'backup' && p.busy.backup)
+                return 'backup_then_message';
+            if (p.busy.kind === 'message' && !p.busy.backup)
+                return 'message_only';
+            return null;
+        },
+        apply(p, operation, value) {
+            if (operation !== 'set')
+                return p;
+            const v = asString(value);
+            if (v === 'backup_then_message')
+                return { ...p, busy: { ...p.busy, kind: 'backup', backup: p.busy.backup || 'admin' } };
+            if (v === 'message_only')
+                return { ...p, busy: { ...p.busy, kind: 'message', backup: '' } };
+            return p;
+        }
+    },
+    {
+        id: 'hours.lunch.callback',
+        type: 'enum',
+        enum: ['afternoon', 'unspecified'],
+        description: 'When lunch voicemail promises a callback. Do not invent this afternoon unless the owner said it.',
+        confirmStep: 'hours',
+        read: p => /lunch callback this afternoon/i.test(p.policy.notes || '') ? 'afternoon' : null,
+        apply(p, operation, value) {
+            if (operation !== 'set' || asString(value) !== 'afternoon')
+                return p;
+            const note = 'Lunch callback this afternoon.';
+            const notes = p.policy.notes && !p.policy.notes.includes(note) ? p.policy.notes + '; ' + note : (p.policy.notes || note);
+            return policy(p, { notes });
         }
     },
     {
@@ -1224,6 +1401,29 @@ export function catalog(): FieldCatalogEntry[] {
     }));
 }
 
+export function relevantCatalog(questionId: string | null, unsettled: string[] = []) {
+    const all = catalog();
+    const keep = new Set<string>(['mode', 'name', 'specialty', 'specialtyDetail', 'cityState']);
+    if (questionId)
+        keep.add(questionId);
+    for (const id of unsettled)
+        keep.add(id);
+    if (questionId) {
+        const prefix = questionId.split('.')[0];
+        for (const row of all)
+            if (row.id === questionId || row.id.startsWith(prefix + '.'))
+                keep.add(row.id);
+    }
+    const rows = all.filter(f => keep.has(f.id));
+    const picked = rows.length ? rows : all.slice(0, 24);
+    return picked.map(f => {
+        const row: { id: string; type: string; enum?: string[] } = { id: f.id, type: f.type };
+        if (f.enum)
+            row.enum = f.enum;
+        return row;
+    });
+}
+
 export function allowedFieldIds() {
     return fields.filter(f => !f.blocked).map(f => f.id);
 }
@@ -1247,17 +1447,33 @@ function keptSharing(p: Plan, team: string): Plan['policy']['placements'][number
     return p.policy.placements.find(x => x.team === team && x.sharing !== 'undecided')?.sharing;
 }
 
+function receptionKnownCount(p: Plan) {
+    return p.teams.filter(t => t.role === 'reception' && t.status === 'known').reduce((n, t) => n + t.count, 0);
+}
+
+function receptionLineCount(p: Plan, sharing: 'shared' | 'separate') {
+    const recN = receptionKnownCount(p);
+    if (sharing === 'separate')
+        return recN > 1 ? recN : recN === 1 ? 1 : 0;
+    return recN > 0 ? 1 : 0;
+}
+
 function setReceptionSharing(p: Plan, sharing: 'shared' | 'separate'): Plan {
     const rec = p.policy.placements.filter(x => x.team === 'reception');
+    const inferred = receptionLineCount(p, sharing);
     if (rec.length)
-        return policy(p, { placements: p.policy.placements.map(x => x.team === 'reception' ? { ...x, sharing } : x) });
+        return policy(p, {
+            placements: p.policy.placements.map(x => x.team === 'reception'
+                ? { ...x, sharing, count: x.device !== 'undecided' && x.count > 0 ? x.count : inferred }
+                : x)
+        });
     return policy(p, {
         placements: [...p.policy.placements, {
             id: 'reception-share',
             team: 'reception',
             label: 'Front desk',
             device: 'undecided',
-            count: 0,
+            count: inferred,
             access: 'outside' as const,
             sharing,
             extension: ''
@@ -1265,10 +1481,35 @@ function setReceptionSharing(p: Plan, sharing: 'shared' | 'separate'): Plan {
     });
 }
 
+function setReceptionKind(p: Plan, kind: 'desk' | 'computer' | 'both'): Plan {
+    const rec = p.policy.placements.find(x => x.team === 'reception');
+    const sharing = (rec?.sharing && rec.sharing !== 'undecided'
+        ? rec.sharing
+        : receptionKnownCount(p) <= 1 ? 'shared' : 'separate') as 'shared' | 'separate';
+    const count = rec?.count && rec.count > 0 ? rec.count : receptionLineCount(p, sharing);
+    const device = kind === 'computer' ? 'computer' : 'desk';
+    let next = setPlacement(p, 'reception', device, Math.max(count, 1), 'outside', sharing);
+    if (kind === 'both') {
+        const note = 'Front desk also uses computer + headset on the same lines.';
+        const notes = next.policy.notes && !next.policy.notes.includes(note) ? next.policy.notes + '; ' + note : (next.policy.notes || note);
+        next = policy(next, { notes });
+    }
+    return next;
+}
+
 function setPlacement(p: Plan, team: string, device: 'desk' | 'computer' | 'mobile', count: number, access: 'outside' | 'internal' = 'outside', sharingOverride?: 'shared' | 'separate'): Plan {
     const sharing = sharingOverride || keptSharing(p, team) || (count > 1 ? 'separate' as const : 'shared' as const);
-    const existing = p.policy.placements.filter(x => !(x.team === team && (x.device === device || x.device === 'undecided' && x.count === 0)));
-    const row = p.policy.placements.find(x => x.team === team && x.device === device);
+    const existing = p.policy.placements.filter(x => {
+        if (x.team !== team)
+            return true;
+        if (x.device === device)
+            return false;
+        if (x.device === 'undecided')
+            return false;
+        return true;
+    });
+    const row = p.policy.placements.find(x => x.team === team && x.device === device)
+        || p.policy.placements.find(x => x.team === team && x.device === 'undecided');
     const next = [...existing, {
         id: row?.id || team + '-' + device,
         team,

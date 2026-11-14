@@ -100,7 +100,7 @@ export type Policy = {
     urgentScope: 'urgent_only' | 'all_calls' | 'undecided';
     pendingClinicianRoute: boolean;
 };
-export function policyDefaults(): Policy { return { languageDecision: 'undecided', languageProviders: {}, queueExit: 'message', notification: 'undecided', version: 2, priorities: [], number: 'undecided', locationEntry: 'undecided', activeLocation: 'location-1', rooms: 0, roomsSpecified: false, terminalApprovals: {}, opening: { date: '', precision: 'none', construction: 'undecided', numbers: 'undecided', internet: 'undecided', network: 'undecided', pms: '' }, continuity: { internet: 'undecided', power: 'undecided', backupRouting: 'undecided', notes: '' }, handoffTested: false, onCallRouteVerified: false, e911Confirmed: false, baaAcknowledged: false, bomTier: 'undecided', placements: [], ring: 'undecided', ringOrder: [], recommendation: '', assistant: { tasks: [], humanWhen: 'request', team: '', owner: '', status: 'not-configured' }, languageSchedules: {}, languageFallbacks: {}, urgentKind: 'undecided', urgentCoverage: 'undecided', urgentDays: [], urgentRoster: 'undecided', urgentBackup: 'message', urgentAlert: 'undecided', acceptance: false, followup: 'skip', followupOwners: {}, system: '', comparison: false, costIncludes: [], contract: '', portNumbers: false, beforeOpening: 'undecided', menuRetries: 1, closures: [], hoursExceptionsConfirmed: false, teamFallbacks: {}, teamAvailability: {}, notes: '', extensionBase: 201, cityState: '', hoursPreset: 'weekdays', billingPerformedBy: 'undecided', urgentScope: 'undecided', pendingClinicianRoute: false }; }
+export function policyDefaults(): Policy { return { languageDecision: 'undecided', languageProviders: {}, queueExit: 'message', notification: 'undecided', version: 2, priorities: [], number: 'undecided', locationEntry: 'undecided', activeLocation: 'location-1', rooms: 0, roomsSpecified: false, terminalApprovals: {}, opening: { date: '', precision: 'none', construction: 'undecided', numbers: 'undecided', internet: 'undecided', network: 'undecided', pms: '' }, continuity: { internet: 'undecided', power: 'undecided', backupRouting: 'undecided', notes: '' }, handoffTested: false, onCallRouteVerified: false, e911Confirmed: false, baaAcknowledged: false, bomTier: 'undecided', placements: [], ring: 'undecided', ringOrder: [], recommendation: '', assistant: { tasks: [], humanWhen: 'request', team: '', owner: '', status: 'not-configured' }, languageSchedules: {}, languageFallbacks: {}, urgentKind: 'undecided', urgentCoverage: 'undecided', urgentDays: [], urgentRoster: 'undecided', urgentBackup: 'message', urgentAlert: 'undecided', acceptance: false, followup: 'skip', followupOwners: {}, system: '', comparison: false, costIncludes: [], contract: '', portNumbers: false, beforeOpening: 'undecided', menuRetries: 1, closures: [], hoursExceptionsConfirmed: false, teamFallbacks: {}, teamAvailability: {}, notes: '', extensionBase: 201, cityState: '', hoursPreset: 'undecided', billingPerformedBy: 'undecided', urgentScope: 'undecided', pendingClinicianRoute: false }; }
 export function suggestPlacements(p: Plan): Placement[] {
     if (p.policy.placements.length)
         return p.policy.placements;
@@ -120,8 +120,28 @@ export function inventory(p: Plan) { const x = { desk: 0, computer: 0, mobile: 0
             x.undecided = true;
     }
 } return x; }
-export function canRing(p:Plan,id:string,outside=false){return p.teams.some(t=>t.id===id&&t.count>0)&&p.policy.placements.some(x=>x.team===id&&!['none','undecided'].includes(x.device)&&x.count>0&&(!outside||x.access==='outside'));}
-export function directory(p: Plan) { return p.policy.placements.filter(x => !['none', 'undecided'].includes(x.device) && x.count > 0).map((x, i) => ({ id: x.id, label: x.label, team: x.team, device: x.device, count: x.count, access: x.access, sharing: x.sharing, extension: x.extension || String(p.policy.extensionBase + i * 10), suggested: !x.extension, identities: x.sharing === 'separate' && x.count > 1 ? x.count : 1, concurrent: x.sharing === 'separate' ? x.count : x.sharing === 'shared' ? 1 : 0 })); }
+export function canRing(p:Plan,id:string,outside=false){return p.teams.some(t=>t.id===id&&t.count>0)&&p.policy.placements.some(x=>x.team===id&&x.device!=='none'&&x.count>0&&(!outside||x.access==='outside'));}
+export function directory(p: Plan) {
+    const first = p.first.team || 'reception';
+    const rank = (x: Plan['policy']['placements'][number]) => x.team === first && x.access === 'outside' ? 0 : x.access === 'outside' ? 1 : 2;
+    return p.policy.placements
+        .filter(x => x.device !== 'none' && x.count > 0)
+        .map((x, i) => ({ x, i }))
+        .sort((a, b) => rank(a.x) - rank(b.x) || a.i - b.i)
+        .map(({ x }, i) => ({
+            id: x.id,
+            label: x.label,
+            team: x.team,
+            device: x.device,
+            count: x.count,
+            access: x.access,
+            sharing: x.sharing,
+            extension: x.extension || String(p.policy.extensionBase + i * 10),
+            suggested: !x.extension,
+            identities: x.sharing === 'separate' && x.count > 1 ? x.count : 1,
+            concurrent: x.sharing === 'separate' ? x.count : x.sharing === 'shared' ? 1 : 0
+        }));
+}
 export function policyDecisions(p: Plan) { const a: string[] = []; const q = p.policy, has = (id: string) => p.teams.some(t => t.id === id && t.count > 0); if (p.mode === 'opening') {
     if (q.beforeOpening === 'undecided')
         a.push('Choose the before-opening phone behavior');

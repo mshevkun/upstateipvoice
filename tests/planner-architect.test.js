@@ -177,6 +177,7 @@ test('next question skips first-answer when reception already answers everything
   let facts = {};
   const filled = update(mod, plan, facts, [
     { field_id: 'mode', operation: 'set', value: 'opening', evidence: 'opening' },
+    { field_id: 'name', operation: 'set', value: 'Hudson Family Dental', evidence: 'name' },
     { field_id: 'specialty', operation: 'set', value: 'Dental', evidence: 'dental' },
     { field_id: 'teams.reception.count', operation: 'set', value: 2, evidence: 'two receptionists' },
     { field_id: 'teams.clinical.count', operation: 'set', value: 4, evidence: 'dentist and assistants' },
@@ -191,7 +192,7 @@ test('next question skips first-answer when reception already answers everything
   assert.notEqual(question.id, 'first.kind');
   assert.notEqual(question.id, 'mode');
   assert.notEqual(question.id, 'specialty');
-  assert.ok(['hours.preset', 'after.kind'].includes(question.id));
+  assert.ok(['hours.preset', 'hours.rest_closed', 'after.kind'].includes(question.id));
 });
 
 test('opening a dental practice drives the assembly scene', async () => {
@@ -450,7 +451,7 @@ test('dont start with all that does not skip the setup question', async () => {
   assert.match(String(second.plan.policy.cityState), /Beacon/i);
   assert.equal(second.plan.specialty, 'Dental');
   assert.equal(second.plan.first.kind, 'human');
-  assert.equal(second.follow?.id, 'teams.administration.count');
+  assert.equal(second.follow?.id, 'name');
   assert.match(second.ack, /existing dental office in Beacon/i);
   assert.match(second.ack, /front desk picks up/i);
   assert.doesNotMatch(second.ack, /human-first|09:00|not a phone order|existing-office plan/i);
@@ -507,7 +508,7 @@ test('whats best after hours does not install AI', async () => {
 test('patient at the desk plus whats best after hours keeps those decisions separate', async () => {
   const mod = await load();
   const turned = mod.interpretTurn({
-    plan: { ...mod.initial(), mode: 'improving', specialty: 'Dental', first: { kind: 'human', team: 'reception' }, teams: [{ id: 'reception', name: 'Reception', role: 'reception', count: 2, status: 'known' }, { id: 'clinical', name: 'Clinical team', role: 'clinical', count: 1, status: 'known' }, { id: 'admin', name: 'Administration', role: 'administration', count: 0, status: 'unanswered' }] },
+    plan: { ...mod.initial(), mode: 'improving', name: 'Beacon Dental', specialty: 'Dental', first: { kind: 'human', team: 'reception' }, teams: [{ id: 'reception', name: 'Reception', role: 'reception', count: 2, status: 'known' }, { id: 'clinical', name: 'Clinical team', role: 'clinical', count: 1, status: 'known' }, { id: 'admin', name: 'Administration', role: 'administration', count: 0, status: 'unanswered' }] },
     facts: { mode: { field_id: 'mode', value: 'improving', status: 'confirmed', evidence: 'had' }, specialty: { field_id: 'specialty', value: 'Dental', status: 'confirmed', evidence: 'dental' }, 'first.kind': { field_id: 'first.kind', value: 'human', status: 'confirmed', evidence: 'pick up' }, 'teams.reception.count': { field_id: 'teams.reception.count', value: 2, status: 'confirmed', evidence: 'two' }, 'teams.clinical.count': { field_id: 'teams.clinical.count', value: 1, status: 'confirmed', evidence: 'dentist' } },
     interpreter: { acknowledgement: '', intent: 'provide_information', updates: [], unmapped_facts: [], explanation_topic: null },
     userText: "No office manager. Weekdays eight to five. Closed for lunch noon to one. When the girls are with a patient the phone just rings and people hang up — take a message. I don't know whether I need AI, a receptionist, or some answering company after hours. What's best?",
@@ -516,7 +517,7 @@ test('patient at the desk plus whats best after hours keeps those decisions sepa
   assert.equal(turned.plan.busy.kind, 'message');
   assert.equal(turned.plan.after.kind, 'undecided');
   assert.equal(turned.plan.hours.days[0].breakStart, '12:00');
-  assert.equal(turned.follow?.id, 'after.kind');
+  assert.equal(turned.follow?.id, 'hours.rest_closed');
   assert.match(turned.ack, /voicemail after hours is the simple path/i);
   assert.doesNotMatch(turned.ack, /short wait only helps/i);
 });
@@ -581,7 +582,7 @@ test('two at the front who can both pick up is separate lines, not a phone order
   const share = turned.plan.policy.placements.find(x => x.team === 'reception');
   assert.equal(share.sharing, 'separate');
   assert.equal(share.device, 'undecided');
-  assert.equal(share.count, 0);
+  assert.equal(share.count, 2);
   assert.equal(turned.plan.endpoints.desk, 0);
   assert.equal(turned.plan.endpoints.undecided, true);
   assert.match(turned.ack, /two front-desk lines/i);
@@ -642,23 +643,24 @@ test('after a take-a-message dump the next question is who checks the mailbox', 
     plan: mod.initial(),
     facts: {},
     interpreter: blank,
-    userText: 'Existing dental in Hudson. Two girls at the front, I am the dentist. No office manager. The girls at the front answer. If they are with a patient take a message. After hours take a message. Weekdays nine to five. Someone stays on the phones at lunch.',
+    userText: 'Existing dental in Hudson — Hudson Family Dental. Two girls at the front, I am the dentist. No office manager. The girls at the front answer. If they are with a patient take a message. After hours take a message. Weekdays nine to five. Someone stays on the phones at lunch.',
     question: null
   });
   assert.equal(turned.plan.after.kind, 'message');
   assert.equal(turned.plan.busy.kind, 'message');
-  assert.equal(turned.follow?.id, 'messages.owner');
+  assert.equal(turned.follow?.id, 'hours.rest_closed');
 });
 
 test('before-opening recording chip does not crash caller hear', async () => {
   const mod = await load();
   let plan = mod.initial();
   plan.mode = 'opening';
+  plan.name = 'Hudson Family Dental';
   plan.policy.beforeOpening = 'information';
   assert.doesNotThrow(() => mod.callerHear(plan));
   const rows = mod.callerHear(plan);
   assert.ok(rows.some(row => /Before opening/.test(row.when) && /not (yet )?open/i.test(row.hear)));
-  const turned = update(mod, { ...mod.initial(), mode: 'opening' }, {}, [
+  const turned = update(mod, { ...mod.initial(), mode: 'opening', name: 'Hudson Family Dental' }, {}, [
     { field_id: 'beforeOpening', operation: 'set', value: 'information' }
   ]);
   assert.equal(turned.plan.policy.beforeOpening, 'information');
@@ -711,7 +713,7 @@ function play(mod, texts) {
 test('Hudson messy talk lands mailbox, two lines, work mobile, and lunch on the blueprint', async () => {
   const mod = await load();
   const { plan, ack, follow } = play(mod, [
-    "We've had this dental office in Hudson for twenty years. Two girls at the front, I'm the dentist. They pick up, not a menu.",
+    "We've had Hudson Family Dental in Hudson for twenty years. Two girls at the front, I'm the dentist. They pick up, not a menu.",
     "No office manager. Weekdays eight to five. Closed for lunch noon to one. When the girls are with a patient the phone just rings and people hang up — take a message. After hours take a message. Keep the number. Four rooms, those are not phones. English is enough. We don't have anyone on call.",
     'The receptionist checks the messages in the morning.',
     'They can both pick up at once.',
@@ -733,7 +735,7 @@ test('Hudson messy talk lands mailbox, two lines, work mobile, and lunch on the 
   assert.ok(hear.some(row => /after hours/i.test(row.when) && /next business day/i.test(row.hear)));
   assert.ok(hear.every(row => !/845/.test(row.hear)));
   const heads = mod.headlineInsights(plan).map(i => i.id).join(' ');
-  assert.match(heads, /share-intent/);
+  assert.doesNotMatch(heads, /share-intent/);
   assert.match(heads, /work-mobile/);
   assert.match(heads, /lunch/);
   const bands = [...mod.purchaseBands(plan).required, ...mod.purchaseBands(plan).optional];
@@ -759,7 +761,7 @@ test('Hudson messy talk lands mailbox, two lines, work mobile, and lunch on the 
 test('opening callback owner is not left unset once someone owns the mailbox', async () => {
   const mod = await load();
   const first = play(mod, [
-    "We're opening a dental office in Catskill. Drywall is still up, not open yet. I haven't hired a receptionist. If someone finds the number before we open, take a callback message. After hours just take a message. I'm the dentist."
+    "We're opening Catskill Family Dental in Catskill. Drywall is still up, not open yet. I haven't hired a receptionist. If someone finds the number before we open, take a callback message. After hours just take a message. I'm the dentist."
   ]);
   assert.equal(first.plan.policy.beforeOpening, 'message');
   const second = mod.interpretTurn({
@@ -834,7 +836,7 @@ test('owner brief writes phone quantities, not rooms, and never Fusion ports', a
   assert.equal(pages.length, 6);
   const text = mod.ownerBriefText(plan);
   assert.match(text, /Chen Family Dental/);
-  assert.match(text, /2 front-desk phones because 2 people at the front|2 people at the front/);
+  assert.match(text, /2 Front-desk lines|2 front-desk phones because 2 people at the front|2 people at the front|2 independent lines/i);
   assert.match(text, /Phones to order: 3/);
   assert.match(text, /6 treatment rooms are chairs|Not a phone per room/);
   assert.doesNotMatch(text, /0 Room phones/);
@@ -850,7 +852,7 @@ test('owner brief writes phone quantities, not rooms, and never Fusion ports', a
   assert.doesNotMatch(mod.ownerBriefText(mod.initial()), /Owned message|:5081/);
 });
 
-test('owner brief lunch is afternoon callback, not overnight on-call', async () => {
+test('owner brief lunch is a callback, not overnight on-call', async () => {
   const mod = await load();
   const { plan } = update(mod, mod.initial(), {}, [
     { field_id: 'mode', operation: 'set', value: 'opening', evidence: 'opening' },
@@ -880,14 +882,15 @@ test('owner brief lunch is afternoon callback, not overnight on-call', async () 
   plan.urgent.enabled = true;
   plan.policy.urgentKind = 'connect';
   const text = mod.ownerBriefText(plan);
-  assert.match(text, /this afternoon/);
+  assert.doesNotMatch(text, /this afternoon/);
   assert.match(text, /press 9|extra choice/i);
   assert.match(text, /swelling, trauma/i);
   assert.doesNotMatch(text, /not a phones/);
   assert.doesNotMatch(text, /1 people/);
   const lunch = mod.callerHear(plan).find(r => /lunch/i.test(r.when));
   assert.ok(lunch);
-  assert.match(lunch.hear, /this afternoon/i);
+  assert.match(lunch.hear, /we will call you back/i);
+  assert.doesNotMatch(lunch.hear, /this afternoon/i);
   assert.doesNotMatch(lunch.hear, /next business day/i);
 });
 

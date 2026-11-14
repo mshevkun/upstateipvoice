@@ -54,3 +54,8 @@ scripts/qa-blog.js
 
 # Support Figma sources — never deploy
 images/SUPPORT/
+planner/.audit-build/
+planner/.tmp/
+planner/.tmp-audit-debug/
+planner/.test-build/
+.claude/
