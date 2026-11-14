@@ -97,12 +97,12 @@ export async function interpretRemote(req: InterpretRequest): Promise<InterpretS
             currentQuestion: req.currentQuestion ? { id: req.currentQuestion.id, text: req.currentQuestion.text } : null,
             confirmedState: req.confirmedState,
             facts: req.facts,
-            history: req.history.slice(-8),
+            history: req.history.slice(-6),
             promptName: 'practice_interpreter_v1',
             timezone: req.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
             today: new Date().toISOString().slice(0, 10)
         }),
-        signal: AbortSignal.timeout(8000)
+        signal: AbortSignal.timeout(12000)
     });
     if (res.status === 429)
         throw new Error('rate');

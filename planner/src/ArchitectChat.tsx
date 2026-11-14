@@ -184,9 +184,9 @@ function TypedText({ text, live }: { text: string; live: boolean }) {
             i++;
             setShown(parts.slice(0, i).join(''));
             if (i < parts.length)
-                id = setTimeout(tick, parts[i - 1].trim() ? 26 : 10);
+                id = setTimeout(tick, parts[i - 1].trim() ? 12 : 4);
         };
-        id = setTimeout(tick, 40);
+        id = setTimeout(tick, 16);
         return () => clearTimeout(id);
     }, [text, live]);
     return <p>{shown}</p>;
@@ -558,7 +558,7 @@ export function Architect() {
         requestAnimationFrame(() => autoSize(inputRef.current));
         setLeaving(true);
         setBusy(true);
-        await wait(220);
+        await wait(80);
         if (epoch.current !== token)
             return;
         setSuppressPrompt(true);
