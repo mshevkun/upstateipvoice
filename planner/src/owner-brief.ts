@@ -937,9 +937,11 @@ export function ownerBrief(p: Plan): BriefPage[] {
                         ? 'The answering computer picks up. No keypad. The scripts below are what to record.'
                         : 'A person answers. No keypad. The scripts below are what to record.',
             blocks: [
-                { kind: 'moments', items: callMoments(p) },
+                // Scripts first so freeze-fit owner pages never drop lunch / before-opening hears.
                 { kind: 'kicker', text: 'What a caller hears' },
                 { kind: 'scripts', items: scripts(p) },
+                { kind: 'kicker', text: 'In plain words' },
+                { kind: 'moments', items: callMoments(p).slice(0, 4) },
                 { kind: 'note', text: 'Wording is a preview of the path, not a live call. Approve it before anything is recorded.' }
             ]
         },

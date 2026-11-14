@@ -1,5 +1,6 @@
 import type { Plan } from '../config';
 import { dayIsStated, hoursSummary } from '../flow';
+import { ringMembers } from '../provisioning';
 import { roleState } from '../team-state';
 import type { Chip, Fact, NextQuestion } from './types';
 
@@ -463,7 +464,28 @@ function questionCatalog(p: Plan, facts: Record<string, Fact>): NextQuestion[] {
 }
 
 function pruneChips(p: Plan, facts: Record<string, Fact>, question: NextQuestion): NextQuestion {
+    const inboundStuck = needsInboundDevice(question.id, p);
     const options = question.options.filter(chip => {
+        // Skipping or soft-deferring would leave Fusion RG 7000 with no members.
+        if (inboundStuck && (chip.operation === 'skip' || chip.operation === 'uncertain'))
+            return false;
+        if (inboundStuck && question.id === 'devices.clinical.area'
+            && (chip.value === 'none' || chip.value === 'internal_computer' || chip.value === 'internal'))
+            return false;
+        // Do not offer after-hours paths that cannot host digit-9 on-call.
+        if (question.id === 'after.kind' && p.urgent.enabled && p.policy.urgentKind === 'connect'
+            && chip.value === 'information')
+            return false;
+        // Menu first-answer cannot use staff language ID; AI first uses VR keypad only.
+        if (question.id === 'languages.decision') {
+            if (p.first.kind === 'menu' && chip.value === 'staff')
+                return false;
+            if (p.first.kind === 'assistant' && (chip.value === 'staff' || chip.value === 'menu'))
+                return false;
+        }
+        if (question.id === 'first.kind' && p.locations.length > 1 && p.policy.locationEntry === 'shared'
+            && (chip.value === 'menu' || chip.value === 'assistant'))
+            return false;
         if (chip.operation !== 'set')
             return true;
         if (settled(facts, chip.field_id) && String(facts[chip.field_id]?.value) === String(chip.value))
@@ -489,14 +511,95 @@ function emptyReceptionDesk(p: Plan) {
         && !p.policy.placements.some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none');
 }
 
+/** Human first-answer with no outside SIP identities → Fusion RG 7000 would be empty. */
+function emptyInboundRg(p: Plan) {
+    if (p.first.kind !== 'human')
+        return false;
+    const team = p.first.team || 'reception';
+    return ringMembers(p, team, true).filter(m => m.device !== 'undecided' && m.device !== 'none').length === 0;
+}
+
+/** Align Plan fields so fusionBuild only keeps install-time blockers. */
+export function repairFusionConflicts(p: Plan): Plan {
+    let next = p;
+    if (next.first.kind === 'menu' && next.languages.some(l => l.mechanism === 'staff'))
+        next = { ...next, languages: next.languages.map(l => l.mechanism === 'staff' ? { ...l, mechanism: 'menu' as const } : l) };
+    if (next.first.kind === 'assistant' && next.languages.some(l => l.mechanism === 'staff' || l.mechanism === 'menu'))
+        next = { ...next, languages: next.languages.map(l => ({ ...l, mechanism: 'assistant' as const })) };
+    if (next.first.kind === 'human' && next.languages.some(l => l.mechanism === 'menu'))
+        next = { ...next, languages: next.languages.map(l => l.mechanism === 'menu' ? { ...l, mechanism: 'staff' as const } : l) };
+    if (next.after.kind === 'information' && next.urgent.enabled && next.policy.urgentKind === 'connect')
+        next = { ...next, after: { ...next.after, kind: 'message' } };
+    if (next.locations.length > 1 && next.policy.locationEntry === 'shared' && next.first.kind !== 'human' && next.first.kind !== 'undecided')
+        next = { ...next, first: { kind: 'human', team: next.first.team || 'reception' } };
+    if (next.first.kind === 'human' && !next.first.team)
+        next = { ...next, first: { ...next.first, team: 'reception' } };
+    return next;
+}
+
+/** Non-install Fusion conflicts that must keep the chat open (after repair). */
+function conflictQuestionId(p: Plan): string | null {
+    if (p.locations.length > 1 && p.policy.locationEntry === 'shared' && p.first.kind !== 'human' && p.first.kind !== 'undecided')
+        return 'first.kind';
+    if (p.first.kind === 'human' && p.languages.some(l => l.mechanism === 'menu'))
+        return 'languages.decision';
+    if (p.first.kind === 'menu' && p.languages.some(l => l.mechanism === 'staff'))
+        return 'languages.decision';
+    if (p.first.kind === 'assistant' && p.languages.some(l => l.mechanism === 'staff' || l.mechanism === 'menu'))
+        return 'languages.decision';
+    if (p.after.kind === 'information' && p.urgent.enabled && p.policy.urgentKind === 'connect')
+        return 'after.kind';
+    return null;
+}
+
+function needsInboundDevice(questionId: string, p: Plan) {
+    if (!emptyInboundRg(p))
+        return false;
+    const team = p.first.team || 'reception';
+    if (questionId === 'teams.reception.count')
+        return team === 'reception' && roleState(p, 'reception').count === 0;
+    if (questionId === 'devices.reception.sharing')
+        return team === 'reception'
+            && roleState(p, 'reception').count >= 2
+            && !p.policy.placements.some(x => x.team === 'reception' && x.sharing !== 'undecided');
+    if (questionId === 'devices.reception.kind')
+        return team === 'reception'
+            && !p.policy.placements.some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none');
+    if (questionId === 'devices.clinical.area')
+        return team === 'clinical'
+            && !p.policy.placements.some(x => x.team === 'clinical' && x.count > 0 && x.access === 'outside' && x.device !== 'undecided' && x.device !== 'none');
+    if (questionId === 'devices.administration.place')
+        return (team === 'admin' || team === 'administration')
+            && !p.policy.placements.some(x => x.team === 'admin' && x.count > 0 && x.access === 'outside' && x.device !== 'undecided' && x.device !== 'none');
+    return false;
+}
+
 export function nextQuestion(p: Plan, facts: Record<string, Fact>): NextQuestion | null {
-    for (const question of rankedCatalog(p, facts)) {
-        const reopenReception = question.id === 'teams.reception.count' && emptyReceptionDesk(p) && !skipped(facts, 'teams.reception.count');
-        if (!reopenReception && question.affectedFields.every(id => settled(facts, id)))
+    const catalog = rankedCatalog(p, facts);
+    const conflictId = conflictQuestionId(p);
+    for (const question of catalog) {
+        const reopenReception = question.id === 'teams.reception.count' && emptyReceptionDesk(p);
+        const reopenInbound = needsInboundDevice(question.id, p);
+        const reopenConflict = conflictId === question.id;
+        if (!reopenReception && !reopenInbound && !reopenConflict && question.affectedFields.every(id => settled(facts, id)))
             continue;
-        if (!ready(question.id, p, facts))
+        if (!ready(question.id, p, facts) && !reopenConflict && !reopenInbound && !reopenReception)
             continue;
         return pruneChips(p, facts, question);
+    }
+    // After every ordinary question is settled, still refuse to finish with an empty inbound RG.
+    if (emptyInboundRg(p)) {
+        const inboundIds = ['devices.reception.kind', 'devices.reception.sharing', 'devices.clinical.area', 'devices.administration.place', 'teams.reception.count'];
+        for (const id of inboundIds) {
+            const question = catalog.find(q => q.id === id);
+            if (question && needsInboundDevice(id, p))
+                return pruneChips(p, facts, question);
+        }
+    }
+    if (conflictId) {
+        const question = catalog.find(q => q.id === conflictId);
+        if (question)
+            return pruneChips(p, facts, question);
     }
     return null;
 }
@@ -511,7 +614,8 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
     if (id === 'specialty')
         return !!p.mode && !p.specialty && !skipped(facts, 'specialty');
     if (id === 'teams.reception.count')
-        return (roleState(p, 'reception').status === 'unanswered' || emptyReceptionDesk(p)) && !skipped(facts, 'teams.reception.count');
+        return (roleState(p, 'reception').status === 'unanswered' || emptyReceptionDesk(p) || needsInboundDevice(id, p))
+            && (!skipped(facts, 'teams.reception.count') || needsInboundDevice(id, p));
     if (id === 'teams.clinical.count')
         return roleState(p, 'reception').status !== 'unanswered' && roleState(p, 'clinical').status === 'unanswered' && !skipped(facts, 'teams.clinical.count');
     if (id === 'teams.administration.count')
@@ -538,12 +642,15 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
         return (needBusy || needAfter) && !skipped(facts, 'messages.owner');
     }
     if (id === 'devices.reception.sharing')
-        return roleState(p, 'reception').count >= 2 && p.first.kind === 'human' && !settled(facts, 'devices.reception.sharing') && !p.policy.placements.some(x => x.team === 'reception' && x.sharing !== 'undecided');
+        return roleState(p, 'reception').count >= 2 && p.first.kind === 'human'
+            && (!settled(facts, 'devices.reception.sharing') || needsInboundDevice(id, p))
+            && !p.policy.placements.some(x => x.team === 'reception' && x.sharing !== 'undecided');
     if (id === 'devices.reception.kind')
         return p.first.kind === 'human'
-            && roleState(p, 'reception').count > 0
-            && !settled(facts, 'devices.reception.kind')
-            && !p.policy.placements.some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none');
+            && (roleState(p, 'reception').count > 0 || needsInboundDevice(id, p))
+            && (needsInboundDevice(id, p)
+                || (!settled(facts, 'devices.reception.kind')
+                    && !p.policy.placements.some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none')));
     if (id === 'devices.work_mobile')
         return p.first.kind !== 'undecided' && !settled(facts, 'devices.work_mobile')
             && !p.policy.placements.some(x => x.device === 'mobile' && x.count > 0)
@@ -579,18 +686,27 @@ function ready(id: string, p: Plan, facts: Record<string, Fact>) {
     if (id === 'urgent.miss')
         return p.policy.urgentKind === 'connect' && !p.urgent.backup && !skipped(facts, 'urgent.backup') && !confirmed(facts, 'urgent.backup');
     if (id === 'devices.administration.place')
-        return roleState(p, 'administration').count > 0 && !p.policy.placements.some(x => x.team === 'admin' && x.device !== 'mobile' && x.device !== 'undecided' && x.count > 0) && !skipped(facts, 'devices.administration.place');
+        return (roleState(p, 'administration').count > 0 || needsInboundDevice(id, p))
+            && (needsInboundDevice(id, p)
+                || (!p.policy.placements.some(x => x.team === 'admin' && x.device !== 'mobile' && x.device !== 'undecided' && x.count > 0)
+                    && !skipped(facts, 'devices.administration.place')));
     if (id === 'devices.clinical.area')
-        return roleState(p, 'clinical').count > 0 && !p.policy.placements.some(x => x.team === 'clinical' && x.count > 0) && !skipped(facts, 'devices.clinical.area');
+        return (roleState(p, 'clinical').count > 0 || needsInboundDevice(id, p))
+            && (needsInboundDevice(id, p)
+                || (!p.policy.placements.some(x => x.team === 'clinical' && x.count > 0)
+                    && !skipped(facts, 'devices.clinical.area')));
     return false;
 }
 
 export function ownerQuestions(p: Plan, facts: Record<string, Fact> = {}) {
+    const conflictId = conflictQuestionId(p);
     return rankedCatalog(p, facts).filter(question => {
-        const reopenReception = question.id === 'teams.reception.count' && emptyReceptionDesk(p) && !skipped(facts, 'teams.reception.count');
-        if (!reopenReception && question.affectedFields.every(id => settled(facts, id)))
+        const reopenReception = question.id === 'teams.reception.count' && emptyReceptionDesk(p);
+        const reopenInbound = needsInboundDevice(question.id, p);
+        const reopenConflict = conflictId === question.id;
+        if (!reopenReception && !reopenInbound && !reopenConflict && question.affectedFields.every(id => settled(facts, id)))
             return false;
-        return ready(question.id, p, facts);
+        return reopenConflict || ready(question.id, p, facts);
     }).map(question => pruneChips(p, facts, question));
 }
 

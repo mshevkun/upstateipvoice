@@ -112,6 +112,8 @@ export function skippedHolidayDates(p: Plan): { iso: string; observed: string }[
 }
 
 export function effectiveHolidayDates(p: Plan): string[] {
+    // Only dates the owner named (or policy closures) that close an open weekday.
+    // Do not invent next-year copies here — renewal is a build note, not a second row of dates.
     const raw = p.hours.holidayPolicy === 'closed'
         ? [...p.hours.holidays, ...p.policy.closures]
         : [...p.policy.closures];
@@ -119,9 +121,6 @@ export function effectiveHolidayDates(p: Plan): string[] {
     for (const iso of raw.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))) {
         if (holidayClosesAnOpenDay(p, iso) && !out.includes(iso))
             out.push(iso);
-        const next = shiftYear(iso, 1);
-        if (next && holidayClosesAnOpenDay(p, next) && !out.includes(next))
-            out.push(next);
     }
     return out;
 }
@@ -450,7 +449,7 @@ function identityAdvice(p: Plan) {
     const share = p.policy.placements.find(x => x.team === 'reception' && x.sharing !== 'undecided')?.sharing;
     const notes = (p.policy.notes || '') + ' ' + (p.policy.continuity.notes || '');
     const lines: string[] = [];
-    if (p.first.kind === 'human' && ringMembers(p, p.first.team, true).length === 0)
+    if (p.first.kind === 'human' && ringMembers(p, p.first.team || 'reception', true).length === 0)
         lines.push(`BLOCKED: inbound ring group has no members.`
             + (share === 'separate' && recN > 1
                 ? ` Owner requires ${recN} independent reception identities. Do not create one shared SIP user.`
@@ -472,8 +471,8 @@ function firstAdvice(p: Plan) {
         return [
             `Open hours transfer to a simultaneous ring group for ${teamLabel(p, p.first.team)}. ring_group_strategy = simultaneous, ring_group_call_timeout = ${p.busy.seconds}. Members are every outside-call extension for that team (desk, computer, mobile).`,
             'Callers hear ringing, not a menu. Language and reason are unknown until someone answers. Do not play an IVR greeting on this path.',
-            q.ring === 'together' && !canRing(p, p.first.team, true)
-                ? (p.policy.placements.some(x => x.team === p.first.team && x.sharing === 'separate')
+            q.ring === 'together' && !canRing(p, p.first.team || 'reception', true)
+                ? (p.policy.placements.some(x => x.team === (p.first.team || 'reception') && x.sharing === 'separate')
                     ? 'Ring-group members are not assigned yet. Reserve independent identities so both can pick up. Do not share one SIP user. Device models are not chosen.'
                     : 'Blocked: the first-answer team has no outside-call device.')
                 : ''
@@ -546,7 +545,7 @@ export function onCallUnbuilt(p: Plan) {
 
 function combinationWarnings(p: Plan) {
     const a: string[] = [];
-    if (p.first.kind === 'human' && ringMembers(p, p.first.team, true).length === 0)
+    if (p.first.kind === 'human' && ringMembers(p, p.first.team || 'reception', true).length === 0)
         a.push('BLOCKED: inbound ring group has no members');
     if (onCallUnbuilt(p))
         a.push('On-call RG has no outside member. Digit 9 is BLOCKED. Do not go live until Follow Me is populated.');
@@ -880,7 +879,8 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
         const members = t.id === p.busy.backup && t.id !== p.first.team
             ? rawMembers.filter(m => m.device === 'mobile')
             : rawMembers;
-        const ext = t.id === p.first.team ? mainRg : t.id === p.busy.backup ? backupRg : n.reasonRg(i);
+        const inboundTeam = p.first.kind === 'human' ? (p.first.team || 'reception') : p.first.team;
+        const ext = inboundTeam && t.id === inboundTeam ? mainRg : t.id === p.busy.backup ? backupRg : n.reasonRg(i);
         const strategy = p.first.kind === 'human' && q.ring === 'order' && q.ringOrder.some(r => r.team === t.id) ? 'sequence' : 'simultaneous';
         const hop = q.ring === 'order' ? q.ringOrder.find(r => r.team === t.id)?.seconds : undefined;
         const groupTimeout = hop || p.busy.seconds;
@@ -900,13 +900,13 @@ function objects(p: Plan, locIndex: number): FusionObject[] {
         });
     });
 
-    if (p.first.kind === 'human' && (q.ring === 'together' || q.ring === 'order') && !teamsWithOutside.some(t => t.id === p.first.team)) {
+    if (p.first.kind === 'human' && (q.ring === 'together' || q.ring === 'order') && !teamsWithOutside.some(t => t.id === (p.first.team || 'reception'))) {
         const recN = p.teams.filter(t => t.role === 'reception' && t.status === 'known').reduce((n, t) => n + t.count, 0);
         const share = q.placements.find(x => x.team === 'reception' && x.sharing !== 'undecided')?.sharing;
         list.push({
             kind: 'ring_group',
             extension: mainRg,
-            name: `Ring group ${mainRg} · ${teamLabel(p, p.first.team)} (members not assigned)`,
+            name: `Ring group ${mainRg} · ${teamLabel(p, p.first.team || 'reception')} (members not assigned)`,
             setup: [
                 `Apps → Ring Groups: extension ${mainRg}, strategy ${q.ring === 'order' ? 'sequence' : 'simultaneous'}, call timeout ${p.busy.seconds}s. Do not mix the on-call ${p.urgent.seconds}s timeout into this group.`,
                 share === 'separate' && recN > 1

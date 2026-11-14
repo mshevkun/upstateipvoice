@@ -1,0 +1,302 @@
+                                                                                            OWNER BLUEPRINT
+
+
+
+
+01 · COVER
+
+
+Chen Family Dental
+New dental practice · Kingston, NY · Opens March 15, 2027
+
+
+2                                                                6
+Desk phones                                                      Treatment rooms
+2 people at the front                                            Chairs — not phones
+
+
+
+
+Phones to order: 3 (2 desk + 1 work mobile).
+
+Mon–Thu                   8:00 AM–5:00 PM · lunch 12:30 PM–1:30 PM
+Fri                       8:00 AM–2:00 PM
+Sat–Sun                   Closed
+Holidays                  Closed · Nov 25, 2027 · Dec 25, 2027
+
+Phone hours in Eastern Time. Draft. Nothing is installed.
+
+WHEN SOMEONE CALLS
+
+OPEN HOURS
+
+Reception answers · 2 independent lines. No menu.
+
+LUNCH
+
+12:30 PM–1:30 PM · front desk closed · lunch recording, we will call you back. Not overnight. Not on-call
+dentist.
+
+AFTER HOURS
+
+Next-business-day message. Urgent (swelling, trauma, bleeding) can try on-call. Life-threatening: hang
+up and dial 911.
+
+BEFORE OPENING
+
+Callback recording. Do not publish the number until it exists.
+
+
+
+
+Draft UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                               1 / 6
+                                                                                                     OWNER BLUEPRINT
+
+
+
+
+02 · EVERY CALL
+
+
+What happens when someone calls.
+A person answers. No keypad. The scripts below are what to record.
+
+
+WHAT A CALLER HEARS
+
+    DURING PHONE HOURS, IF NOBODY ANSWERS
+
+    Thank you for calling Chen Family Dental. We are not able to take your call right now. Please leave your
+    name, number, and reason for calling, and we will call you back.
+
+    PRIORITY MESSAGE GREETING
+
+    Thank you for calling Chen Family Dental. We were not able to reach the on-call clinician. Please leave
+    your name, number, and the reason this cannot wait until the next business day.
+
+    AFTER HOURS
+
+    You have reached Chen Family Dental after hours. If this is swelling, trauma, or uncontrolled bleeding,
+    press 9 and we will try the on-call dentist. To leave a message, press 1 or wait. We return ordinary
+
+    AT LUNCH (12:30 PM–1:30 PM)
+
+    Thank you for calling Chen Family Dental. We are closed for lunch and will return at 1:30 PM. Please leave
+    your name, number, and reason for calling, and we will call you back.
+
+    BEFORE OPENING DAY
+
+    Thank you for calling Chen Family Dental. We are not yet open. Please leave your name, number, and a
+    good time to reach you. We will call you back.
+
+
+IN PLAIN WORDS
+
+DURING PHONE HOURS
+
+The published number rings Reception. A person answers. There is no keypad. If nobody picks up after 25
+seconds, Administration's work mobile rings, then a message for Reception. Never a personal cell.
+
+LUNCH · 12:30 PM–1:30 PM
+
+The front desk is closed on purpose. Callers hear a lunch recording and can leave a message. Reception
+calls back — not the next business day, and not the on-call dentist.
+
+AFTER HOURS
+
+Ordinary messages: Reception calls back the next business day. Urgent (swelling, trauma, bleeding): the
+recording offers one extra choice to try the on-call dentist. Life-threatening: hang up and dial 911.
+
+BEFORE OPENING DAY
+
+Early callers leave a callback for Reception. Do not publish the number until that recording exists.
+
+
+Wording is a preview of the path, not a live call. Approve it before anything is recorded.
+
+
+
+
+Draft UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                                        2 / 6
+                                                                                                 OWNER BLUEPRINT
+
+
+
+
+03 · WHAT TO ORDER
+
+
+3 phones to order.
+2 desk + 1 work mobile. Not a phone per room.
+
+
+2                                                                  1
+Desk phones                                                        Work mobile
+2 people at the front                                              Office manager overflow
+
+
+
+
+    One work mobile for the office manager when the front is slammed. Work app only — never a
+    personal cell. That is not a third desk phone.
+    1 computer at the Administration is not inbound on the published number.
+    one clinical computer (internal)
+
+DO NOT ORDER
+
+    Do not order a phone per treatment room.
+    Do not let a quote invent a keypad menu. Callers reach a person first.
+    Do not print a personal cell in a greeting or on a wall card.
+    Do not mix the insurance fax with the published patient number.
+
+A quote should match these quantities. This file never invents a price.
+
+Reception                              2 people · 2 desk phones
+
+Administration                         1 person · office computer — not inbound · work app — not a desk phone
+
+Clinical team                          6 people · internal computer — not the published number
+
+
+
+
+Draft UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                                   3 / 6
+                                                                                                    OWNER BLUEPRINT
+
+
+
+
+04 · HOW WORK IS SPLIT
+
+
+Who owns each kind of call.
+Front desk answers first. These are handoffs after pickup — not a daytime menu.
+
+Appointments and scheduling            Reception keeps this after they pick up
+
+Billing and insurance questions        Reception answers, then Administration owns it
+
+Clinical questions                     Reception answers, then Clinical team owns it
+
+Spanish                                A person at the practice during open hours. After hours stay English.
+
+On-call until April                    On-call is Dr. Chen alone until the associate starts.
+
+
+THIS NUMBER IS NOT
+
+True emergency                         Hang up and dial 911. This published number is never dispatch.
+
+Personal cell                          Never in a recording, never on a wall card. Work app only.
+
+Insurance fax                          Stays off the published patient number.
+
+
+IF THE OFFICE CANNOT TAKE CALLS
+
+Snow days                              Follow the after-hours recording. Never forward the published number to
+                                       a personal phone.
+
+Appointments staying at the front desk is a choice, not a missing route.
+
+
+
+
+Draft UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                                      4 / 6
+                                                                                                  OWNER BLUEPRINT
+
+
+
+
+05 · OPENING
+
+
+What can start today.
+Target opening March 15, 2027. Dates here are planning, not a vendor promise. This is a new
+published number, not a port.
+
+   Freeze how patients reach you
+   Can start today
+   Front-desk answering is recorded. Device models are still a vendor choice.
+
+   Keep the before-opening recording on until opening morning
+   Before the number is published
+   Then switch the published number to live hours. Do not publish the number before that recording exists.
+
+   Walk the space for internet and cabling
+   Blocked until the space can be surveyed
+   Cabling and network drops belong on the contractor brief — not on staff count.
+
+   Get a new published number
+   After the before-opening recording exists
+   This is not a port. Keep any old office number out of patient marketing until you switch.
+
+   Order the recorded quantities
+   After quantities are frozen
+   2 desk phones, 1 work mobile. Not a phone per room.
+
+   Approve the recordings
+   Before go-live
+   Lunch (callback, not overnight). After hours (ordinary message plus the urgent choice). Before-opening
+   callback. Nothing is live until those files are uploaded.
+
+STILL OPEN — HANDLED AT INSTALL
+
+    on-call work identity (Follow Me)
+    E911 address on install
+    internet & power site survey
+    priority message alert (who / how)
+    insurance fax vs analog lines after cutover
+    Christmas 2027 falls on Saturday — observe Fri Dec 24?
+
+
+
+
+Draft UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                                    5 / 6
+                                                                                                     OWNER BLUEPRINT
+
+
+
+
+06 · HOW TO USE THIS
+
+
+Hand this to any provider.
+If the implementation spec does not show the same plan ID, revision, and checksum printed in this
+footer, do not install from either file.
+
+This document                          How patients reach this practice. Draft until the live tests below pass.
+
+Matching spec                          Hand the implementation spec with the same ID · revision · checksum in
+                                       the footer.
+
+Not a quote                            Page 03 is quantities. Prices stay with the vendor.
+
+Not installed                          Nothing here is live until phones are on the wall and those tests pass.
+
+
+LIVE TESTS ON INSTALLED PHONES
+
+    Call the published number twice at the same time. Both front-desk phones should ring.
+    Call during lunch. Hear the lunch recording — we will call you back — not overnight voicemail, and not
+    the on-call dentist.
+    Call after hours. Hear the after-hours recording. Confirm Reception returns ordinary messages the
+    next business day.
+    After hours, use the urgent choice. A person must pick up — voicemail is not a handoff. Do not put a
+    personal cell in that recording.
+    Call before opening day. Hear the callback recording. Keep the number unpublished until this is true.
+    Ask the installer to confirm the emergency-calling address for this location. Checking a box here is
+    not that filing.
+
+Book a time with Upstate at upstateipvoice.com/review. Your plan saves to an unlisted link. Anyone
+with the link can open it. We don't store personal phone numbers.
+
+Owner _____________________ Date __________
+Provider __________________ Date __________
+Live test _________________ Date __________
+
+
+
+
+Draft UP-mwfupq6a-gno8pv · r12 · 33dc4671                                                                         6 / 6
+

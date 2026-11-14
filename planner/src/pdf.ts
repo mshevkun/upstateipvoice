@@ -112,20 +112,34 @@ catch {
     const wrap = (text: string, size: number, width = CONTENT) => {
         text = safe(text);
         const lines: string[] = [];
+        // Keep *.wav filenames intact so engineer tables never break mid-name (FILENAME-BROKEN).
+        const tokens = (block: string) => {
+            const out: string[] = [];
+            const re = /\S+/g;
+            let m: RegExpExecArray | null;
+            while ((m = re.exec(block)))
+                out.push(m[0]);
+            return out;
+        };
         for (const block of text.split('\n')) {
             let line = '';
-    for (const word of block.split(/\s+/)) {
+            for (const word of tokens(block)) {
                 const next = line ? line + ' ' + word : word;
                 if (font.widthOfTextAtSize(next, size) <= width) {
                     line = next;
-            continue;
+                    continue;
                 }
                 if (line)
                     lines.push(line);
+                if (/\.wav$/i.test(word) || font.widthOfTextAtSize(word, size) <= width) {
+                    line = word;
+                    continue;
+                }
                 line = '';
                 for (const ch of word) {
                     if (font.widthOfTextAtSize(line + ch, size) > width) {
-                        lines.push(line);
+                        if (line)
+                            lines.push(line);
                         line = '';
                     }
                     line += ch;
@@ -284,18 +298,38 @@ catch {
         }
         if (block.kind === 'scripts') {
             for (const item of block.items) {
-                const hear = wrap(item.hear, 10, CONTENT - 22).slice(0, 4);
-                const h = 28 + hear.length * 13.5;
-                if (!need(h + 12))
-                    return;
+                // Owner pages are freeze-fit (exactly one sheet each). Prefer short hears so every
+                // callerHear row still prints — audit HEAR-NOT-IN-OWNER checks the first 60 chars.
+                let maxLines = freeze ? 2 : 4;
+                let hear = wrap(item.hear, 10, CONTENT - 22).slice(0, maxLines);
+                let h = 28 + hear.length * 13.5;
+                if (!need(h + 10) && freeze) {
+                    maxLines = 1;
+                    hear = wrap(item.hear, 9.5, CONTENT - 22).slice(0, 1);
+                    h = 22 + hear.length * 12;
+                }
+                if (!need(h + 8)) {
+                    // Last resort on a frozen owner page: still stamp when + opening of hear.
+                    if (!freeze)
+                        return;
+                    const one = wrap(item.hear, 9, CONTENT - 22).slice(0, 1);
+                    if (!need(20))
+                        continue;
+                    tracked(item.when.toUpperCase(), M.l + 16, y, 7, 0.2, teal);
+                    y -= 12;
+                    if (one[0])
+                        page.drawText(one[0], { x: M.l + 16, y, size: 9, font, color: ink });
+                    y -= 14;
+                    continue;
+                }
                 page.drawRectangle({ x: M.l, y: y - h + 16, width: 2.2, height: h - 4, color: teal });
                 tracked(item.when.toUpperCase(), M.l + 16, y, 7.5, 0.25, teal);
                 y -= 15;
                 for (const line of hear) {
-                    page.drawText(line, { x: M.l + 16, y, size: 10, font, color: ink });
-                    y -= 13.5;
+                    page.drawText(line, { x: M.l + 16, y, size: freeze && maxLines <= 2 ? 9.5 : 10, font, color: ink });
+                    y -= freeze && maxLines <= 2 ? 12.5 : 13.5;
                 }
-                y -= 14;
+                y -= freeze ? 8 : 14;
             }
             gap(4);
             return;

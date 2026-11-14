@@ -471,13 +471,22 @@ export const fields: FieldDef[] = [
             const kind = asString(value);
             if (!['human', 'menu', 'assistant', 'undecided'].includes(kind))
                 return p;
-            const team = kind === 'human' && !p.first.team && p.teams.some(t => t.role === 'reception' && t.count > 0) ? 'reception' : p.first.team;
+            const team = kind === 'human'
+                ? (p.first.team || (p.teams.some(t => t.role === 'reception') ? 'reception' : p.first.team))
+                : p.first.team;
             let next = { ...p, first: { ...p.first, kind: kind as Plan['first']['kind'], team } };
             if (kind === 'human' && next.policy.ring === 'undecided')
                 next = policy(next, { ring: 'together' });
             if (kind === 'human' && next.first.team === 'reception' && receptionKnownCount(next) === 1
                 && !next.policy.placements.some(x => x.team === 'reception'))
                 next = setReceptionSharing(next, 'shared');
+            // Fusion: menu first uses keypad language ID; AI first uses the VR en/es keypad — not staff.
+            if (kind === 'menu' && next.languages.some(l => l.mechanism === 'staff'))
+                next = { ...next, languages: next.languages.map(l => l.mechanism === 'staff' ? { ...l, mechanism: 'menu' as const } : l) };
+            if (kind === 'assistant' && next.languages.some(l => l.mechanism === 'staff' || l.mechanism === 'menu'))
+                next = { ...next, languages: next.languages.map(l => ({ ...l, mechanism: 'assistant' as const, note: (l.note ? l.note + '; ' : '') + 'Voice Receptionist keypad' })) };
+            if (kind === 'human' && next.languages.some(l => l.mechanism === 'menu'))
+                next = { ...next, languages: next.languages.map(l => l.mechanism === 'menu' ? { ...l, mechanism: 'staff' as const } : l) };
             return next;
         }
     },
@@ -553,7 +562,11 @@ export const fields: FieldDef[] = [
             const kind = normalizeEnum('urgent.kind', value);
             if (!['connect', 'priority', 'instructions', 'undecided', 'none'].includes(kind))
                 return p;
-            return { ...p, urgent: { ...p.urgent, enabled: kind !== 'none' && kind !== 'undecided' }, policy: { ...p.policy, urgentKind: kind as Plan['policy']['urgentKind'] } };
+            let next = { ...p, urgent: { ...p.urgent, enabled: kind !== 'none' && kind !== 'undecided' }, policy: { ...p.policy, urgentKind: kind as Plan['policy']['urgentKind'] } };
+            // Playback-then-hangup cannot host digit 9 — switch closed path to a message leaf.
+            if (kind === 'connect' && next.after.kind === 'information')
+                next = { ...next, after: { ...next.after, kind: 'message' } };
+            return next;
         }
     },
     {
@@ -805,12 +818,16 @@ export const fields: FieldDef[] = [
             if (operation !== 'set')
                 return p;
             const v = asString(value);
+            const clinicalIsInbound = p.first.kind === 'human' && p.first.team === 'clinical';
+            // Internal-only / none cannot stock the inbound ring group when clinical answers first.
+            if (clinicalIsInbound && (v === 'none' || v === 'internal_computer' || v === 'per_room'))
+                return p;
             if (v === 'none' || v === 'per_room')
                 return policy(p, { notes: v === 'per_room' ? ((p.policy.notes ? p.policy.notes + '; ' : '') + 'Clinical area: not a phone per room.') : p.policy.notes });
             if (v === 'internal_computer')
                 return setPlacement(p, 'clinical', 'computer', 1, 'internal');
             if (v === 'desk')
-                return setPlacement(p, 'clinical', 'desk', 1, 'internal');
+                return setPlacement(p, 'clinical', 'desk', 1, clinicalIsInbound ? 'outside' : 'internal');
             return p;
         }
     },
@@ -1147,6 +1164,10 @@ export const fields: FieldDef[] = [
             return 'desk';
         },
         apply(p, operation, value) {
+            // Skip must not leave RG 7000 empty when reception answers first.
+            if (operation === 'skip' && p.first.kind === 'human' && (p.first.team === 'reception' || !p.first.team)
+                && !p.policy.placements.some(x => x.team === 'reception' && x.count > 0 && x.device !== 'undecided' && x.device !== 'none'))
+                return p;
             if (operation !== 'set')
                 return p;
             const v = asString(value);

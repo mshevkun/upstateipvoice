@@ -79,7 +79,7 @@ test('one receptionist gets a front-desk identity and the kind question', async 
   const ids = [];
   let follow = r.follow;
   let guard = 0;
-  while (follow && guard++ < 12) {
+  while (follow && guard++ < 30) {
     ids.push(follow.id);
     if (follow.id === 'devices.reception.kind') {
       const chip = follow.options.find(o => o.value === 'desk');
@@ -91,7 +91,7 @@ test('one receptionist gets a front-desk identity and the kind question', async 
     const c = mod.chipTurn({ plan, facts, chip });
     plan = c.plan; facts = c.facts; follow = c.follow;
   }
-  assert.ok(ids.includes('devices.reception.kind'));
+  assert.ok(ids.includes('devices.reception.kind'), 'asked ' + ids.join(','));
   const build = mod.fusionBuild(plan);
   const inbound = build.objects.find(o => o.kind === 'ring_group' && o.extension === '7000');
   assert.ok(inbound);
@@ -195,6 +195,89 @@ test('separate voicemail boxes and overflow is the work mobile', async () => {
   assert.ok(overflow);
   assert.match(overflow.setup.join(' '), /mobile/);
   assert.doesNotMatch(overflow.setup.join(' '), /computer/);
+});
+
+test('skip reception kind does not finish with empty inbound RG', async () => {
+  const mod = await load();
+  let plan = mod.initial();
+  let facts = {};
+  const r = mod.interpretTurn({
+    plan, facts, interpreter: blank,
+    userText: 'Existing dental. One receptionist. Front desk answers first. After hours voicemail. Weekdays 9 to 5.',
+    question: null
+  });
+  plan = r.plan; facts = r.facts;
+  let follow = r.follow;
+  let guard = 0;
+  let sawKind = false;
+  while (follow && guard++ < 40) {
+    if (follow.id === 'devices.reception.kind') {
+      sawKind = true;
+      assert.equal(follow.options.some(o => o.operation === 'skip'), false);
+      const chip = follow.options.find(o => o.value === 'desk');
+      const c = mod.chipTurn({ plan, facts, chip });
+      plan = c.plan; facts = c.facts; follow = c.follow;
+      continue;
+    }
+    const chip = follow.options.find(o => o.operation === 'set') || follow.options[0];
+    const c = mod.chipTurn({ plan, facts, chip });
+    plan = c.plan; facts = c.facts; follow = c.follow;
+  }
+  assert.equal(sawKind, true);
+  const build = mod.fusionBuild(plan);
+  assert.equal(build.blockers.some(b => /inbound ring group has no members/i.test(b)), false);
+  assert.ok(plan.policy.placements.some(x => x.team === 'reception' && x.device !== 'undecided' && x.device !== 'none' && x.access === 'outside'));
+});
+
+test('clinical first-answer with internal-only stays unfinished until outside desk', async () => {
+  const mod = await load();
+  let plan = mod.initial();
+  plan.mode = 'improving';
+  plan.name = 'Solo Clinical';
+  plan.specialty = 'Dental';
+  plan.first = { kind: 'human', team: 'clinical' };
+  plan.teams = plan.teams.map(t => t.role === 'clinical' ? { ...t, count: 1, status: 'known' } : t.role === 'reception' ? { ...t, count: 0, status: 'known' } : t.role === 'administration' ? { ...t, count: 0, status: 'known' } : t);
+  plan.busy = { kind: 'message', seconds: 25, wait: 90, backup: '', owner: 'clinical' };
+  plan.after = { kind: 'message', owner: 'clinical', instructions: '' };
+  plan.policy.ring = 'together';
+  plan.policy.languageDecision = 'none';
+  plan.reasons = plan.reasons.map(r => ({ ...r, team: 'clinical' }));
+  plan.hours.days = plan.hours.days.map((d, i) => ({ ...d, open: i < 5, start: i < 5 ? '09:00' : '', end: i < 5 ? '17:00' : '', stated: true }));
+  plan.confirmed = ['hours'];
+  let facts = {
+    mode: { field_id: 'mode', value: 'improving', status: 'confirmed', evidence: 'x' },
+    name: { field_id: 'name', value: 'Solo Clinical', status: 'confirmed', evidence: 'x' },
+    specialty: { field_id: 'specialty', value: 'Dental', status: 'confirmed', evidence: 'x' },
+    'first.kind': { field_id: 'first.kind', value: 'human', status: 'confirmed', evidence: 'x' },
+    'teams.reception.count': { field_id: 'teams.reception.count', value: 0, status: 'confirmed', evidence: 'x' },
+    'teams.clinical.count': { field_id: 'teams.clinical.count', value: 1, status: 'confirmed', evidence: 'x' },
+    'teams.administration.count': { field_id: 'teams.administration.count', value: 0, status: 'confirmed', evidence: 'x' },
+    'busy.kind': { field_id: 'busy.kind', value: 'message', status: 'confirmed', evidence: 'x' },
+    'after.kind': { field_id: 'after.kind', value: 'message', status: 'confirmed', evidence: 'x' },
+    'hours.preset': { field_id: 'hours.preset', value: 'weekdays', status: 'confirmed', evidence: 'x' },
+    'hours.lunch': { field_id: 'hours.lunch', value: 'covered', status: 'confirmed', evidence: 'x' },
+    'messages.owner': { field_id: 'messages.owner', value: 'clinical', status: 'confirmed', evidence: 'x' },
+    'urgent.kind': { field_id: 'urgent.kind', value: 'none', status: 'confirmed', evidence: 'x' },
+    'policy.rooms': { field_id: 'policy.rooms', value: 0, status: 'skipped', evidence: 'x' },
+    'languages.decision': { field_id: 'languages.decision', value: 'none', status: 'confirmed', evidence: 'x' },
+    'devices.work_mobile': { field_id: 'devices.work_mobile', value: 'none', status: 'confirmed', evidence: 'x' },
+    'reasons.default_split': { field_id: 'reasons.default_split', value: true, status: 'confirmed', evidence: 'x' },
+    'devices.clinical.area': { field_id: 'devices.clinical.area', value: 'none', status: 'skipped', evidence: 'skip' }
+  };
+  let q = mod.nextQuestion(plan, facts);
+  let guard = 0;
+  while (q && q.id !== 'devices.clinical.area' && guard++ < 12) {
+    const chip = q.options.find(o => o.operation === 'set') || q.options[0];
+    const step = mod.chipTurn({ plan, facts, chip });
+    plan = step.plan; facts = step.facts; q = step.follow;
+  }
+  assert.equal(q?.id, 'devices.clinical.area');
+  assert.equal(q.options.some(o => o.value === 'none' || o.operation === 'skip'), false);
+  assert.ok(q.options.some(o => o.value === 'desk'));
+  const c = mod.chipTurn({ plan, facts, chip: q.options.find(o => o.value === 'desk') });
+  assert.ok(c.plan.policy.placements.some(x => x.team === 'clinical' && x.device === 'desk' && x.access === 'outside'));
+  const hard = mod.fusionBuild(c.plan).blockers.filter(b => /inbound ring group has no members/i.test(b));
+  assert.deepEqual(hard, []);
 });
 
 test('privacy copy is anyone-with-the-link', async () => {

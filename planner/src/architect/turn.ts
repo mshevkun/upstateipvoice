@@ -2,7 +2,7 @@ import type { Plan } from '../config';
 import { composeAcknowledgement } from './ack';
 import { detectIntent, isCorrection, mergeInterpreterUpdates, updatesFromOwnerText } from './extract';
 import { applyUpdates } from './merge';
-import { nextQuestion } from './questions';
+import { nextQuestion, repairFusionConflicts } from './questions';
 import { scrubAckNotice, scrubPii } from './scrub';
 import type { Chip, Fact, InterpreterIntent, InterpreterResponse, NextQuestion } from './types';
 
@@ -38,7 +38,7 @@ export function interpretTurn(opts: {
     if (/snowstorm|snow/.test(folded))
         unmapped.push('snow');
     const merged = applyUpdates(opts.plan, opts.facts, updates, intent, unmapped, { correcting: isCorrection(opts.userText) || !!opts.correcting });
-    const nextPlan = merged.changed ? merged.plan : opts.plan;
+    const nextPlan = repairFusionConflicts(merged.changed ? merged.plan : opts.plan);
     const follow = nextQuestion(nextPlan, merged.facts);
     let ack = composeAcknowledgement({
         groqAck: opts.interpreter.acknowledgement,
@@ -81,7 +81,7 @@ export function chipTurn(opts: {
         needs_confirmation: false,
         precision: reopenReception ? 'exact' : undefined
     }], chipCorrects ? 'correct_information' : opts.chip.operation === 'skip' ? 'skip_current' : 'provide_information', [], { correcting: chipCorrects });
-    const nextPlan = merged.changed ? merged.plan : opts.plan;
+    const nextPlan = repairFusionConflicts(merged.changed ? merged.plan : opts.plan);
     const follow = nextQuestion(nextPlan, merged.facts);
     const ack = composeAcknowledgement({
         accepted: merged.accepted,

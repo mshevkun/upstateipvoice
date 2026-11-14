@@ -151,7 +151,7 @@ export function callPath(p: Plan, b: FusionBuild): CallHop[] {
     const dayRg = inboundRg(p, b);
     const urgentRg = findObj(b, 'ring_group', /on-call/i);
     const closedIvr = findObj(b, 'ivr', /after hours/i);
-    const members = ringMembers(p, p.first.team, true).map(m => m.extension).filter(Boolean);
+    const members = ringMembers(p, p.first.team || 'reception', true).map(m => m.extension).filter(Boolean);
     const box = boxFor('busy');
     const afterBox = boxFor('after');
     const beforeBox = boxFor('before');
@@ -178,10 +178,10 @@ export function callPath(p: Plan, b: FusionBuild): CallHop[] {
         hops.push({
             id: 'before',
             when: 'Before opening',
-            object: 'BLOCKED',
+            object: 'unresolved',
             blocked: true,
-            happen: 'BLOCKED. Do not publish the DID. The owner has not approved a pre-opening destination.',
-            test: 'BLOCKED: DID is not public. Before-opening destination is unresolved.'
+            happen: 'Do not publish the DID. The owner has not approved a pre-opening destination.',
+            test: 'DID is not public. Before-opening destination is unresolved.'
         });
     const seq = sequenceHops(p, b);
     if (p.first.kind === 'human') {
@@ -379,7 +379,7 @@ function ivrValue(p: Plan, b: FusionBuild, o: { name: string; extension?: string
 }
 
 function inboundExts(p: Plan) {
-    return ringMembers(p, p.first.team, true).map(m => m.extension).filter(Boolean);
+    return ringMembers(p, p.first.team || 'reception', true).map(m => m.extension).filter(Boolean);
 }
 
 function timeoutTarget(o: { setup: string[] }) {
@@ -642,7 +642,7 @@ function objectRows(p: Plan, b: FusionBuild): BriefRow[] {
                 value: p.policy.beforeOpening === 'information'
                     ? 'Playback before-opening.wav then hangup. Not TC 8000. Not a mailbox.'
                     : p.policy.beforeOpening === 'undecided'
-                        ? 'BLOCKED. Do not publish the DID.'
+                        ? 'Do not publish the DID — before-opening unresolved.'
                         : 'Transfer *99' + boxFor('before') + '. Not TC 8000.'
             });
         else
@@ -682,9 +682,9 @@ function objectRows(p: Plan, b: FusionBuild): BriefRow[] {
             const internal = directory(p).find(d => d.team === p.urgent.team && d.access === 'internal');
             role = outside.length
                 ? p.urgent.seconds + 's · miss is a mailbox, not inbound'
-                : 'BLOCKED · no outside members · Follow Me on a dedicated on-call identity'
+                : 'no outside members — Follow Me on a dedicated on-call identity'
                     + (internal ? ', not ' + internal.extension : '')
-                    + ' · do not go live';
+                    + ' — do not go live';
         }
         else if (p.first.kind === 'menu')
             role = 'IVR destination — DID does not ring this group until a digit';
@@ -693,16 +693,23 @@ function objectRows(p: Plan, b: FusionBuild): BriefRow[] {
         else if (rgHop(p, o) > 0)
             role = 'sequence hop ' + (rgHop(p, o) + 1) + ' · rings after previous hop timeout';
         else if (o.extension === inbound)
-            role = 'inbound · simultaneous · DID rings this group';
+            role = 'inbound simultaneous — DID rings this group';
         else
             role = 'transfer target only — DID does not ring this group';
         const shown = /on-call/i.test(name) ? '' : name;
         const timeoutLine = timeout
             ? 'timeout_app = transfer; timeout_data = ' + timeout
             : 'timeout_app MISSING — do not go live';
+        const memberLine = memberExts.length
+            ? 'members ' + memberExts.join(', ')
+            : /on-call/i.test(o.name)
+                ? 'members none · BLOCKED until Follow Me is populated'
+                : o.extension === inbound
+                    ? 'members none · BLOCKED: assign outside-call devices'
+                    : 'members: assign outside devices first';
         rows.push({
             label: (o.extension || '') + ' · RG',
-            value: [shown, memberExts.length ? 'members ' + memberExts.join(', ') : (/^BLOCKED/.test(role) ? 'members none' : 'members none · BLOCKED'), role, timeoutLine, objectFields(o)]
+            value: [shown, memberLine, role, timeoutLine, objectFields(o)]
                 .filter(Boolean)
                 .join(' · ')
         });
@@ -783,7 +790,9 @@ function liveTestTable(p: Plan, b: FusionBuild) {
     }
     else if (p.first.kind === 'human' && notInbound.length)
         rows.push(['Open hours', '—', 'DID', 'Inbound DID must not ring ' + notInbound.join(', ') + '. Transfer or Follow Me only.', '☐']);
-    rows.push(['Two calls at once', '—', p.first.kind === 'human' ? 'front-desk lines' : 'inbound', 'Two simultaneous calls where separate front-desk lines exist.', '☐']);
+    const separateFront = directory(p).some(d => d.team === (p.first.team || 'reception') && d.sharing === 'separate' && d.count > 1);
+    if (separateFront)
+        rows.push(['Two calls at once', '—', 'front-desk lines', 'Two simultaneous calls on separate front-desk lines.', '☐']);
     if (onCallUnbuilt(p))
         rows.push(['Press 9 empty Follow Me', 'after-hours-urgent-option.wav', 'RG 7900', 'MUST FAIL. Digit 9 with Follow Me empty does not connect. Do not go live.', '☐']);
     if (p.urgent.enabled && p.policy.urgentKind === 'connect' && !onCallUnbuilt(p))
@@ -791,10 +800,19 @@ function liveTestTable(p: Plan, b: FusionBuild) {
     for (const t of testsBeforeOpen(p))
         if (/E911|emergency-calling/i.test(t.label))
             rows.push(['Install', '—', 'E911', 'E911 address on the installed system. Checking a box here is not a carrier filing.', '☐']);
+    // Drop exact duplicate hop tests (same when + object + test).
+    const seen = new Set<string>();
+    const deduped = rows.filter(r => {
+        const key = r.slice(0, 4).join('|');
+        if (seen.has(key))
+            return false;
+        seen.add(key);
+        return true;
+    });
     return {
         headers: ['When', 'File', 'Object', 'Hop test', '☐'],
-        widths: [78, 112, 70, 220, 24],
-        rows
+        widths: [78, 120, 70, 210, 24],
+        rows: deduped
     };
 }
 

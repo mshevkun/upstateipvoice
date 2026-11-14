@@ -122,13 +122,33 @@ for (const s of scenarios) {
     if (asked.some(a => a.startsWith('STUCK'))) issues.push('CHIP-STUCK ' + asked.filter(a => a.startsWith('STUCK')).join(','));
     const oq = ownerQuestions(plan, facts).map(q => q.id);
     if (!follow && oq.length) issues.push('STOP-WITH-OPEN-QUESTIONS ' + oq.join(','));
-    // repeated question after an answer for that id (not "still unanswered across free-text turns")
-    const answeredIds = new Set(asked.map(a => a.split('=')[0]).filter(id => id && id !== 'STUCK'));
-    const nexts = log.map(l => l.next).filter(Boolean);
+    // Repeated only after that id was already answered (chip/typed), not sticky next during free-text.
+    // Typed fills from play() use fixed canned strings — do not confuse with owner speech like "We open in April".
+    const answerAt = new Map();
+    let askI = 0;
+    for (let i = 0; i < log.length; i++) {
+      const pending = asked[askI];
+      if (!pending)
+        continue;
+      if (pending.startsWith('STUCK:')) {
+        askI++;
+        continue;
+      }
+      const text = log[i].text || '';
+      const typedName = pending.startsWith('name=') && text.startsWith('The practice is called ');
+      const typedDate = pending.startsWith('opening.date=') && text.startsWith('We open in ');
+      if (log[i].who === 'chip' || typedName || typedDate) {
+        const id = pending.split('=')[0];
+        if (!answerAt.has(id))
+          answerAt.set(id, i);
+        askI++;
+      }
+    }
     const rep = [];
-    for (let i = 2; i < nexts.length; i++) {
-      if (nexts[i] && nexts[i] === nexts[i - 1] && nexts[i] === nexts[i - 2] && answeredIds.has(nexts[i]))
-        rep.push(nexts[i]);
+    for (let i = 2; i < log.length; i++) {
+      const a = log[i]?.next, b = log[i - 1]?.next, c = log[i - 2]?.next;
+      if (a && a === b && a === c && answerAt.has(a) && i > answerAt.get(a))
+        rep.push(a);
     }
     if (rep.length) issues.push('REPEATED-QUESTION ' + [...new Set(rep)].join(','));
     // generic acks
@@ -178,7 +198,7 @@ for (const s of scenarios) {
     const hoursChipped = asked.some(a => /^hours\.preset=/.test(a) && /Monday|9 AM|24-hour/i.test(a));
     const fri = plan.hours.days.find(d => d.day === 'Friday');
     if (fri?.open && fri.start === '09:00' && fri.end === '17:00'
-      && !/friday|weekday|mon(?:day)?\s*(?:through|to|-|–)\s*fri|m-f|9\s*(?:am)?\s*(?:to|-|–)\s*5/.test(speech)
+      && !/friday|weekday|weekdays|mon(?:day)?\s*(?:through|to|-|–)\s*fri|m-f|9\s*(?:am)?\s*(?:to|-|–)\s*5|nine\s*(?:to|-|–)\s*five|nine\s*[-–]\s*five/.test(speech)
       && !hoursChipped)
       issues.push('INVENTED-HOURS Friday 9-5');
     results.push({ id, log, mode: plan.mode, specialty: plan.specialty, first: plan.first.kind, after: plan.after.kind, asked, ownerPages, engPages, stillOpen: stillOpen(plan), issues });
