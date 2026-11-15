@@ -620,19 +620,20 @@ export function Architect() {
         catch (err) {
             if (epoch.current !== token)
                 return;
+            const code = (err as Error).name === 'TimeoutError' || (err as Error).name === 'AbortError' ? 'groq' : (err as Error).message;
+            // Always fall back to the local brain and sync so ?s= / Lock see the same plan.
             let applied: ReturnType<typeof applyInterpreter> | null = null;
             if (trimmed === EXAMPLE)
                 applied = applyInterpreter(p, facts, EXAMPLE_INTERPRETER, outbound, { question: targetQuestion, correcting: !!correcting });
             else {
                 const hinted = updatesFromOwnerText(outbound, targetQuestion, facts);
-                if (hinted.length)
-                    applied = applyInterpreter(p, facts, {
-                        acknowledgement: scrubbed.removed ? scrubAckNotice(scrubbed.kinds) : '',
-                        intent: correcting ? 'correct_information' : 'provide_information',
-                        updates: hinted,
-                        unmapped_facts: [],
-                        explanation_topic: null
-                    }, outbound, { question: targetQuestion, correcting: !!correcting });
+                applied = applyInterpreter(p, facts, {
+                    acknowledgement: scrubbed.removed ? scrubAckNotice(scrubbed.kinds) : '',
+                    intent: correcting ? 'correct_information' : 'provide_information',
+                    updates: hinted,
+                    unmapped_facts: [],
+                    explanation_topic: null
+                }, outbound, { question: targetQuestion, correcting: !!correcting });
             }
             if (applied) {
                 try {
@@ -642,11 +643,15 @@ export function Architect() {
                     if (epoch.current !== token)
                         return;
                     await syncPlan(applied.plan, applied.facts, applied.future, remote.id, remoteRevRef.current);
+                    const lastAssistant = [...(readConversation()?.messages || [])].reverse().find(m => m.role === 'assistant');
+                    if (lastAssistant)
+                        await recordRemoteTurn(remote.id, newId(), outbound, lastAssistant.content, targetQuestion?.id || null);
                 }
                 catch { /* local plan still saved */ }
+                if (code === 'rate')
+                    setNotice('Assistant limit reached — using the on-device planner for this reply.');
                 return;
             }
-            const code = (err as Error).name === 'TimeoutError' || (err as Error).name === 'AbortError' ? 'groq' : (err as Error).message;
             const assistant: ChatMessage = { id: newId(), role: 'assistant', content: code === 'rate' ? 'Too many messages. Please wait a few minutes.' : 'The planning assistant is temporarily unavailable. Your plan is unchanged. You can still choose an option below.', questionId: targetQuestion?.id || null };
             setFreshId(assistant.id);
             setMessages(m => [...m, assistant]);

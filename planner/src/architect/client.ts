@@ -102,7 +102,8 @@ export async function interpretRemote(req: InterpretRequest): Promise<InterpretS
             timezone: req.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
             today: new Date().toISOString().slice(0, 10)
         }),
-        signal: AbortSignal.timeout(12000)
+        // 8s: local brain is the publishable fallback — do not leave owners on a spinner.
+        signal: AbortSignal.timeout(8000)
     });
     if (res.status === 429)
         throw new Error('rate');
