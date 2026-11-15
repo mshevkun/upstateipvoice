@@ -7993,10 +7993,27 @@ h2,
   }
 }
 
-/* Free Tools */
+/* Free Tools + homepage planner feature */
 .tools-featured {
   background: #fff;
   padding: clamp(48px, 7vw, 96px) 0;
+}
+
+.tools-featured--home {
+  background: #f4f2ee;
+  border-top: 1px solid rgba(20, 26, 35, 0.06);
+  border-bottom: 1px solid rgba(20, 26, 35, 0.06);
+}
+
+.tools-featured__assurance a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tools-featured__assurance a:hover,
+.tools-featured__assurance a:focus-visible {
+  color: #141a23;
 }
 
 .tools-featured__inner {
