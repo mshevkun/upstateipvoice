@@ -43,7 +43,7 @@ function transpile(rel) {
 
 for (const name of [
   'config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state',
-  'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract', 'architect/ack',
+  'architect/schema', 'architect/fields', 'architect/clauses', 'architect/parse', 'architect/extract', 'architect/ack',
   'architect/merge', 'architect/questions', 'architect/turn', 'architect/scene-from-plan',
   'architect/prompt', 'architect/hear', 'architect/scrub', 'fusion', 'plan-content', 'privacy', 'advisor', 'owner-brief', 'engineer-brief', 'opening', 'status',
   'readiness', 'bom', 'provisioning', 'pdf'

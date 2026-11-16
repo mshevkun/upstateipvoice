@@ -534,7 +534,13 @@ export function composeAcknowledgement(opts: {
     }
     const groq = (opts.groqAck || '').trim();
     const groqOk = groq && !thin(groq) && !UNSAFE.test(groq) && !GENERIC.test(groq);
-    const specific = summarize(opts.accepted, opts.plan, opts.chip);
+    let specific = summarize(opts.accepted, opts.plan, opts.chip);
+    const setCount = opts.accepted.filter(u => u.operation === 'set' && u.value != null && !/notes/.test(u.field_id)).length;
+    if ((opts.userText?.length || 0) > 120 && setCount >= 3) {
+        const recap = identity(taken(opts.accepted));
+        if (recap && specific && !specific.toLowerCase().includes(recap.slice(0, 24).toLowerCase()))
+            specific = 'From what you wrote: ' + recap + '. ' + specific;
+    }
     const asked = opts.userText && wantsAdvice(opts.userText);
     const help = asked ? (adviceFor(adviceTopic(opts.userText, opts.chip?.field_id || null)) || adviceFor('after.kind')) : '';
     const notesOnly = opts.accepted.filter(u => /notes|continuity\.notes|current\.notes|policy\.notes/.test(u.field_id));

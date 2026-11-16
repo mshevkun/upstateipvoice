@@ -326,21 +326,29 @@ test('Other specialty asks specialtyDetail and softens the Other ack', async () 
   assert.notEqual(detail.follow?.id, 'specialtyDetail');
 });
 
-test('adding second office keeps home city; name is not We already have…', async () => {
+test('adding second office: named practice stays; this-plan city wins over home', async () => {
   const mod = await load();
-  const text = "We already have Kingston Family Dental. We're adding a second office in New Paltz under the same number. Two receptionists at Kingston answer both. Front desk first. After hours voicemail.";
-  const turned = mod.interpretTurn({
+  const shared = mod.interpretTurn({
     plan: mod.initial(),
     facts: {},
     interpreter: blank,
-    userText: text,
+    userText: "We already have Kingston Family Dental. We're adding a second office in New Paltz under the same number. Two receptionists at Kingston answer both. Front desk first. After hours voicemail.",
     question: null
   });
-  assert.equal(turned.plan.mode, 'adding');
-  assert.match(String(turned.plan.policy.cityState), /Kingston/i);
-  assert.doesNotMatch(String(turned.plan.policy.cityState), /^New Paltz/i);
-  assert.match(turned.plan.name, /Kingston Family Dental/i);
-  assert.doesNotMatch(turned.plan.name, /^We already have/i);
+  assert.equal(shared.plan.mode, 'adding');
+  assert.match(String(shared.plan.policy.cityState), /Kingston/i);
+  assert.match(shared.plan.name, /Kingston Family Dental/i);
+  assert.doesNotMatch(shared.plan.name, /^We already have/i);
+
+  const focused = mod.interpretTurn({
+    plan: mod.initial(),
+    facts: {},
+    interpreter: blank,
+    userText: 'We have an eye care office in Albany, New York. I am adding one in Troy, New York. The plan I want is the Troy office.',
+    question: null
+  });
+  assert.equal(focused.plan.mode, 'adding');
+  assert.match(String(focused.plan.policy.cityState), /Troy/i);
 });
 
 test('after hours play hours and hang up is information, not voicemail', async () => {

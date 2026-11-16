@@ -9,7 +9,7 @@ const srcDir = path.join(__dirname, '../planner/src');
 /** Full planner graph used by unit tests — keep one list so parallel runs stay self-contained. */
 const MODULES = [
   'config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state',
-  'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract', 'architect/ack',
+  'architect/schema', 'architect/fields', 'architect/clauses', 'architect/parse', 'architect/extract', 'architect/ack',
   'architect/merge', 'architect/questions', 'architect/turn', 'architect/scene-from-plan',
   'architect/hear', 'architect/scrub', 'architect/prompt',
   'provisioning', 'bom', 'opening', 'status', 'readiness', 'advisor', 'privacy',

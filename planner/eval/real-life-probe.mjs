@@ -36,7 +36,7 @@ function transpile(rel) {
 
 for (const name of [
   'config', 'policy', 'locations', 'routing', 'flow', 'team-state', 'state',
-  'architect/schema', 'architect/fields', 'architect/parse', 'architect/extract', 'architect/ack',
+  'architect/schema', 'architect/fields', 'architect/clauses', 'architect/parse', 'architect/extract', 'architect/ack',
   'architect/merge', 'architect/questions', 'architect/turn', 'architect/scene-from-plan',
   'architect/prompt', 'architect/hear', 'architect/scrub', 'provisioning', 'bom', 'opening', 'status',
   'readiness', 'advisor', 'privacy', 'owner-brief', 'fusion', 'engineer-brief', 'plan-content', 'pdf'
@@ -2965,8 +2965,11 @@ async function checkCase(c) {
   return { id: c.id, title: c.title, why: c.why, ok: issues.length === 0, issues, notes, planId: id.planId, specialty: plan.specialty, detail: plan.specialtyDetail || '' };
 }
 
+const limitArg = process.argv.includes('--limit') ? Number(process.argv[process.argv.indexOf('--limit') + 1]) : 0;
+const selected = limitArg > 0 ? CASES.slice(0, limitArg) : CASES;
+
 const results = [];
-for (const c of CASES) {
+for (const c of selected) {
   try {
     results.push(await checkCase(c));
   }

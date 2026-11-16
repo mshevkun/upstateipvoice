@@ -480,12 +480,8 @@ export const fields: FieldDef[] = [
             const kind = asString(value);
             if (!['human', 'menu', 'assistant', 'undecided'].includes(kind))
                 return p;
-            const team = kind === 'human'
-                ? (p.first.team || (p.teams.some(t => t.role === 'reception') ? 'reception' : p.first.team))
-                : p.first.team;
+            const team = p.first.team;
             let next = { ...p, first: { ...p.first, kind: kind as Plan['first']['kind'], team } };
-            if (kind === 'human' && next.policy.ring === 'undecided')
-                next = policy(next, { ring: 'together' });
             if (kind === 'human' && next.first.team === 'reception' && receptionKnownCount(next) === 1
                 && !next.policy.placements.some(x => x.team === 'reception'))
                 next = setReceptionSharing(next, 'shared');
