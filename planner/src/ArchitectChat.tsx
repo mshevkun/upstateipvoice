@@ -107,7 +107,7 @@ function BlueprintRail({
     const open = stillOpen(p);
     const hours = hoursSummary(p);
     const hoursKnown = p.hours.days.some(dayIsStated);
-    return <aside className="blueprint-rail" aria-label="Blueprint">
+    return <aside className="blueprint-rail blueprint-rail--stage" aria-label="Blueprint">
         <p className="blueprint-kicker">Blueprint</p>
         <h2 className="blueprint-name">{p.name.trim() || 'Your practice'}</h2>
         <p className="blueprint-meta">{[p.policy.cityState, formatOpening(p)].filter(Boolean).join(' · ') || 'City and opening still open'}</p>
@@ -242,7 +242,7 @@ export function Architect() {
     const [error, setError] = useState('');
     const [warning, setWarning] = useState(loaded.current.warning);
     const [reviewing, setReviewing] = useState(false);
-    const [sheetOpen, setSheetOpen] = useState(false);
+    const [blueprintOpen, setBlueprintOpen] = useState(false);
     const [locked, setLocked] = useState(false);
     const [conflictRemote, setConflictRemote] = useState<{ planId: string; revision: number; checksum: string } | null>(null);
     const [restarting, setRestarting] = useState(false);
@@ -418,8 +418,8 @@ export function Architect() {
         if (chapter === 5) {
             if (labMode())
                 setReviewing(true);
-            else
-                setSheetOpen(true);
+            else if (blueprintReadyForOwner(p, facts))
+                setBlueprintOpen(true);
             setCorrecting(null);
             return;
         }
@@ -787,11 +787,16 @@ export function Architect() {
     }
     const conversationComplete = blueprintReadyForOwner(p, facts);
     const draftReady = conversationComplete && !question && !typing && !busy && !suppressPrompt && !correcting && !welcome;
+    useEffect(() => {
+        if (!conversationComplete)
+            setBlueprintOpen(false);
+    }, [conversationComplete]);
     const showHear = draftReady && canPreviewHear(p) && hear.some(row => row.kind !== 'note');
     const leftoverNote = walkthroughLeftoversNote(p);
     const turnInFlight = busy || typing;
 
-    return <div className={'planner architect' + (reviewing ? ' reviewing' : '')} data-step="architect" data-revision={p.revision}>
+    const chatting = !conversationComplete || !blueprintOpen;
+    return <div className={'planner architect' + (reviewing ? ' reviewing' : '') + (chatting ? ' architect--chatting' : '') + (blueprintOpen ? ' architect--blueprint' : '')} data-step="architect" data-revision={p.revision}>
         <header className={'header' + (restarting ? ' header-restarting' : '')}>
             <div className="header-brand">
                 <a className="brand" href="/tools.html" aria-label="Back to Free Tools"><img src="/assets/upstate-logo.svg" alt="Upstate IP Voice"/></a>
@@ -882,6 +887,7 @@ export function Architect() {
                             <div className="chat-choices">
                                 <div className="chat-chips stack">
                                     <button type="button" className="chat-chip primary" onClick={() => bookWalkthrough()}>Book a walkthrough</button>
+                                    <button type="button" className="chat-chip quiet" onClick={() => setBlueprintOpen(true)}>View blueprint</button>
                                     <button type="button" className="chat-chip quiet" disabled={pdfBusy || !conversationComplete} onClick={() => pdf('owner')}>{pdfBusy ? 'Creating…' : 'Download owner blueprint'}</button>
                                     <button type="button" className="chat-chip quiet" disabled={pdfBusy || !conversationComplete} onClick={() => pdf('engineer')}>Download installer spec</button>
                                     {labMode() && <button type="button" className="chat-chip quiet" onClick={() => setReviewing(true)}>Open call simulator</button>}
@@ -910,12 +916,30 @@ export function Architect() {
                     </div>
                 </>}
             </section>
-            <div className={'scene-panel blueprint-column' + (sheetOpen ? ' sheet-open' : '')}>
+            {!blueprintOpen && <aside className="blueprint-column blueprint-column--scene">
                 <p className="scene-illustration-caption">Illustration — rooms are not phones</p>
                 <div className="blueprint-scene">
                     <Scene p={p} simulation={simulation} mode={view.mode} chapter={view.chapter} badge={view.badge} indexLabel={view.indexLabel} sceneClass={view.sceneClass} showTeamLegend={p.teams.some(t => t.status === 'known')} showSpecialtyCaption={!!p.specialty && view.chapter === 1}/>
                 </div>
-                {sheetOpen && <BlueprintRail
+            </aside>}
+        </main>
+        {conversationComplete && blueprintOpen && <div className="blueprint-stage" role="dialog" aria-modal="true" aria-label="Practice blueprint">
+            <header className="blueprint-stage-toolbar">
+                <button type="button" className="blueprint-stage-back" onClick={() => setBlueprintOpen(false)}>
+                    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M12 15 7 10l5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    Back to chat
+                </button>
+                <p className="blueprint-stage-title">Blueprint</p>
+                <span className="blueprint-stage-spacer" aria-hidden="true"/>
+            </header>
+            <div className="blueprint-stage-scroll">
+                <div className="blueprint-stage-visual" aria-hidden="true">
+                    <p className="blueprint-stage-visual-caption">Illustration — rooms are not phones</p>
+                    <div className="blueprint-scene blueprint-scene--card">
+                        <Scene p={p} simulation={simulation} mode={view.mode} chapter={view.chapter} badge={view.badge} indexLabel={view.indexLabel} sceneClass={view.sceneClass} showTeamLegend={p.teams.some(t => t.status === 'known')} showSpecialtyCaption={!!p.specialty && view.chapter === 1}/>
+                    </div>
+                </div>
+                <BlueprintRail
                     p={p}
                     ready={conversationComplete}
                     sessionId={sessionId}
@@ -949,9 +973,8 @@ export function Architect() {
                             setError('Could not lock this revision. The checksum did not match the server copy.');
                         }
                     }}
-                />}
-                <button type="button" className="blueprint-sheet-toggle" aria-expanded={sheetOpen} onClick={() => setSheetOpen(v => !v)}>{sheetOpen ? 'Hide blueprint' : 'Blueprint'}{!sheetOpen && stillOpen(p).length ? ' · ' + stillOpen(p).length : ''}</button>
+                />
             </div>
-        </main>
+        </div>}
     </div>;
 }

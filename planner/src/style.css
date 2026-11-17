@@ -412,11 +412,46 @@
 .blueprint-sheet-toggle{display:block;position:absolute;z-index:6;left:16px;right:16px;bottom:16px;width:auto;border:1px solid #d7cdbf;border-radius:14px;background:#fffcf8;padding:12px 16px;font-weight:550;box-shadow:0 10px 22px #202b2014}
 .blueprint-column.sheet-open .blueprint-sheet-toggle{bottom:auto;top:12px;right:16px;left:auto;width:auto;padding:8px 12px;font-size:13px}
 @media(max-width:850px){
-.architect .blueprint-column{order:-1;height:270px;max-height:none;border-left:0;border-bottom:1px solid #e4dfd8}
+.architect.architect--chatting .layout{display:flex;flex-direction:column;grid-template-columns:none}
+.architect .blueprint-column--scene{order:-1;height:220px;max-height:220px;border-left:0;border-bottom:1px solid #e4dfd8}
 .architect .blueprint-scene{display:block;flex:1}
-.architect .blueprint-sheet-toggle{left:12px;right:12px;bottom:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
-.architect .blueprint-rail{max-height:70svh;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
-.architect .blueprint-column.sheet-open{height:auto;min-height:270px}
-.architect .blueprint-column.sheet-open .blueprint-scene{flex-basis:160px;min-height:160px}
+.architect .blueprint-sheet-toggle,.architect .blueprint-rail{display:none}
+}
+
+/* Chat on the left; uncovered 3D office on the right. Blueprint overlay stays off until the conversation is done. */
+.architect.architect--chatting .layout{grid-template-columns:minmax(420px,min(42vw,560px)) minmax(0,1fr)}
+.architect.architect--chatting .conversation{max-width:none;width:100%;margin:0;border-right:1px solid #e4dfd8}
+.architect .blueprint-column--scene{background:#ecece8;border-left:0}
+.architect .blueprint-column--scene .blueprint-scene{flex:1;min-height:0}
+.architect .blueprint-column--scene .blueprint-rail,.architect .blueprint-column--scene .blueprint-sheet-toggle{display:none}
+.architect.architect--blueprint .layout{visibility:hidden;pointer-events:none}
+.blueprint-stage{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;background:#f5f5f7;color:#1d1d1f;font-family:Instrument,system-ui,-apple-system,BlinkMacSystemFont,sans-serif}
+.blueprint-stage-toolbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:14px 20px calc(14px + env(safe-area-inset-top));background:#f5f5f7cc;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #00000010}
+.blueprint-stage-back{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:8px 4px;font-size:17px;font-weight:400;color:#0071e3;letter-spacing:-.02em;justify-self:start}
+.blueprint-stage-back:hover{opacity:.8}
+.blueprint-stage-title{margin:0;justify-self:center;font-size:17px;font-weight:600;letter-spacing:-.03em;color:#1d1d1f}
+.blueprint-stage-spacer{justify-self:end;width:88px}
+.blueprint-stage-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:20px 20px calc(28px + env(safe-area-inset-bottom));max-width:720px;width:100%;margin:0 auto}
+.blueprint-stage-visual{margin:0 0 24px}
+.blueprint-stage-visual-caption{margin:0 0 10px;font-size:12px;letter-spacing:.02em;color:#6e6e73;font-weight:500}
+.blueprint-scene--card{position:relative;height:min(38vh,320px);border-radius:20px;overflow:hidden;background:#e8e8ed;box-shadow:0 1px 0 #0000000a,0 12px 40px #00000012;border:1px solid #0000000f}
+.blueprint-scene--card .scene-panel{position:absolute;inset:0;height:100%;border:0}
+.blueprint-scene--card .viewport{inset:48px 0 40px}
+.blueprint-rail--stage{position:static;max-height:none;overflow:visible;padding:0;background:transparent;border:0;box-shadow:none}
+.blueprint-rail--stage .blueprint-name{font-size:34px;font-weight:650;letter-spacing:-.045em;line-height:1.08;margin:0 0 8px;color:#1d1d1f}
+.blueprint-rail--stage .blueprint-kicker{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:none;color:#6e6e73;margin:0 0 6px}
+.blueprint-rail--stage .blueprint-meta,.blueprint-rail--stage .blueprint-hours{font-size:17px;line-height:1.4;color:#6e6e73;margin:0 0 10px}
+.blueprint-rail--stage .blueprint-id{font-size:13px;color:#86868b;margin:0 0 20px}
+.blueprint-rail--stage .blueprint-order,.blueprint-rail--stage .blueprint-hear,.blueprint-rail--stage .blueprint-open{margin:0 0 16px;padding:18px 20px;background:#fff;border-radius:16px;border:1px solid #0000000d;box-shadow:0 1px 2px #00000008}
+.blueprint-rail--stage .blueprint-label{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#6e6e73;margin:0 0 8px}
+.blueprint-rail--stage .blueprint-actions{margin:8px 0 0;gap:12px}
+.blueprint-rail--stage .blueprint-actions .primary{min-height:52px;border:0;border-radius:14px;background:#1d1d1f;color:#fff;font-size:17px;font-weight:600;letter-spacing:-.02em;box-shadow:0 4px 16px #0000001a}
+.blueprint-rail--stage .blueprint-actions .primary:hover{background:#333}
+.blueprint-rail--stage .blueprint-actions .secondary{min-height:52px;border-radius:14px;border:1px solid #d2d2d7;background:#fff;font-size:17px;font-weight:500;color:#1d1d1f}
+.blueprint-rail--stage .blueprint-privacy{font-size:13px;line-height:1.45;color:#86868b;margin:16px 0 0}
+@media(min-width:900px){
+.blueprint-stage-scroll{max-width:880px;padding:28px 32px 40px;display:grid;grid-template-columns:1fr 1.05fr;gap:28px;align-items:start}
+.blueprint-stage-visual{margin:0;position:sticky;top:0}
+.blueprint-scene--card{height:min(52vh,420px)}
 }
 
